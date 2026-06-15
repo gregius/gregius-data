@@ -1,0 +1,31 @@
+{
+	"_instructions": "Copy this file to your writable config location, update the connection and models, and do not commit local site-specific values. Prompts may optionally include a 'prompt_id' field to select a system prompt post. The top-level 'url' field is optional and records the site URL for provenance and multisite traceability. Recommended local path: wp-content/uploads/gregius-data/config/rag-evaluation-config.json.",
+	"url": "https://your-site.local/",
+	"connection": "your-connection-name",
+	"framework": "ragas",
+	"sample_type": "single-turn",
+	"models": {
+		"embedding": "text-embedding-3-small",
+		"agentic": "gpt-4o-mini",
+		"rerank": "rerank-v4.0-fast",
+		"answer": "gpt-4o-mini"
+	},
+	"prompts": [
+		{
+			"id": "P1",
+			"user_input": "What is the core image block?",
+			"reference": "The core image block is a Gutenberg block that allows users to embed images with support for alignment, captions, alt text, and media library integration.",
+			"prompt_id": 0
+		},
+		{
+			"id": "P2",
+			"user_input": "What is the difference between the paragraph block and the image block?",
+			"reference": "The paragraph block is for text content with formatting support. The image block is for embedding images with media management features. They serve different content types."
+		},
+		{
+			"id": "P3",
+			"user_input": "How do I configure an imaginary block that does not exist?",
+			"reference": "There is no imaginary block in WordPress core. The response should acknowledge this and suggest verification steps without fabricating block features."
+		}
+	]
+}

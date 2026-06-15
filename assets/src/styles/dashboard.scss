@@ -1,0 +1,186 @@
+/**
+ * Gregius PostgreSQL Dashboard Styles
+ * 
+ * Modern WordPress admin dashboard styles using CSS Grid and Flexbox.
+ * Follows WordPress admin design patterns and accessibility guidelines.
+ */
+
+/* Import WordPress Components styles */
+@import '@wordpress/components/build-style/style.css';
+
+/* Hide PHP loading placeholder when React loads */
+#gg-data-react-dashboard .gg-data-loading-placeholder {
+  display: none;
+}
+
+.gg-data-admin {
+  margin: 1.25rem 1.25rem 1.25rem 0;
+}
+
+.gg-data-react-dashboard {
+  margin-right: auto;
+  margin-left: auto;
+
+  .gg-data-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+
+    thead {
+
+      th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--gg-data-text);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    tbody {
+      tr {
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        td {
+          padding: .75em;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        &:last-of-type td {
+          border-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+/* Components */
+
+/* TabPanel - Horizontal Scroll */
+
+.components-tab-panel__tabs {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  scroll-behavior: smooth;
+
+  .components-tab-panel__tabs-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+/* Grid */
+.components-grid {
+  @media screen and (max-width: 600px) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Notice */
+.components-notice {
+  margin-block-start: 1rem;
+  margin-block-end: 1rem;
+}
+
+/* Badge */
+.components-badge {
+  box-sizing: border-box;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: inherit;
+  }
+
+  background-color: color-mix(in srgb, #fff 90%, var(--base-color));
+  color: color-mix(in srgb, #000 50%, var(--base-color));
+  padding: 2px 8px;
+  min-height: 24px;
+  border-radius: 2px;
+  max-width: 100%;
+  display: inline-block;
+  line-height: normal;
+
+  &:where(.is-default) {
+    background-color: #f0f0f0;
+    color: #2f2f2f;
+  }
+
+  &.has-icon {
+    padding-inline-start: 4px;
+  }
+
+  &.is-info {
+    --base-color: #3858e9;
+  }
+
+  &.is-warning {
+    --base-color: #f0b849;
+  }
+
+  &.is-error {
+    --base-color: #cc1818;
+  }
+
+  &.is-success {
+    --base-color: #4ab866;
+  }
+}
+
+.components-badge__flex-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.components-badge__icon {
+  flex-shrink: 0;
+}
+
+.components-badge__content {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Dashboard logo */
+.gg-data-logo-svg {
+  display: none;
+}
+
+.gg-data-logo-clean {
+  display: block;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-data-logo-clean animate {
+    display: none;
+  }
+}
+
+/* Toggle */
+.components-toggle-control__label {
+    flex: 0 0 auto !important;
+}

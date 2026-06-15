@@ -1,0 +1,16 @@
+{
+	"name": "gregius-data",
+	"version": "1.0.0",
+	"description": "Vector database and AI-powered search for WordPress with PostgreSQL backend",
+	"author": "Hector Jarquin, Gregius",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"scripts": {
+		"plugin-zip": "node bin/plugin-zip.js",
+		"plugin-svn": "node bin/plugin-svn.js",
+		"build": "npm run plugin-zip && npm run plugin-svn"
+	},
+	"devDependencies": {
+		"archiver": "^7.0.1"
+	}
+}

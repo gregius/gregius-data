@@ -1,0 +1,68 @@
+#!/bin/bash
+# Gregius Data test runner.
+#
+# Usage:
+#   ./bin/test           Run unit + integration tests (always available, no Docker)
+#   ./bin/test --wp      Run full WpIntegration suite (needs Docker containers up)
+#
+# Container names can be overridden via environment:
+#   TEST_WP_CONTAINER=my-wordpress ./bin/test --wp
+#   TEST_DB_CONTAINER=my-mysql ./bin/test --wp
+
+set -euo pipefail
+cd "$(dirname "$(dirname "$0")")"
+
+WP_FLAG="${1:-}"
+WP_CONTAINER="${TEST_WP_CONTAINER:-gregius-wordpress}"
+DB_CONTAINER="${TEST_DB_CONTAINER:-gregius-db}"
+
+run_suite() { php vendor/bin/phpunit "$@"; }
+
+if [ "$WP_FLAG" = "--wp" ]; then
+	echo "=== Creating test database (if needed) ==="
+	docker exec -i "$DB_CONTAINER" mysql -uroot -pgregius007 -e "
+		CREATE DATABASE IF NOT EXISTS gregius_test;
+		GRANT ALL PRIVILEGES ON gregius_test.* TO 'gregius-admin'@'%';
+		FLUSH PRIVILEGES;
+	" 2>/dev/null
+
+	echo "=== Writing test config into container ==="
+	docker exec -i "$WP_CONTAINER" tee /var/www/html/wp-tests-config.php > /dev/null <<'CONFIG'
+<?php
+define( 'ABSPATH', '/var/www/html/' );
+define( 'WP_DEFAULT_THEME', 'default' );
+define( 'DB_NAME',     'gregius_test' );
+define( 'DB_USER',     'gregius-admin' );
+define( 'DB_PASSWORD', 'gregius-pass' );
+define( 'DB_HOST',     'db' );
+define( 'DB_CHARSET',  'utf8mb4' );
+define( 'DB_COLLATE',  '' );
+define( 'AUTH_KEY',         'test' );
+define( 'SECURE_AUTH_KEY',  'test' );
+define( 'LOGGED_IN_KEY',    'test' );
+define( 'NONCE_KEY',        'test' );
+define( 'AUTH_SALT',        'test' );
+define( 'SECURE_AUTH_SALT', 'test' );
+define( 'LOGGED_IN_SALT',   'test' );
+define( 'NONCE_SALT',       'test' );
+$table_prefix = 'wptests_';
+define( 'WP_TESTS_DOMAIN', 'gregius.local' );
+define( 'WP_TESTS_EMAIL', 'admin@gregius.local' );
+define( 'WP_TESTS_TITLE', 'Gregius Test' );
+define( 'WP_PHP_BINARY', 'php' );
+define( 'WPLANG', '' );
+CONFIG
+
+	echo ""
+	echo "=== Running WpIntegration tests ==="
+	docker exec -e WP_TESTS_RUN=1 "$WP_CONTAINER" php \
+		/var/www/html/wp-content/plugins/gregius-data/vendor/bin/phpunit \
+		--configuration /var/www/html/wp-content/plugins/gregius-data/phpunit-wp.xml.dist
+	echo ""
+	echo "Done."
+else
+	echo "=== Running Unit + Integration tests ==="
+	run_suite
+	echo ""
+	echo "Run './bin/test --wp' for full WordPress integration tests (Docker required)."
+fi

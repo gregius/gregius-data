@@ -1,0 +1,32 @@
+{
+	"_instructions": "Copy this file to your writable config location, update the connection and models, and do not commit local site-specific values. Prompts may optionally include a 'prompt_id' field to select a system prompt post. The top-level 'url' field is optional and records the site URL for provenance and multisite traceability. Recommended local path: wp-content/uploads/gregius-data/config/rag-benchmark-quality-config.json.",
+	"url": "https://your-site.local/",
+	"connection": "your-connection-name",
+	"models": {
+		"embedding": "text-embedding-3-small",
+		"agentic": "gpt-4o-mini",
+		"rerank": "rerank-v4.0-fast",
+		"answer": "gpt-4o-mini"
+	},
+	"prompts": [
+		{
+			"id": "P1",
+			"slug": "01-core-image-block",
+			"prompt": "core image block",
+			"expected": "Grounded single-entity answer with evidence and no false abstain",
+			"prompt_id": 0
+		},
+		{
+			"id": "P2",
+			"slug": "02-compare-paragraph-image",
+			"prompt": "difference between paragraph and image blocks",
+			"expected": "Compare response with evidence-aware handling for both entities when available"
+		},
+		{
+			"id": "P3",
+			"slug": "03-imaginary-thing",
+			"prompt": "imaginary thing",
+			"expected": "Truthful abstain with no invented facts"
+		}
+	]
+}

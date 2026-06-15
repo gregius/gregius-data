@@ -1,0 +1,33 @@
+{
+	"name": "assets",
+	"version": "1.2.0",
+	"description": "A portable assets folder for modern WordPress plugin development.",
+	"main": "index.js",
+	"author": "Hector Jarquin, Gregius",
+	"license": "GPL-2.0 AND MIT",
+	"homepage": "https://gregius.com",
+	"scripts": {
+		"build": "wp-scripts build --config webpack.config.js",
+		"format": "wp-scripts format",
+		"lint:css": "wp-scripts lint-style",
+		"lint:js": "wp-scripts lint-js",
+		"packages-update": "wp-scripts packages-update",
+		"start": "wp-scripts start --config webpack.config.js"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^28.1.0",
+		"clean-webpack-plugin": "^4.0.0",
+		"css-loader": "^6.7.3",
+		"mini-css-extract-plugin": "^2.7.5",
+		"npm-run-all": "^4.1.5",
+		"sass": "^1.62.1",
+		"sass-loader": "^13.2.2"
+	},
+	"dependencies": {
+		"@wordpress/components": "^28.1.0",
+		"@wordpress/compose": "^7.1.0",
+		"@wordpress/core-data": "^6.27.2",
+		"@wordpress/data": "^10.1.0",
+		"@wordpress/element": "^6.1.0"
+	}
+}

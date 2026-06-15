@@ -1,0 +1,22 @@
+{
+    "name": "gregius/gregius-data",
+    "description": "Multi-provider AI orchestration for WordPress",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "yoast/phpunit-polyfills": "^3.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Gregius_Data\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

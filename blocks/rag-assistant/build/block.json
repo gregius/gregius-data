@@ -1,0 +1,130 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "gregius-data/rag-assistant",
+  "version": "1.0.0",
+  "title": "RAG Assistant",
+  "category": "widgets",
+  "icon": "format-chat",
+  "description": "AI assistant using Retrieval-Augmented Generation (RAG) with semantic search and LLM.",
+  "keywords": [
+    "rag",
+    "assistant",
+    "ai",
+    "chat",
+    "semantic-search"
+  ],
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "anchor": true,
+    "className": true,
+    "html": false,
+    "color": {
+      "background": true,
+      "text": true,
+      "link": true,
+      "gradients": true,
+      "__experimentalDefaultControls": {
+        "background": true,
+        "text": true
+      }
+    },
+    "typography": {
+      "fontSize": true,
+      "lineHeight": true,
+      "fontFamily": true,
+      "fontWeight": true,
+      "fontStyle": true,
+      "textTransform": true,
+      "textDecoration": true,
+      "letterSpacing": true,
+      "__experimentalDefaultControls": {
+        "fontSize": true
+      }
+    },
+    "spacing": {
+      "margin": true,
+      "padding": true,
+      "blockGap": true,
+      "__experimentalDefaultControls": {
+        "padding": true,
+        "blockGap": true
+      }
+    },
+    "dimensions": {
+      "minHeight": true
+    },
+    "__experimentalBorder": {
+      "color": true,
+      "radius": true,
+      "style": true,
+      "width": true,
+      "__experimentalDefaultControls": {
+        "color": true,
+        "radius": true,
+        "style": true,
+        "width": true
+      }
+    },
+    "shadow": true,
+    "interactivity": {
+      "clientNavigation": false
+    }
+  },
+  "attributes": {
+    "blockId": {
+      "type": "string",
+      "default": ""
+    },
+    "connectionId": {
+      "type": "string",
+      "default": ""
+    },
+    "embeddingModelKey": {
+      "type": "string",
+      "default": "tfidf-300"
+    },
+    "llmModelId": {
+      "type": "string",
+      "default": ""
+    },
+    "rewriteModelId": {
+      "type": "string",
+      "default": ""
+    },
+    "rerankModelId": {
+      "type": "string",
+      "default": ""
+    },
+    "promptId": {
+      "type": "number",
+      "default": 0
+    },
+    "securityPromptId": {
+      "type": "number",
+      "default": 0
+    },
+    "placeholder": {
+      "type": "string",
+      "default": "Ask a question..."
+    },
+    "enableStreaming": {
+      "type": "boolean",
+      "default": true
+    },
+    "requireLogin": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "textdomain": "gregius-data",
+  "editorScript": "file:./index.js",
+  "viewScript": "file:./view.js",
+  "render": "file:./render.php",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewStyle": "file:./style.css"
+}

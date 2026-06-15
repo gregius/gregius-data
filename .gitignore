@@ -1,0 +1,74 @@
+# ======================
+# WordPress Plugin .gitignore
+# ======================
+
+# Node.js / npm
+node_modules/
+npm-debug.log
+
+# Build artifacts (if using @wordpress/scripts)
+# build/ -- TRACKED: WordPress plugin needs compiled assets for production
+dist/
+
+# Plugin zip and SVN build output
+build/zip/
+build/svn/
+*.zip
+*.tgz
+coverage
+.eslintcache
+
+# Dependency directories
+# Composer dependencies
+vendor/
+*.phar
+
+# OS/Editor files
+.DS_Store
+.idea/
+*.swp
+*.swo
+*.log
+
+# Local/test config files
+wp-config.php
+.env
+*.sql
+
+# Benchmark and evaluation runtime artifacts and local config files
+.artifacts/
+bin/rag-benchmark-*/rag-benchmark-*-config.json
+bin/rag-evaluation/rag-evaluation-config.json
+
+# WordPress core (if accidentally included)
+wordpress/
+
+# Debug files
+debug.log
+*.bak
+
+# Ignore local development assets
+*.local
+*.dev
+
+# Compiled CSS/JS (if not using a build system)
+*.min.js
+*.min.css
+
+# PostgreSQL specific (for your plugin)
+*.dump
+*.backup
+pg_dump*
+
+# Plugin testing/development
+test-vectors-web.php
+test-simple-vectors.php
+test-refactoring.sh
+.phpunit.result.cache
+tests/wp-phpunit/
+
+# Generated public documentation
+*-public-documentation.html
+
+# Personal development tooling
+.github/
