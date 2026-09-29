@@ -43,9 +43,9 @@ class My_Custom_DB_Provider implements GG_Data_DB_Provider {
 	public function test_connection( $connection_config ) { return array( 'success' => true, 'message' => 'OK' ); }
 	public function sync_post( $post_id, $post_data ) { return array( 'success' => true, 'message' => 'Synced' ); }
 	public function delete_post( $post_id ) { return array( 'success' => true, 'message' => 'Deleted' ); }
-	public function generate_vectors( $post_id, $embedding_config ) { return array( 'success' => true, 'message' => 'Vectors generated' ); }
-	public function search( $query, $search_config ) { return array( 'success' => true, 'message' => 'Search complete', 'results' => array() ); }
 	public function get_ids( $table, $limit = 100, $offset = 0, $conditions = array(), $select = 'id' ) { return array(); }
+	public function delete_ids( $table, $ids, $id_column = 'id' ) { return array(); }
+	public function delete_term_relationship( $object_id, $term_taxonomy_id ) { return array(); }
 	public function get_schema_version() { return array( 'success' => true, 'message' => 'Schema version fetched', 'version' => '1.0.0' ); }
 	public function create_schema( $schema_config = array() ) { return array( 'success' => true, 'message' => 'Schema created' ); }
 }
@@ -99,9 +99,9 @@ Required methods:
 - `test_connection( $connection_config )`
 - `sync_post( $post_id, $post_data )`
 - `delete_post( $post_id )`
-- `generate_vectors( $post_id, $embedding_config )`
-- `search( $query, $search_config )`
 - `get_ids( $table, $limit = 100, $offset = 0, $conditions = array(), $select = 'id' )`
+- `delete_ids( $table, $ids, $id_column = 'id' )`
+- `delete_term_relationship( $object_id, $term_taxonomy_id )`
 - `get_schema_version()`
 - `create_schema( $schema_config = array() )`
 

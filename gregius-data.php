@@ -204,9 +204,8 @@ function gg_data_init() {
 	$gg_data = new GG_Data();
 	$gg_data->init();
 
-	// Initialize the schema manager.
+	// Instantiate the schema manager (used by the cron hook below; no runtime init required).
 	$gg_data_schema = new GG_Data_Schema_Manager();
-	$gg_data_schema->init();
 
 	// Initialize retry queue manager.
 	$gg_data_retry_queue = new GG_Data_Retry_Queue();

@@ -56,7 +56,7 @@ This architecture describes how the Gregius Data plugin implements automated tes
     No WordPress         Monkey + Mockery       Container (gregius-wordpress)
           |                    |                    |
    tests/Unit/         tests/Integration/    tests/WpIntegration/
-   69 tests             50 tests              51 tests
+   69 tests             50 tests              50 tests
 ```
 
 ```
@@ -83,7 +83,7 @@ Tier 3 expanded:
 
 Tier 1 and Tier 2 run locally in PHP without WordPress. They provide fast feedback during development. Tier 3 requires Docker for a real WordPress + MySQL stack and validates activation, REST routes, database operations, and full plugin lifecycle.
 
-The `bin/test` script abstracts all three tiers behind two commands: `./bin/test` for tiers 1+2 (119 tests, <1s) and `./bin/test --wp` for tier 3 (51 tests, ~5s with warm containers).
+The `bin/test` script abstracts all three tiers behind two commands: `./bin/test` for tiers 1+2 (119 tests, <1s) and `./bin/test --wp` for tier 3 (50 tests, ~5s with warm containers).
 
 ---
 
@@ -137,7 +137,7 @@ gregius-data/
 │   ├── wp-phpunit/             # SVN checkout (gitignored)
 │   ├── Unit/                   # Tier 1: 8 files, 69 tests
 │   ├── Integration/            # Tier 2: 7 files, 50 tests
-│   └── WpIntegration/          # Tier 3: 11 files, 51 tests
+│   └── WpIntegration/          # Tier 3: 11 files, 50 tests
 ├── composer.json               # require-dev: phpunit, brain/monkey, mockery, polyfills
 └── vendor/                     # Composer dev dependencies (gitignored)
 ```

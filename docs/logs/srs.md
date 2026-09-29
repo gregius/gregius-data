@@ -84,7 +84,7 @@ Requirement notation:
 |---|---|---|
 | LOG-FR-01 | The software MUST store logs in a WordPress database table named `{$wpdb->prefix}gg_data_logs` for each site context. | Must |
 | LOG-FR-02 | The software MUST support the log levels `debug`, `info`, `warning`, `error`, and `critical`. | Must |
-| LOG-FR-03 | The software MUST support component classification values `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, `system`, and `legacy`. | Must |
+| LOG-FR-03 | The software MUST support component classification values `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, and `system`. | Must |
 | LOG-FR-04 | The software MUST expose logs REST routes for list, stats, export, purge, and settings operations under `gg-data/v1/logs`. | Must |
 | LOG-FR-05 | The software MUST expose WP-CLI logs commands for list, export, purge, and stats operations. | Must |
 | LOG-FR-06 | The software MUST support retrieving logs with pagination and filter criteria (level, component, connection, date range, search, sort). | Must |

@@ -160,24 +160,17 @@ class GG_Data_Interaction {
 	 */
 	public function on_rag_complete( $result, $query, $execution_time ) {
 		$meta = $result['metadata'] ?? array();
-		if ( empty( $meta ) && isset( $result['legacy']['metadata'] ) && is_array( $result['legacy']['metadata'] ) ) {
-			$meta = $result['legacy']['metadata'];
-		}
 
 		$conversation_id = '';
 		if ( ! empty( $meta['conversation_id'] ) ) {
 			$conversation_id = (string) $meta['conversation_id'];
 		} elseif ( ! empty( $result['request']['conversation_id'] ) ) {
 			$conversation_id = (string) $result['request']['conversation_id'];
-		} elseif ( ! empty( $result['legacy']['conversation_id'] ) ) {
-			$conversation_id = (string) $result['legacy']['conversation_id'];
 		}
 
 		$connection_name = '';
 		if ( ! empty( $meta['connection'] ) ) {
 			$connection_name = (string) $meta['connection'];
-		} elseif ( ! empty( $result['legacy']['connection'] ) ) {
-			$connection_name = (string) $result['legacy']['connection'];
 		}
 
 		$response_text = '';
@@ -185,8 +178,6 @@ class GG_Data_Interaction {
 			$response_text = $result['answer'];
 		} elseif ( isset( $result['outcome']['answer'] ) && is_string( $result['outcome']['answer'] ) ) {
 			$response_text = $result['outcome']['answer'];
-		} elseif ( isset( $result['legacy']['answer'] ) && is_string( $result['legacy']['answer'] ) ) {
-			$response_text = $result['legacy']['answer'];
 		}
 
 		$result_sources = array();
@@ -194,8 +185,6 @@ class GG_Data_Interaction {
 			$result_sources = $result['sources'];
 		} elseif ( isset( $result['outcome']['sources'] ) && is_array( $result['outcome']['sources'] ) ) {
 			$result_sources = $result['outcome']['sources'];
-		} elseif ( isset( $result['legacy']['sources'] ) && is_array( $result['legacy']['sources'] ) ) {
-			$result_sources = $result['legacy']['sources'];
 		}
 
 		// Skip if no conversation_id (tracking not enabled for this request).

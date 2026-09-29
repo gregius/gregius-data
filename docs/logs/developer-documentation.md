@@ -106,7 +106,7 @@ Levels:
 - `debug`, `info`, `warning`, `error`, `critical`
 
 Components:
-- `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, `system`, `legacy`
+- `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, `system`
 
 ## 5. Storage Contract
 

@@ -118,19 +118,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			return $success;
 		}
 
-		/**
-		 * Initialize the schema manager
-		 */
-		public function init() {
-			// Legacy AJAX handlers - DEPRECATED: React dashboard uses REST API
-			// Commented out 2025-10-24 after confirming React uses /wp-json/gg-data/v1/schema endpoints
-			// add_action( 'wp_ajax_gg_pg_initialize_schema', array( $this, 'ajax_initialize_schema' ) );
-			// add_action( 'wp_ajax_gg_pg_check_schema', array( $this, 'ajax_check_schema' ) );
-			// add_action( 'wp_ajax_gg_pg_get_schema_status', array( $this, 'ajax_get_schema_status' ) );.
-		}
-
-		/**
-		 * Create all database tables for WordPress schema
+	/**
+	 * Create all database tables for WordPress schema
 		 *
 		 * @param string $connection_name Connection name to use (default: 'default').
 		 * @return array Result array with success status and message.

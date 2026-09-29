@@ -291,6 +291,19 @@ class GG_Data_SSE_Handler {
 		}
 
 		if ( is_array( $precomputed_result ) ) {
+			// Cache hit: the precomputed path short-circuits generate_answer(), which is
+			// where gg_data_rag_complete normally fires. Re-fire it here so interactions
+			// are still recorded, and re-attribute to the current conversation (the cached
+			// result carries the original generation's conversation_id).
+			if ( ! empty( $options['conversation_id'] ) ) {
+				if ( ! isset( $precomputed_result['metadata'] ) || ! is_array( $precomputed_result['metadata'] ) ) {
+					$precomputed_result['metadata'] = array();
+				}
+				$precomputed_result['metadata']['conversation_id'] = $options['conversation_id'];
+
+				do_action( 'gg_data_rag_complete', $precomputed_result, $query, 0 );
+			}
+
 			$this->send_complete( $precomputed_result );
 			exit;
 		}

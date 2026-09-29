@@ -48,7 +48,7 @@ svn co https://develop.svn.wordpress.org/trunk/tests/phpunit tests/wp-phpunit
 # Unit + Integration (119 tests, always available)
 ./bin/test
 
-# Full WpIntegration suite (51 tests, Docker required)
+# Full WpIntegration suite (50 tests, Docker required)
 ./bin/test --wp
 
 # Individual suites

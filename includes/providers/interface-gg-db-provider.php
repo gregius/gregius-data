@@ -21,8 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Database Provider Interface
  *
  * All database providers (PostgreSQL, MySQL, etc.) must implement this interface.
- * The interface defines standardized methods for connection management, data synchronization,
- * vector generation, and semantic search operations.
+	 * The interface defines standardized methods for connection management and data synchronization.
  *
  * @since 1.0.0
  */
@@ -148,70 +147,6 @@ interface GG_Data_DB_Provider {
 	 * }
 	 */
 	public function delete_post( $post_id );
-
-	/**
-	 * Generate vector embeddings for post
-	 *
-	 * Creates and stores vector embeddings for post content using specified embedding model.
-	 * Supports multiple embedding types (TF-IDF, word2vec, transformer models, etc.)
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param int   $post_id          WordPress post ID.
-	 * @param array $embedding_config {
-	 *     Embedding configuration.
-	 *
-	 *     @type string $model       Embedding model (e.g., 'tfidf_300', 'word2vec', 'sentence_transformers')
-	 *     @type int    $dimensions  Vector dimensions (e.g., 300, 768, 1536)
-	 *     @type array  $fields      Fields to vectorize (e.g., ['title', 'content', 'excerpt'])
-	 *     @type array  $options     Optional. Model-specific options
-	 * }
-	 *
-	 * @return array {
-	 *     Vector generation result.
-	 *
-	 *     @type bool   $success      Whether generation succeeded
-	 *     @type int    $post_id      Post ID
-	 *     @type int    $dimensions   Vector dimensions
-	 *     @type string $model        Embedding model used
-	 *     @type string $generated_at Timestamp (ISO 8601 format)
-	 *     @type string $message      Human-readable status message
-	 * }
-	 */
-	public function generate_vectors( $post_id, $embedding_config );
-
-	/**
-	 * Perform semantic search
-	 *
-	 * Executes vector similarity search to find semantically related content.
-	 * Supports multiple distance metrics and result filtering.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $query         Search query string.
-	 * @param array  $search_config {
-	 *     Search configuration.
-	 *
-	 *     @type string $model         Embedding model to use for query vectorization
-	 *     @type string $distance      Distance metric ('cosine', 'l2', 'inner_product')
-	 *     @type int    $limit         Maximum results to return (default 10)
-	 *     @type float  $threshold     Optional. Similarity threshold (0.0-1.0)
-	 *     @type array  $post_types    Optional. Filter by post types
-	 *     @type array  $post_status   Optional. Filter by post status (default ['publish'])
-	 *     @type array  $fields        Optional. Vector fields to search (['title', 'content', 'excerpt'])
-	 * }
-	 *
-	 * @return array {
-	 *     Search results.
-	 *
-	 *     @type bool   $success   Whether search succeeded
-	 *     @type array  $results   Array of result objects with post_id, score, and post data
-	 *     @type int    $total     Total matching results (before limit)
-	 *     @type float  $latency   Query execution time in milliseconds
-	 *     @type string $message   Human-readable status message
-	 * }
-	 */
-	public function search( $query, $search_config );
 
 	/**
 	 * Get list of IDs from a table (for orphan detection)

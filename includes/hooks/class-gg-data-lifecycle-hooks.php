@@ -1147,8 +1147,14 @@ class GG_Data_Lifecycle_Hooks {
 		}
 
 		try {
-			// Use the provider to get all post IDs - works with both PDO and PostgREST.
-			$provider = GG_Data_Provider_Factory::create( $connection_name );
+		// Use the provider to get all post IDs - works with both PDO and PostgREST.
+		$connection_config = $this->settings_manager->get_connection( $connection_name );
+		if ( empty( $connection_config ) || ! is_array( $connection_config ) ) {
+			$this->logger->log( 'Orphan cleanup: Failed to load connection config', 'error', 'sync', $connection_name );
+			return;
+		}
+		$provider_type = isset( $connection_config['type'] ) ? $connection_config['type'] : 'postgresql';
+		$provider      = GG_Data_Provider_Factory::create_provider( $provider_type, $connection_config, $connection_name );
 			if ( ! $provider ) {
 				$this->logger->log( 'Orphan cleanup: Failed to create provider', 'error', 'sync', $connection_name );
 				return;

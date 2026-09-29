@@ -1,10 +1,14 @@
-# Abilities API - Expose Engine Capabilities
+# Abilities API — Exposing Engine Capabilities to AI Agents
 
-[Editorial: Feature: Abilities API | Pages: 1 | Total words: 991 | Sections: 8 (H2: 7, H3: 11, H4: 0) | Screenshots needed: 3 | Doc category: /docs/category/ai-features/ | Audience: Administrator]
+[Editorial: Feature: Abilities API | Pages: 1 | Total words: 1150 | Sections: 9 (H2: 8, H3: 11) | Screenshots: 1 | Doc category: /docs/category/ai-features/ | Audience: Administrator]
 
 ## Overview
 
-This feature enables **site administrators** to expose Gregius Data engine capabilities as registered Abilities through the WordPress Abilities API (WP 6.9+). Gregius Data registers its RAG pipeline, data connections, and model inventory as machine-discoverable tool contracts that AI agents, automation tools, and authenticated users can discover and execute through a standardized interface.
+AI agents and automation tools need a contract — not a conversation. The WordPress Abilities API (WP 6.9+) provides exactly that: a central registry where functional capabilities are defined, permissioned, and discoverable through a single REST endpoint.
+
+Gregius Data registers its full engine surface — RAG pipeline, data connections, and model inventory — as three discrete abilities. Each ability maps to a machine-readable tool contract that AI agents can discover via `GET /wp-json/wp-abilities/v1/abilities` and invoke with well-defined inputs. Site administrators control which engine capabilities are exposed and who can call them.
+
+By the end of this page, you will know what abilities Gregius Data exposes, how to configure data connections, browse available models, and run AI-powered site searches through a single standardized interface.
 
 [SRS: ABIL-FR-03, ABIL-FR-04, ABIL-FR-05]
 
@@ -16,32 +20,9 @@ This feature enables **site administrators** to expose Gregius Data engine capab
 
 ---
 
-## In this page
-
-- [Overview](#overview)
-  - [Prerequisites](#prerequisites)
-- [Understanding Abilities](#understanding-abilities)
-- [How to: Configure Data Connections](#how-to-configure-data-connections)
-  - [View connections](#view-connections)
-  - [Get optional details](#get-optional-details)
-  - [Tips](#tips-connections)
-- [How to: Browse Available AI Models](#how-to-browse-available-ai-models)
-  - [View all models](#view-all-models)
-  - [Filter by type](#filter-by-type)
-  - [Tips](#tips-models)
-- [How to: Use AI Site Search](#how-to-use-ai-site-search)
-  - [What you need](#what-you-need)
-  - [Required inputs](#required-inputs)
-  - [What you get back](#what-you-get-back)
-  - [Troubleshooting](#troubleshooting)
-- [Permissions](#permissions)
-- [Next Steps](#next-steps)
-
----
-
 ## Understanding Abilities
 
-The WordPress Abilities API (WP 6.9+) is a WordPress Core API that provides a central registry for functional capabilities. Each Ability is a discrete unit of functionality with a unique namespace/name, defined inputs and outputs (JSON Schema), a permission callback, and a category assignment. All registered Abilities are discoverable via `GET /wp-json/wp-abilities/v1/abilities`.
+Each ability is a discrete unit of functionality — namespace, name, JSON Schema inputs and outputs, a permission callback, and a category assignment — all discoverable through a single REST endpoint.
 
 Gregius Data registers three abilities that expose its engine capabilities:
 
@@ -51,7 +32,7 @@ Gregius Data registers three abilities that expose its engine capabilities:
 | `gregius-data/list-connections` | Returns configured data connections with optional embedding model context | ai | `manage_options` |
 | `gregius-data/list-models` | Returns registered AI models with optional type filtering | ai | `manage_options` |
 
-WordPress Core ships additional abilities in WP 6.9 such as `core/get-site-info`, `core/get-user-info`, and `core/get-environment-info`. All abilities follow the same contract pattern and are discoverable through the same REST endpoint.
+WordPress Core ships additional abilities in WP 6.9 — `core/get-site-info`, `core/get-user-info`, and `core/get-environment-info` — following the same contract pattern and exposed through the same REST endpoint.
 
 [SRS: ABIL-FR-01, ABIL-FR-02]
 
@@ -59,75 +40,80 @@ WordPress Core ships additional abilities in WP 6.9 such as `core/get-site-info`
 
 ## How to: Configure Data Connections
 
-Data Connections tell the AI which data sources it can search. Each connection links to a database or API. This corresponds to the `gregius-data/list-connections` ability.
+Data connections tell the AI which data sources it can search. Each connection links to a database or API. Think of connections as instrument sections in an orchestration: individually tuned, collectively ready for performance. They surface through the `gregius-data/list-connections` ability.
 
 <!-- IMAGE: admin settings page showing the connections list with name, type, description, and active/inactive status badges -->
 
 ### View connections
 
-When you list your connections, each one shows:
-- **Name** - A label identifying the connection
-- **Type** - The data source type (PostgreSQL database or Supabase-style REST API)
-- **Description** - What data this connection provides
-- **Active status** - Whether the connection is currently enabled
+Listing your connections returns four fields per entry:
+
+- **Name** — A label identifying the connection
+- **Type** — The data source type (PostgreSQL database or Supabase-style REST API)
+- **Description** — What data this connection provides
+- **Active status** — Whether the connection is currently enabled
 
 ### Get optional details
 
-You can request additional information per connection:
-- **Embedding model overview** - Shows which embedding model keys are active and how many
-- **Full model details** - Shows model ID, type, provider, label, active status, and optional dimensions or description
+Request additional detail per connection to surface the models powering it:
+
+- **Embedding model overview** — Which embedding model keys are active and how many
+- **Full model details** — Model ID, type, provider, label, active status, and optional dimensions or description
 
 [SRS: ABIL-FR-09, ABIL-DR-08, ABIL-DR-09]
 
 ### Tips
 
-- Use this section to find valid connection names before using AI Site Search
+- Use connection names found here as valid inputs for AI Site Search
 - Connections can be database-backed (PostgreSQL) or API-backed (Supabase-style REST)
 
 ---
 
 ## How to: Browse Available AI Models
 
-AI Models are the engines that power search, answers, and relevance ranking. Different model types handle different tasks. This corresponds to the `gregius-data/list-models` ability.
+AI models power search, answers, and relevance ranking. Different model types handle different tasks. The `gregius-data/list-models` ability surfaces your full model inventory with type filtering — use it before running searches to confirm which models are active and available.
 
 <!-- IMAGE: models list page showing type filter dropdown and model cards with ID, type, provider, status -->
 
 ### View all models
 
 Each model displays:
-- **ID** - Unique identifier
-- **Type** - What it's used for (embeddings, LLM, rerank)
-- **Provider** - Where the model comes from
-- **Label** - Display name
-- **Active status** - Whether the model is enabled
-- **Description** - What it does (if available)
-- **Dimensions** - Technical reference (if applicable)
+
+- **ID** — Unique identifier
+- **Type** — What it is used for (embeddings, LLM, rerank)
+- **Provider** — Where the model comes from
+- **Label** — Display name
+- **Active status** — Whether the model is enabled
+- **Description** — What it does (if available)
+- **Dimensions** — Technical reference (if applicable)
 
 ### Filter by type
 
-You can narrow the list:
-- **embeddings** - Convert text into searchable vectors
-- **llm** - Language models that generate answers
-- **rerank** - Improve result relevance
+Narrow the list by model type:
+
+- **embeddings** — Convert text into searchable vectors
+- **llm** — Language models that generate answers
+- **rerank** — Improve result relevance
 
 [SRS: ABIL-FR-10, ABIL-DR-05]
 
 ### Tips
 
-- Use this section to find valid model values before using AI Site Search
+- Use valid model IDs found here when configuring AI Site Search
 - Models are listed from your global registry, not per-connection storage
 
 ---
 
 ## How to: Use AI Site Search
 
-Ask a question about your site's content through the `gregius-data/answer` ability, which delegates to the Gregius Data RAG pipeline. The AI searches your connected data sources and returns an answer with supporting references.
+Ask a question about your site's content through the `gregius-data/answer` ability. It orchestrates the full RAG pipeline — search, retrieval, reranking, and answer generation — returning a response with supporting source references. A well-tuned search is the difference between a generic reply and a precise, sourced answer.
 
 <!-- IMAGE: AI Site Search input form showing required fields: Query, Connection name, Embedding model, Answer model -->
 
 ### What you need
 
 Before asking a question:
+
 - A **data connection** configured and active
 - An **embedding model** for search
 - An **answer model** for generating responses
@@ -144,22 +130,22 @@ Before asking a question:
 
 ### What you get back
 
-- **Answer** - A generated response to your question
-- **Sources** - References showing where the information came from
-- **Metadata** - Information about the search and generation process
+- **Answer** — A generated response to your question
+- **Sources** — References showing where the information came from
+- **Metadata** — Information about the search and generation process
 
 [SRS: ABIL-FR-05, ABIL-FR-08, ABIL-DR-04]
 
 ### Troubleshooting
 
 **Problem:** "Missing query" error
-- **Fix:** Include a question in your request
+**Fix:** Include a question in your request
 
-**Problem:** Answer doesn't seem accurate
-- **Fix:** Verify your data connection includes the expected content. Try adding a rerank model.
+**Problem:** Answer does not seem accurate
+**Fix:** Verify your data connection includes the expected content. Try adding a rerank model.
 
 **Problem:** Answer not appearing at all
-- **Fix:** Check that the Abilities API is active on your WordPress installation. Verify Gregius Data is installed and activated.
+**Fix:** Check that the Abilities API is active on your WordPress installation. Verify Gregius Data is installed and activated.
 
 [SRS: ABIL-OR-01]
 
@@ -174,6 +160,36 @@ Before asking a question:
 | AI Models | `gregius-data/list-models` | Administrators only |
 
 [SRS: ABIL-OR-02, ABIL-OR-03]
+
+---
+
+## Frequently Asked Questions
+
+**What is the WordPress Abilities API?**
+
+A WordPress Core API (WP 6.9+) that registers functional capabilities as machine-discoverable contracts with defined inputs, outputs, and permissions.
+
+**Who can use Gregius Data abilities?**
+
+AI Site Search is available to any logged-in user with read access. Data connections and model listing require administrator privileges.
+
+**Which connection name should I use for AI Site Search?**
+
+Use the `gregius-data/list-connections` ability first to discover valid connection names, then pass the desired name to the `gregius-data/answer` ability.
+
+**Why is my answer not appearing?**
+
+Confirm the Abilities API is active on your WordPress installation, Gregius Data is installed and activated, and at least one data connection and AI model are configured.
+
+**Can I add custom data sources?**
+
+Yes. Gregius Data supports PostgreSQL database connections and Supabase-style REST API connections, configurable through the Data Connections admin panel.
+
+---
+
+## Final Thoughts
+
+Each ability is a discrete contract: discoverable, invocable, and permissioned. When you need to extend what AI agents can do with your content, the Abilities API is where the orchestration begins.
 
 ---
 

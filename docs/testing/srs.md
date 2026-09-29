@@ -119,7 +119,7 @@ Requirement notation:
 | TEST-QR-01 | Unit tests MUST complete in under 1 second. | Timing baseline |
 | TEST-QR-02 | Integration tests MUST complete in under 2 seconds. | Timing baseline |
 | TEST-QR-03 | WpIntegration tests MUST complete in under 30 seconds with warm Docker containers. | Timing baseline |
-| TEST-QR-04 | All 170 tests MUST produce zero failures on the `main` branch. | `./bin/test && ./bin/test --wp` |
+| TEST-QR-04 | All 169 tests MUST produce zero failures on the `main` branch. | `./bin/test && ./bin/test --wp` |
 | TEST-QR-05 | Production plugin zip MUST be under 1 MB (excluding test and dev artifacts). | `node bin/plugin-zip.js` output |
 
 ## 4. Test Coverage Matrix
@@ -166,7 +166,7 @@ Requirement notation:
 | GG_Data_REST_Search_Controller | Test_GG_Data_REST_Search.php | 3 |
 | GG_Data_REST_Sync_Controller | Test_GG_Data_REST_Sync.php | 2 |
 | GG_Data_Sync_Service | Test_GG_Data_Sync_Service.php | 2 |
-| **Total** | **11 files** | **51 tests** |
+| **Total** | **11 files** | **50 tests** |
 
 ### 4.4 Exclusions
 

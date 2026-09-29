@@ -112,7 +112,7 @@ Requirement notation:
 | PA-FR-01 | The software MUST define a database provider interface that all DB backend implementations are required to fulfill before use. | Must |
 | PA-FR-02 | The DB provider interface MUST include three connection management operations: establish a connection using a configuration record, close an established connection, and test a connection without persisting it. | Must |
 | PA-FR-03 | The DB provider interface MUST include two post data operations: write or update a WordPress post record to the external database, and delete a post record from the external database. | Must |
-| PA-FR-04 | The DB provider interface MUST include two vector operations: generate and store vector embeddings for a given post, and execute a semantic similarity search against stored embeddings. | Must |
+| PA-FR-04 | The DB provider interface MUST be scoped to connection management, data synchronization/mirroring, and schema management operations. Semantic search and vector generation are provided by the search service and embeddings strategies and are explicitly excluded from the DB provider interface. | Must |
 | PA-FR-05 | The DB provider interface MUST include two schema management operations: retrieve the current schema version installed on the backend, and create or update the database schema to the required version. | Must |
 | PA-FR-06 | The software MUST provide a DB provider factory that creates and returns a DB provider instance given a named provider type string. | Must |
 | PA-FR-07 | The DB provider factory MUST support runtime registration of custom DB provider classes by name without requiring changes to core plugin files. | Must |

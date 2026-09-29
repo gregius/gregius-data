@@ -127,16 +127,16 @@ Connection Manager
          ▼                  ▼                  ▼
     Interface          Factory              Concrete Providers
  GG_Data_DB_Provider    (Instantiation)
-     (9 methods)         │              PostgreSQL (PDO)
+     (10 methods)         │              PostgreSQL (PDO)
                          │              GG_Data_PostgreSQL_Provider
                     register()              - connect()
                     create()                - sync_post()
-                    is_supported()          - vector_search()
+                    is_supported()
                                             - schema version
                              
                               PostgREST (HTTP)
                               GG_Data_PostgREST_Provider
-                              - same 9-method interface
+                              - same 10-method interface
                               - HTTP via wp_remote_post()
                               - RPC calls for complex ops
 ```
@@ -146,7 +146,6 @@ Connection Manager
 1. **Interface** (`GG_Data_DB_Provider`) — defines contract:
    - Connection: `connect()`, `disconnect()`, `test_connection()`
    - Data: `sync_post()`, `delete_post()`
-   - Vectors: `generate_vectors()`, `search()`
    - Schema: `get_schema_version()`, `create_schema()`
 
 2. **Factory** (`GG_Data_Provider_Factory`) — handles instantiation:
@@ -420,7 +419,7 @@ Plugin Code:
 - Plus: Runtime provider selection without code changes
 - Plus: Testable via mocks
 - Minus: Slight performance overhead from method indirection (negligible in practice)
-- Minus: Developers must implement all 9 interface methods
+- Minus: Developers must implement all 10 interface methods
 
 ---
 
@@ -557,7 +556,7 @@ Plugin Code:
 | Constraint | Impact | Rationale |
 |---|---|---|
 | DB provider interface is immutable | Breaking changes only in major versions | Third-party code depends on interface contract |
-| All DB providers must implement 9 methods | Implementation burden | Enables reliable contract; no optional methods |
+| All DB providers must implement 10 methods | Implementation burden | Enables reliable contract; no optional methods |
 | PostgREST runtime keys are canonical-only | Runtime reads use `project_url`, `publishable_key`, and `secret_key` only | Prevents alias drift and keeps provider behavior deterministic |
 | Legacy Supabase aliases are ingestion-only | `api_key` and `service_role_key` may be accepted only while saving config, then normalized | Preserves backward compatibility without runtime dependency on legacy keys |
 | AI provider interface cannot drop methods | Backward compat required | Existing code and filters depend on method availability |
@@ -678,7 +677,7 @@ Plugin Code:
 | PA-FR-01 (DB interface required) | 3.1 Interface, AD-01 | ✅ Covered |
 | PA-FR-02 (Connection methods) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-03 (Data operations) | 3.1 Key Components #1 | ✅ Covered |
-| PA-FR-04 (Vector operations) | 3.1 Key Components #1 | ✅ Covered |
+| PA-FR-04 (Interface scope) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-05 (Schema methods) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-06 (Factory pattern) | 3.1 Key Components #2, AD-02 | ✅ Covered |
 | PA-FR-07 (Runtime registration) | 3.1 Key Components #2, AD-02 | ✅ Covered |

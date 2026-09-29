@@ -572,7 +572,7 @@ class GG_Data_RAG_Service {
 				'embedding_model' => $this->embedding_model_key,
 				'connection'      => $this->connection_name,
 				'post_types'      => $options['post_types'] ?? array(),
-				'sql_function'    => $rag_rpc_fn,
+				'sql_function'    => 'search_rag_orchestrate',
 				'fusion_signals'  => array_count_values( array_column( $chunks, 'match_type' ) ),
 			)
 		);

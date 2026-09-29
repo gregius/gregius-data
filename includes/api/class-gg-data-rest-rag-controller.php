@@ -286,6 +286,18 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		}
 
 		if ( is_array( $precomputed_result ) ) {
+			// Cache hit: re-fire gg_data_rag_complete (bypassed when the precomputed
+			// response short-circuits generate_answer) and re-attribute to the current
+			// conversation (the cached result carries the original conversation_id).
+			if ( ! empty( $options['conversation_id'] ) ) {
+				if ( ! isset( $precomputed_result['metadata'] ) || ! is_array( $precomputed_result['metadata'] ) ) {
+					$precomputed_result['metadata'] = array();
+				}
+				$precomputed_result['metadata']['conversation_id'] = $options['conversation_id'];
+
+				do_action( 'gg_data_rag_complete', $precomputed_result, $query, 0 );
+			}
+
 			return new WP_REST_Response(
 				array(
 					'success' => true,

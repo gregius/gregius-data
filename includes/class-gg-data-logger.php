@@ -63,7 +63,6 @@ if ( ! class_exists( 'GG_Data_Logger' ) ) {
 			'model',
 			'cron',
 			'system',
-			'legacy', // For backwards compatibility with old log calls.
 		);
 
 		/**
@@ -162,9 +161,9 @@ if ( ! class_exists( 'GG_Data_Logger' ) ) {
 			}
 
 			// Validate component.
-			if ( ! in_array( $component, $this->components, true ) ) {
-				$component = 'legacy';
-			}
+		if ( ! in_array( $component, $this->components, true ) ) {
+			$component = 'system';
+		}
 
 			// Mask sensitive data in context.
 			$context         = $this->mask_sensitive_data( $context );

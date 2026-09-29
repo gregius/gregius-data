@@ -349,13 +349,6 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 		$id     = $request->get_param( 'id' );
 		$config = $request->get_param( 'config' );
 
-		// Ensure ID starts with 'model_' if not present (legacy support).
-		// For new models, we prefer using the ID as provided if it's descriptive.
-		// But to maintain consistency, we can enforce a prefix or just use what's given.
-		// The plan uses 'openai-3-small-1536' as model_key, which doesn't start with 'model_'.
-		// So let's relax the 'model_' prefix requirement for new models, but keep it for legacy LLM models if needed.
-		// Actually, let's just use the ID provided.
-
 		// Validate required fields.
 		$required = array( 'model_type', 'provider', 'provider_model_id' );
 		foreach ( $required as $field ) {
