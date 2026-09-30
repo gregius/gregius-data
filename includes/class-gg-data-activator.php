@@ -79,8 +79,34 @@ if ( ! class_exists( 'GG_Data_Activator' ) ) {
 			}
 
 			// Seed factory prompt terms and defaults.
+			self::ensure_prompt_infrastructure();
 			self::ensure_prompt_type_terms();
 			self::seed_default_prompts();
+		}
+
+		/**
+		 * Ensure the prompt post type and taxonomy are registered.
+		 *
+		 * The seeder runs during plugin activation, before the `init` hook has
+		 * fired, so the taxonomy is not yet registered. Registering it here makes
+		 * term creation/assignment safe regardless of activation timing.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function ensure_prompt_infrastructure() {
+			if ( ! class_exists( 'GG_Data_Prompt' ) ) {
+				return;
+			}
+
+			$prompt = new GG_Data_Prompt();
+
+			if ( ! post_type_exists( GG_Data_Prompt::POST_TYPE ) ) {
+				$prompt->register_post_type();
+			}
+
+			if ( ! taxonomy_exists( GG_Data_Prompt::TAXONOMY ) ) {
+				$prompt->register_prompt_type_taxonomy();
+			}
 		}
 
 		/**
@@ -93,30 +119,40 @@ if ( ! class_exists( 'GG_Data_Activator' ) ) {
 				return;
 			}
 
-			if ( ! class_exists( 'GG_Data_Prompt' ) || ! taxonomy_exists( GG_Data_Prompt::TAXONOMY ) ) {
-				return;
-			}
+			self::ensure_prompt_infrastructure();
 
 			$terms = array(
 				'system'   => __( 'System Prompt', 'gregius-data' ),
 				'security' => __( 'Security Prompt', 'gregius-data' ),
 			);
 
-			foreach ( $terms as $slug => $name ) {
-				$existing = get_term_by( 'slug', $slug, GG_Data_Prompt::TAXONOMY );
+			$all_present = true;
 
-				if ( ! $existing ) {
-					wp_insert_term(
+			foreach ( $terms as $slug => $name ) {
+				if ( ! get_term_by( 'slug', $slug, GG_Data_Prompt::TAXONOMY ) ) {
+					$inserted = wp_insert_term(
 						$name,
 						GG_Data_Prompt::TAXONOMY,
 						array(
 							'slug' => $slug,
 						)
 					);
+
+					if ( is_wp_error( $inserted ) ) {
+						$all_present = false;
+						continue;
+					}
+				}
+
+				// Only count the slug as done once it is confirmed to exist.
+				if ( ! get_term_by( 'slug', $slug, GG_Data_Prompt::TAXONOMY ) ) {
+					$all_present = false;
 				}
 			}
 
-			update_option( 'gg_data_prompt_type_terms_seeded', true );
+			if ( $all_present ) {
+				update_option( 'gg_data_prompt_type_terms_seeded', true );
+			}
 		}
 
 		/**
@@ -192,13 +228,19 @@ Keep reason concise. Do not add extra keys or text.',
 			update_post_meta( $post_id, '_gg_prompt_hash', $hash );
 			update_post_meta( $post_id, '_gg_prompt_notes', '' );
 			update_post_meta( $post_id, '_gg_prompt_is_factory', '1' );
+			update_post_meta( $post_id, '_gg_prompt_factory_type', sanitize_key( $prompt_type ) );
 			update_post_meta( $post_id, '_gg_prompt_selected', $selected ? '1' : '' );
 
-			if ( taxonomy_exists( GG_Data_Prompt::TAXONOMY ) ) {
-				wp_set_object_terms( $post_id, array( sanitize_key( $prompt_type ) ), GG_Data_Prompt::TAXONOMY, false );
-			}
+			self::ensure_prompt_infrastructure();
 
-			update_option( $option_name, true );
+			wp_set_object_terms( $post_id, array( sanitize_key( $prompt_type ) ), GG_Data_Prompt::TAXONOMY, false );
+
+			// Only mark this prompt as seeded once the type term is actually
+			// assigned, so a partial seed can be retried later.
+			$assigned_terms = wp_get_object_terms( $post_id, GG_Data_Prompt::TAXONOMY, array( 'fields' => 'slugs' ) );
+			if ( ! is_wp_error( $assigned_terms ) && ! empty( $assigned_terms ) ) {
+				update_option( $option_name, true );
+			}
 		}
 
 		/**
@@ -225,6 +267,11 @@ Keep reason concise. Do not add extra keys or text.',
 			);
 
 			foreach ( $prompts as $prompt_id ) {
+				// Factory prompts carry an authoritative type — never default them.
+				if ( '1' === (string) get_post_meta( (int) $prompt_id, '_gg_prompt_is_factory', true ) ) {
+					continue;
+				}
+
 				$terms = wp_get_object_terms( (int) $prompt_id, GG_Data_Prompt::TAXONOMY, array( 'fields' => 'slugs' ) );
 				if ( is_wp_error( $terms ) || ! empty( $terms ) ) {
 					continue;
@@ -291,6 +338,111 @@ Keep reason concise. Do not add extra keys or text.',
 		}
 
 		/**
+		 * Backfill prompt type terms for factory prompts on existing installs.
+		 *
+		 * Repairs sites where the factory prompts were seeded before the
+		 * gg_prompt_type taxonomy was registered (activation-time ordering),
+		 * leaving them without a system/security term.
+		 *
+		 * Runs once, guarded by a site option, on the init hook.
+		 *
+		 * @since 1.0.0
+		 */
+		public static function maybe_backfill_prompt_types() {
+			if ( get_option( 'gg_data_prompt_type_backfill' ) ) {
+				return;
+			}
+
+			if ( ! class_exists( 'GG_Data_Prompt' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::backfill_prompt_types_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::backfill_prompt_types_for_current_site();
+		}
+
+		/**
+		 * Backfill prompt type terms for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function backfill_prompt_types_for_current_site() {
+			self::ensure_prompt_infrastructure();
+			self::ensure_prompt_type_terms();
+
+			$prompts = get_posts(
+				array(
+					'post_type'      => GG_Data_Prompt::POST_TYPE,
+					'post_status'    => array( 'publish', 'draft' ),
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+				)
+			);
+
+			foreach ( $prompts as $prompt_id ) {
+				$terms = wp_get_object_terms( (int) $prompt_id, GG_Data_Prompt::TAXONOMY, array( 'fields' => 'slugs' ) );
+				if ( is_wp_error( $terms ) || ! empty( $terms ) ) {
+					continue;
+				}
+
+				$prompt_type = self::resolve_factory_prompt_type( (int) $prompt_id );
+				if ( '' === $prompt_type ) {
+					continue;
+				}
+
+				wp_set_object_terms( (int) $prompt_id, array( $prompt_type ), GG_Data_Prompt::TAXONOMY, false );
+			}
+
+			update_option( 'gg_data_prompt_type_backfill', true );
+		}
+
+		/**
+		 * Determine the prompt type for a termless factory prompt.
+		 *
+		 * Prefers the stored factory-type meta; otherwise infers from the title
+		 * and content. Returns an empty string when the type cannot be determined.
+		 *
+		 * @since 1.0.0
+		 * @param int $prompt_id Prompt post ID.
+		 * @return string 'system', 'security', or ''.
+		 */
+		private static function resolve_factory_prompt_type( $prompt_id ) {
+			$factory_type = (string) get_post_meta( $prompt_id, '_gg_prompt_factory_type', true );
+			if ( '' !== $factory_type ) {
+				$factory_type = sanitize_key( $factory_type );
+				return in_array( $factory_type, array( 'system', 'security' ), true ) ? $factory_type : '';
+			}
+
+			if ( '1' !== (string) get_post_meta( $prompt_id, '_gg_prompt_is_factory', true ) ) {
+				return '';
+			}
+
+			$title   = strtolower( (string) get_the_title( $prompt_id ) );
+			$content = strtolower( (string) get_post_field( 'post_content', $prompt_id ) );
+
+			if (
+				false !== strpos( $title, 'security' )
+				|| false !== strpos( $content, 'security gatekeeper' )
+				|| false !== strpos( $content, 'safe or unsafe' )
+			) {
+				return 'security';
+			}
+
+			return 'system';
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -304,6 +456,7 @@ Keep reason concise. Do not add extra keys or text.',
 					gg_data_migrate_search_settings_scope();
 				}
 
+				self::ensure_prompt_infrastructure();
 				self::ensure_prompt_type_terms();
 				self::seed_default_prompts();
 				self::migrate_prompt_types();

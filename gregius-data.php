@@ -232,6 +232,9 @@ function gg_data_init() {
 	$gg_data_prompt = new GG_Data_Prompt();
 	$gg_data_prompt->init();
 
+	// Backfill prompt type terms for factory prompts (one-time repair).
+	add_action( 'init', array( 'GG_Data_Activator', 'maybe_backfill_prompt_types' ), 11 );
+
 	// Add connection health check cron hook.
 	add_action( 'gg_data_check_connection_health', array( $gg_data_connection_health, 'perform_health_check' ) );
 
