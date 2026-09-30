@@ -93,7 +93,7 @@ search_native_orchestrate(
     enable_trigram boolean DEFAULT false,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT false,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     rrf_k integer DEFAULT 60,
     precomputed_query_vector text DEFAULT NULL
@@ -111,7 +111,7 @@ search_rag_orchestrate(
     enable_trigram boolean DEFAULT true,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT true,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     metadata_filter jsonb DEFAULT '{}'::jsonb,
     rrf_k integer DEFAULT 60
@@ -178,7 +178,7 @@ Core keys (default values in parentheses):
 |---|---|---|
 | `search.enabled` | `false` | Opt-in toggle. |
 | `search.connection` | `''` | Database connection for search queries. |
-| `search.embedding_model` | `tfidf-300` | Resolves to a vector table name for semantic search. |
+| `search.embedding_model` | `hashingtf-murmur3-1024` | Resolves to a vector table name for semantic search. |
 | `search.retrieval_mode` | `hybrid_default` | PostgreSQL + MySQL merge or PostgreSQL-only. |
 | `search.language` | `english` | PostgreSQL text search configuration. |
 | `search.similarity_threshold` | `0.5` (PHP runtime) / `0.3` (SQL default) | Trigram matching strictness. The SQL function default is `0.3`, but the PHP runtime overrides to `0.5` on every call. |
@@ -462,7 +462,7 @@ Search SQL functions are shared across native (frontend search) and RAG-oriented
 
 - `search.language` — the PostgreSQL text search configuration (e.g. `english`). Used by `retrieve_chunks_pdo()` via `$options['language']` (default: `english`).
 - `search.similarity_threshold` — default `0.5` in PHP runtime (SQL default is `0.3`). Controls trigram matching strictness in both PDO and PostgREST paths.
-- `search.embedding_model` — default `tfidf-300`. Resolves to a vector table name for semantic search candidates. Must map to a valid model in the model registry.
+- `search.embedding_model` — default `hashingtf-murmur3-1024`. Resolves to a vector table name for semantic search candidates. Must map to a valid model in the model registry.
 
 **Metadata-filter changes** must be mirrored in both SQL artifacts and provider payload builders.
 

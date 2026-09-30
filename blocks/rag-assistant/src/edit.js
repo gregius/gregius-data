@@ -152,7 +152,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                 // Set first embedding model as default if none selected or if current selection is not in list
                 const currentModelExists = modelsArray.some(m => m.model_key === embeddingModelKey);
                 if ((!embeddingModelKey || !currentModelExists) && modelsArray.length > 0) {
-                    setAttributes({ embeddingModelKey: modelsArray[0].model_key || 'tfidf-300' });
+                    setAttributes({ embeddingModelKey: modelsArray[0].model_key || 'hashingtf-murmur3-1024' });
                 }
             }
         } catch (err) {

@@ -7,12 +7,11 @@
  * Architecture:
  * - Models are global (stored in MySQL wp_gg_settings)
  * - Connection-model associations per database (PostgreSQL connection_embedding_models)
- * - Each card shows model-specific vector status, cost, and actions
+ * - Each card shows model-specific vector status and actions
  * - "+ Add Model" button to add global models to this connection
  *
  * Card Types:
- * - TFIDFVectorCard: Free, vocabulary-based embeddings (auto-added)
- * - APIEmbeddingCard: OpenAI, Voyage AI, etc. (user-added)
+ * - APIEmbeddingCard: internal (HashingTF) and API-provided embeddings (OpenAI, Voyage AI, etc.)
  *
  * @since 1.0.0
  */
@@ -23,16 +22,13 @@ import { __ } from '@wordpress/i18n';
 import { __experimentalHeading as Heading, Button, Spinner, Card, CardBody } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 import DatabaseSelector from '../components/DatabaseSelector';
-import VocabularyIntegrityCard from '../components/vectors/VocabularyIntegrityCard';
 import AddModelModal from '../components/vectors/AddModelModal';
-import TFIDFVectorCard from '../components/vectors/TFIDFVectorCard';
 import APIEmbeddingCard from '../components/vectors/APIEmbeddingCard';
 
 const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 	const [ connectionModels, setConnectionModels ] = useState( [] );
 	const [ showAddModal, setShowAddModal ] = useState( false );
 	const [ isLoadingModels, setIsLoadingModels ] = useState( false );
-	const [ vocabularyStatus, setVocabularyStatus ] = useState( null );
 
 	// Use WordPress data stores.
 	const { connections, isLoadingConnections } = useSelect( ( select ) => ( {
@@ -48,12 +44,11 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 	const { setConnection } = useDispatch( 'gg-data/selected' );
 
 	/**
-	 * Fetch connection models and auto-add TF-IDF when connection changes
+	 * Fetch connection models when connection changes
 	 */
 	useEffect( () => {
 		if ( selectedConnectionId ) {
 			fetchConnectionModels();
-			fetchVocabularyStatus();
 		}
 	}, [ selectedConnectionId ] );
 
@@ -74,25 +69,6 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 			console.error( 'Failed to fetch connection models:', err );
 		} finally {
 			setIsLoadingModels( false );
-		}
-	};
-
-	/**
-	 * Fetch vocabulary status (for TF-IDF)
-	 */
-	const fetchVocabularyStatus = async () => {
-		try {
-			const response = await apiFetch( {
-				path: `/gg-data/v1/vocabulary/status?connection_name=${ selectedConnectionId }`,
-			} );
-
-			if ( response.success ) {
-				setVocabularyStatus( response.status );
-			} else {
-				setVocabularyStatus( null );
-			}
-		} catch ( err ) {
-			setVocabularyStatus( null );
 		}
 	};
 
@@ -151,16 +127,6 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 		}
 	};
 
-	/**
-	 * Handle vocabulary preparation complete
-	 */
-	const handleVocabularyPrepared = () => {
-		fetchVocabularyStatus();
-	};
-
-	// Check if TF-IDF is in connection models.
-	const hasTFIDF = connectionModels.some( ( m ) => m.model_key === 'tfidf-300' );
-
 	return (
 		<div className="gg-data-page">
 			<div
@@ -216,8 +182,6 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 			{ /* Only render content after connections are loaded */ }
 			{ ! isLoadingConnections && selectedConnectionId && (
 				<div style={ { padding: '1.5rem' } }>
-					{ /* VocabularyIntegrityCard removed - vocabulary now integrated into TFIDFVectorCard */ }
-
 					{ /* Model Cards */ }
 					{ isLoadingModels ? (
 						<div style={ { textAlign: 'center', padding: '40px' } }>
@@ -251,27 +215,15 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 								gap: '20px',
 							} }
 						>
-							{ connectionModels.map( ( model ) =>
-								( model.provider === 'internal' && model.provider_model_id === 'tfidf-300' ) ? (
-									<TFIDFVectorCard
-										key={ model.model_key }
-										model={ model }
-										connection={ selectedConnectionId }
-										vocabularyStatus={ vocabularyStatus }
-										onVocabularyPrepared={ handleVocabularyPrepared }
-										onRemove={ handleRemoveModel }
-										onRefresh={ fetchConnectionModels }
-									/>
-								) : (
-									<APIEmbeddingCard
-										key={ model.model_key }
-										model={ model }
-										connection={ selectedConnectionId }
-										onRemove={ handleRemoveModel }
-										onRefresh={ fetchConnectionModels }
-									/>
-								)
-							) }
+							{ connectionModels.map( ( model ) => (
+								<APIEmbeddingCard
+									key={ model.model_key }
+									model={ model }
+									connection={ selectedConnectionId }
+									onRemove={ handleRemoveModel }
+									onRefresh={ fetchConnectionModels }
+								/>
+							) ) }
 						</div>
 					) }
 

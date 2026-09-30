@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release
 - PostgreSQL synchronization with selective post type sync
-- Vector embeddings: HashingTF (1024D, MurmurHash) and TF-IDF (300D)
+- Vector embeddings: HashingTF (1024D, MurmurHash)
 - Semantic search integration with WordPress
 - RAG assistant interface with multi-provider AI support (OpenAI, Anthropic, Google, DeepSeek, Cohere, Voyage)
 - Connection health monitoring and retry queue

@@ -443,6 +443,108 @@ Keep reason concise. Do not add extra keys or text.',
 		}
 
 		/**
+		 * Migrate from tfidf-300 to hashingtf-murmur3-1024 as the sole internal
+		 * embedding model.
+		 *
+		 * Removes the retired tfidf-300 model, its PostgreSQL vector + vocabulary
+		 * tables, and retargets the search default to hashingtf. Runs once,
+		 * guarded by a site option.
+		 *
+		 * @since 1.0.0
+		 */
+		public static function migrate_hashingtf() {
+			if ( get_option( 'gg_data_hashingtf_migrated' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_hashingtf_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_hashingtf_for_current_site();
+		}
+
+		/**
+		 * Migrate the current site from tfidf-300 to hashingtf.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function migrate_hashingtf_for_current_site() {
+			$settings_manager = new GG_Data_Settings_Manager();
+			$connections      = method_exists( $settings_manager, 'get_all_connections' ) ? $settings_manager->get_all_connections() : array();
+
+			// 1. Remove the retired tfidf-300 model from the global registry.
+			if ( class_exists( 'GG_Data_Model_Registry' ) ) {
+				$registry = new GG_Data_Model_Registry();
+				$registry->delete_model( 'gregius-data', 'tfidf-300' );
+			}
+
+			// 2. Strip tfidf-300 from every connection's active model list.
+			foreach ( array_keys( (array) $connections ) as $connection_name ) {
+				$active_models = $settings_manager->get_with_category( 'vectors', $connection_name, 'active_models', array() );
+
+				if ( ! is_array( $active_models ) || ! in_array( 'tfidf-300', $active_models, true ) ) {
+					continue;
+				}
+
+				$active_models = array_values(
+					array_filter(
+						$active_models,
+						static function ( $model_key ) {
+							return 'tfidf-300' !== $model_key;
+						}
+					)
+				);
+
+				$settings_manager->set_with_category( 'vectors', $connection_name, 'active_models', $active_models, 'serialized' );
+			}
+
+			// 3. Retarget the search embedding model default.
+			$search_model = $settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', null );
+			if ( 'tfidf-300' === $search_model ) {
+				$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
+			}
+
+			// 4. Remove retired tfidf / vector-processor options.
+			foreach ( array( 'gg_data_tfidf_300_processing', 'gg_data_tfidf_300_start_time', 'gg_data_tfidf_300_progress', 'gg_data_simple_vectors_processing', 'gg_data_simple_vectors_start_time' ) as $option ) {
+				delete_option( $option );
+			}
+
+			// 5. Drop retired PostgreSQL tables and re-apply the search function.
+			$db = new GG_Data_DB();
+
+			foreach ( array_keys( (array) $connections ) as $connection_name ) {
+				try {
+					$conn = $db->get_connection( $connection_name );
+
+					if ( ! $conn ) {
+						continue;
+					}
+
+					$conn->exec( 'DROP TABLE IF EXISTS wp_posts_tfidf_300' );
+					$conn->exec( 'DROP TABLE IF EXISTS wp_posts_vocabulary_cache' );
+
+					if ( class_exists( 'GG_Data_Search_Schema' ) ) {
+						$search_schema = new GG_Data_Search_Schema();
+						$search_schema->create_search_function( $conn, $connection_name );
+					}
+				} catch ( Exception $e ) {
+					// PostgreSQL cleanup is best-effort; the schema can be re-run manually.
+				}
+			}
+
+			update_option( 'gg_data_hashingtf_migrated', true );
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -462,6 +564,8 @@ Keep reason concise. Do not add extra keys or text.',
 				self::migrate_prompt_types();
 				self::migrate_factory_prompt_to_placeholders();
 			}
+
+			self::migrate_hashingtf();
 		}
 
 		/**

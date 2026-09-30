@@ -1,8 +1,8 @@
 <?php
 /**
- * Internal Provider for TF-IDF Embeddings
+ * Internal Provider for HashingTF Embeddings
  *
- * Provides TF-IDF embeddings as a free-tier internal capability.
+ * Provides HashingTF embeddings as a free-tier internal capability.
  * No external API calls, all processing done locally.
  *
  * @package Gregius_Data
@@ -49,7 +49,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Capabilities array.
 	 */
 	public function get_capabilities(): array {
-		return array( 'embeddings' );  // TF-IDF only, no LLM
+		return array( 'embeddings' );  // HashingTF only, no LLM
 	}
 
 	/**
@@ -78,10 +78,10 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
-	 * Generate embedding vector from text using TF-IDF.
+	 * Generate embedding vector from text using HashingTF.
 	 *
 	 * Note: This method doesn't actually generate embeddings - that's handled by
-	 * GG_Data_TFIDF_300_Embeddings during batch processing. This method exists
+	 * GG_Data_HashingTF_Embeddings during batch processing. This method exists
 	 * to satisfy the interface contract.
 	 *
 	 * @since 1.0.0
@@ -92,7 +92,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	public function generate_embedding( string $text, array $options = array() ): array|WP_Error {
 		return new WP_Error(
 			'gg_data_use_batch_generation',
-			__( 'TF-IDF embeddings must be generated in batch mode. Please use the Vectors tab to generate embeddings for all posts.', 'gregius-data' )
+			__( 'HashingTF embeddings must be generated in batch mode. Please use the Vectors tab to generate embeddings for all posts.', 'gregius-data' )
 		);
 	}
 
@@ -104,9 +104,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 */
 	public function get_embedding_models(): array {
 		return array(
-			'tfidf-300'              => array(
-				'name'             => 'TF-IDF 300D',
-
+			'hashingtf-murmur3-1024' => array(
 				'name'             => 'Hashing TF Murmur3 1024D',
 				'dimensions'       => 1024,
 				'max_input_tokens' => 0,

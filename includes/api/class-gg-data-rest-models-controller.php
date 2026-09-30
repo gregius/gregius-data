@@ -232,21 +232,7 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 				$models = array_filter(
 					$models,
 					function ( $model ) use ( $type_filter ) {
-						// First check explicit model_type field.
-						if ( isset( $model['model_type'] ) ) {
-							return $model['model_type'] === $type_filter;
-						}
-						// Fallback to dimension-based detection for legacy data.
-						if ( 'embeddings' === $type_filter ) {
-							return isset( $model['dimensions'] ) && $model['dimensions'] > 0;
-						}
-						if ( 'llm' === $type_filter ) {
-							return ! isset( $model['dimensions'] ) || 0 === $model['dimensions'];
-						}
-						if ( 'rerank' === $type_filter ) {
-							return false; // Rerank models must have explicit model_type.
-						}
-						return true;
+						return isset( $model['model_type'] ) && $model['model_type'] === $type_filter;
 					}
 				);
 			}
@@ -264,6 +250,8 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 			foreach ( $models as &$config ) {
 				if ( isset( $config['config']['api_key'] ) ) {
 					$config['config']['api_key'] = '***';
+				} elseif ( isset( $config['api_key'] ) ) {
+					$config['api_key'] = '***';
 				}
 				// Ensure ID is present for frontend compatibility.
 				if ( ! isset( $config['id'] ) && isset( $config['model_key'] ) ) {
@@ -346,7 +334,6 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error Response object.
 	 */
 	public function create_model( $request ) {
-		$id     = $request->get_param( 'id' );
 		$config = $request->get_param( 'config' );
 
 		// Validate required fields.
@@ -419,9 +406,9 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 			$config['dimensions'] = $model_info['dimensions'];
 
 			// Set vector table name.
-			// For internal TF-IDF, use existing table.
-			if ( 'internal' === $config['provider'] && 'tfidf-300' === $config['provider_model_id'] ) {
-				$config['vector_table_name'] = 'wp_posts_tfidf_300';
+			// For the internal HashingTF model, use the dedicated table.
+			if ( 'internal' === $config['provider'] && 'hashingtf-murmur3-1024' === $config['provider_model_id'] ) {
+				$config['vector_table_name'] = 'wp_posts_hashingtf_murmur3_1024';
 			} else {
 				// For API providers, use model-based naming: wp_posts_{provider}_{model_slug}_{dimensions}
 				// This ensures each model gets its own dedicated vector table.
@@ -815,21 +802,6 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 			return urldecode( $matches[1] );
 		}
 		return null;
-	}
-
-	/**
-	 * Sanitize model ID parameter.
-	 *
-	 * Allows alphanumeric characters, dots, hyphens, and underscores.
-	 * This is needed because model IDs like "rerank-2.5" contain dots
-	 * which sanitize_text_field() may not preserve correctly.
-	 *
-	 * @param string $value The model ID to sanitize.
-	 * @return string Sanitized model ID.
-	 */
-	public function sanitize_model_id( $value ) {
-		// Remove any characters that aren't alphanumeric, dots, hyphens, or underscores.
-		return preg_replace( '/[^a-zA-Z0-9.\-_]/', '', $value );
 	}
 
 	/**

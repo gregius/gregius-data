@@ -213,15 +213,6 @@ Contract notes:
 - Response includes batch progress fields: `deleted`, `total_deleted`, `has_more`, `next_offset`, `duration_ms`, and `errors`.
 - For destructive deletes, backend selects from the current remaining set each batch to avoid offset drift.
 
-### 4.10 Vocabulary Controller
-
-Source: [../../includes/api/class-gg-data-rest-vocabulary-controller.php](../../includes/api/class-gg-data-rest-vocabulary-controller.php)
-
-Key routes:
-- `POST /vocabulary/prepare`
-- `GET /vocabulary/status`
-- `DELETE /vocabulary/cache`
-
 ### 4.11 Retry Queue Controller
 
 Source: [../../includes/api/class-gg-data-rest-retry-queue-controller.php](../../includes/api/class-gg-data-rest-retry-queue-controller.php)
@@ -372,7 +363,7 @@ curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
   -d '{
     "query": "How do I install WordPress?",
     "connection_name": "default",
-    "embedding_model_key": "tfidf-300",
+    "embedding_model_key": "hashingtf-murmur3-1024",
     "llm_model_id": "gpt-4o-mini",
     "metadata_filter": {},
     "metadata_manifest": []

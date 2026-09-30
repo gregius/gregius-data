@@ -143,7 +143,7 @@ Begin transaction
     ├─ create schema/table structures in dependency order
     ├─ install pgvector and pg_trgm extensions
     ├─ create search function and related tables
-    └─ create vector and vocabulary support tables
+    └─ create vector support tables
     │
     ▼
 Commit transaction

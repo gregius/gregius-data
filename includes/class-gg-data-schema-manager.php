@@ -209,15 +209,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				$this->create_chunks_table( $conn );
 				$this->logger->log( 'Created wp_posts_chunks table for content chunking', 'info', 'system', $connection_name );
 
-				// 6. TF-IDF vector table (row-per-embedding architecture).
-				$this->create_tfidf_vectors_table( $conn );
-				$this->logger->log( 'Created wp_posts_tfidf_300 table with row-per-embedding schema (free tier)', 'info', 'system', $connection_name );
-
-				// 7. Vocabulary cache table.
-				$this->create_vocabulary_cache_table( $conn );
-				$this->logger->log( 'Created wp_posts_vocabulary_cache table for TF-IDF vocabulary caching', 'info', 'system', $connection_name );
-
-				// 8. OpenAI embedding vector tables (row-per-embedding architecture).
+				// 6. OpenAI embedding vector tables (row-per-embedding architecture).
 				$this->create_openai_embedding_tables( $conn );
 				$this->logger->log( 'Created OpenAI embedding tables with row-per-embedding schema', 'info', 'system', $connection_name );
 
@@ -585,7 +577,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					$prefix . 'users',
 					$prefix . 'usermeta',
 					$prefix . 'options',
-				// Note: post_vectors_tfidf_300 deferred until Advanced Features enabled.
 				);
 
 				$missing_tables = array();
@@ -827,7 +818,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 *
 		 * This table stores cleaned/stripped content for:
 		 * - Full-text search quality (no Gutenberg noise)
-		 * - TF-IDF vector generation (accurate term frequency)
+		 * - HashingTF vector generation (stateless feature hashing)
 		 * - AI features (keywords, sentiment, reading time)
 		 * - External APIs (OpenAI, etc - saves tokens)
 		 *
@@ -1770,119 +1761,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			return true;
 		}
 
-		/**
-		 * Create TF-IDF vectors table (row-per-embedding architecture v2.0)
-		 *
-		 * Each embedding is stored as a separate row with field_type discriminator.
-		 * This enables chunk-level embeddings and single HNSW index per table.
-		 *
-		 * @param PDO $conn Database connection.
-		 * @return bool Success or failure.
-		 */
-		protected function create_tfidf_vectors_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
-			$posts_table = $prefix . 'posts';
-			$table_name  = $prefix . 'posts_tfidf_300';
-
-			// Row-per-embedding schema (v2.0).
-			$sql = "
-		CREATE TABLE IF NOT EXISTS $table_name (
-			-- Primary identification
-			id SERIAL PRIMARY KEY,
-			post_id BIGINT NOT NULL,
-			
-			-- Field discriminator
-			field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
-			chunk_index INTEGER,  -- NULL for title/excerpt, 0-N for chunks
-			
-			-- Single embedding column (300-dimensional TF-IDF)
-			embedding VECTOR(300),
-			
-			-- Metadata
-			content_hash VARCHAR(32) NOT NULL,
-			token_count INTEGER NOT NULL DEFAULT 0,
-			status VARCHAR(20) DEFAULT 'pending',
-			generated_at TIMESTAMP DEFAULT NOW(),
-			vocabulary_version INTEGER DEFAULT 1,
-			error_message TEXT,
-			
-			-- Constraints
-			UNIQUE(post_id, field_type, chunk_index),
-			FOREIGN KEY (post_id) REFERENCES $posts_table(ID) ON DELETE CASCADE,
-			CHECK (
-				(field_type IN ('title', 'excerpt') AND chunk_index IS NULL) OR
-				(field_type = 'chunk' AND chunk_index IS NOT NULL)
-			)
-		)";
-			$conn->exec( $sql );
-
-			// Create indexes.
-			$indexes = array(
-				// Single HNSW index for all embeddings (not 3 separate indexes).
-				"CREATE INDEX IF NOT EXISTS {$table_name}_embedding_hnsw ON $table_name USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)",
-				// Utility indexes.
-				"CREATE INDEX IF NOT EXISTS {$table_name}_post_id_idx ON $table_name (post_id)",
-				"CREATE INDEX IF NOT EXISTS {$table_name}_field_type_idx ON $table_name (field_type)",
-				"CREATE INDEX IF NOT EXISTS {$table_name}_status_idx ON $table_name (status)",
-				"CREATE INDEX IF NOT EXISTS {$table_name}_vocab_version_idx ON $table_name (vocabulary_version)",
-			);
-
-			foreach ( $indexes as $index_sql ) {
-				$conn->exec( $index_sql );
-			}
-
-			$this->logger->log( 'Created posts_tfidf_300 table with row-per-embedding schema and single HNSW index', 'info', 'system' );
-
-			return true;
-		}
-
-		/**
-		 * Create vocabulary cache table for TF-IDF vocabulary caching
-		 *
-		 * Stores cached TF-IDF vocabulary to avoid rebuilding for every batch.
-		 * Metadata stored in MySQL wp_gg_settings, vocabulary data in PostgreSQL.
-		 *
-		 * @param PDO $conn Database connection.
-		 * @return bool Success or failure.
-		 */
-		protected function create_vocabulary_cache_table( $conn ) {
-			$prefix     = $this->get_table_prefix();
-			$table_name = $prefix . 'posts_vocabulary_cache';
-
-			$sql = "
-		CREATE TABLE IF NOT EXISTS $table_name (
-			-- Primary identification
-			vocabulary_version INT PRIMARY KEY,
-			
-			-- Multi-connection support
-			connection_name VARCHAR(255) NOT NULL DEFAULT 'default',
-			site_id BIGINT NOT NULL DEFAULT 1,
-			
-			-- Vocabulary data (JSONB for efficient storage and querying)
-			vocabulary_data JSONB NOT NULL,
-			
-			-- Metadata
-			post_count INT NOT NULL,
-			unique_terms INT NOT NULL,
-			created_at TIMESTAMP DEFAULT NOW()
-		)";
-			$conn->exec( $sql );
-
-			// Create indexes for multi-connection queries.
-			$indexes = array(
-				"CREATE INDEX IF NOT EXISTS {$table_name}_connection_idx ON $table_name (connection_name, site_id)",
-				"CREATE INDEX IF NOT EXISTS {$table_name}_created_at_idx ON $table_name (created_at)",
-				"CREATE INDEX IF NOT EXISTS {$table_name}_version_connection_idx ON $table_name (vocabulary_version, connection_name, site_id)",
-			);
-
-			foreach ( $indexes as $index_sql ) {
-				$conn->exec( $index_sql );
-			}
-
-			$this->logger->log( 'Created posts_vocabulary_cache table for TF-IDF vocabulary caching ', 'info', 'system' );
-
-			return true;
-		}
 
 		/**
 		 * Create OpenAI embedding vector tables (row-per-embedding architecture v2.0)

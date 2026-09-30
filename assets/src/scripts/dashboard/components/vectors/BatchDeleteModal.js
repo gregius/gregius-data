@@ -7,7 +7,7 @@
  * - Error handling and retry logic
  * - Cancellation support via AbortController
  *
- * Reusable for TF-IDF, API embeddings, and future post deletion.
+ * Reusable for internal hashing, API embeddings, and future post deletion.
  *
  * @package    Gregius_Data
  * @subpackage Gregius_Data/assets/src/scripts/dashboard/components/vectors

@@ -31,7 +31,7 @@ This documentation is organized for **active development**. User-facing document
   - **[search/developer-documentation.md](search/developer-documentation.md)** - Developer reference for SQL functions, provider paths, endpoints, and extension points
 
 - **[vectors/](vectors/)** - Vectors and embeddings subsystem documentation
-  - **[vectors/srs.md](vectors/srs.md)** - Software Requirements Specification for vector generation, vocabulary lifecycle, and model contracts
+  - **[vectors/srs.md](vectors/srs.md)** - Software Requirements Specification for vector generation and model contracts
   - **[vectors/architecture.md](vectors/architecture.md)** - Architecture views, decisions, constraints, and risks for vector orchestration and storage contracts
   - **[vectors/developer-documentation.md](vectors/developer-documentation.md)** - Developer reference for strategies, endpoints, storage contracts, and troubleshooting
 
@@ -142,7 +142,7 @@ This documentation is organized for **active development**. User-facing document
 3. Read [search/developer-documentation.md](search/developer-documentation.md) — SQL function contracts, endpoint catalog, and extension points
 
 ### Understand Vectors and Embeddings Contracts
-1. Read [vectors/srs.md](vectors/srs.md) — requirements and contract obligations for vector and vocabulary behavior
+1. Read [vectors/srs.md](vectors/srs.md) — requirements and contract obligations for vector behavior
 2. Read [vectors/architecture.md](vectors/architecture.md) — architecture views, strategy boundaries, and ADRs
 3. Read [vectors/developer-documentation.md](vectors/developer-documentation.md) — endpoint catalog, strategy extension guidance, and storage contracts
 

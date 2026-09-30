@@ -8,16 +8,16 @@ Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AI-powered chat interface using TF-IDF semantic search and OpenAI.
+AI-powered chat interface using HashingTF semantic search and OpenAI.
 
 == Description ==
 
-The RAG Chat block provides an AI-powered conversational interface that uses Retrieval-Augmented Generation (RAG) with TF-IDF semantic search and OpenAI's language models.
+The RAG Chat block provides an AI-powered conversational interface that uses Retrieval-Augmented Generation (RAG) with HashingTF semantic search and OpenAI's language models.
 
 **Features:**
 
 * Real-time chat interface with conversation history
-* TF-IDF 300-dimensional semantic search for context retrieval
+* HashingTF 1024-dimensional semantic search for context retrieval
 * OpenAI integration for natural language responses
 * Source citations with clickable links
 * Configurable PostgreSQL connection selection
@@ -31,7 +31,7 @@ This block is part of the Gregius Data plugin and is automatically registered wh
 1. Ensure Gregius Data plugin is installed and activated
 2. Configure at least one PostgreSQL connection
 3. Set up OpenAI API credentials in plugin settings
-4. Add the "RAG Chat (TF-IDF 300)" block to any post or page
+4. Add the "RAG Chat" block to any post or page
 
 == Frequently Asked Questions ==
 
@@ -41,7 +41,7 @@ Retrieval-Augmented Generation (RAG) combines semantic search with AI language m
 
 = What databases are supported? =
 
-Currently supports PostgreSQL with TF-IDF 300-dimensional vector embeddings. MySQL 9.0+ support is planned.
+Currently supports PostgreSQL with HashingTF 1024-dimensional vector embeddings. MySQL 9.0+ support is planned.
 
 = Do I need an OpenAI API key? =
 
@@ -51,7 +51,7 @@ Yes, this block requires a valid OpenAI API key configured in the Gregius Data p
 
 = 1.0.0 =
 * Initial release
-* TF-IDF 300D semantic search
+* HashingTF 1024D semantic search
 * OpenAI chat integration
 * Conversation history
 * Source citations

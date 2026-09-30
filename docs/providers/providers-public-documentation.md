@@ -97,9 +97,7 @@ These providers generate vector embeddings and rerank search results:
 
 ### Internal Embedding Models
 
-Gregius Data ships two free local embedding models that require no API keys or external service accounts.
-
-**TF-IDF 300D** (`tfidf-300`) — 300-dimensional vectors using [term frequency-inverse document frequency](https://en.wikipedia.org/wiki/Tf%E2%80%93idf). Requires a corpus vocabulary to be generated before use, which provides accurate IDF weighting. Ideal for sites that have enough content to build a meaningful vocabulary.
+Gregius Data ships one free local embedding model that requires no API keys or external service accounts.
 
 **HashingTF Murmur3 1024D** (`hashingtf-murmur3-1024`) — 1024-dimensional vectors using PHP-native [MurmurHash3](https://en.wikipedia.org/wiki/MurmurHash) feature hashing. Stateless — no vocabulary needed, usable immediately after schema creation. Uses signed hash bucket assignment and field-type weighting (title 1.5×, excerpt 1.2×, chunk 1.0×) with L2 normalization.
 
@@ -139,7 +137,6 @@ If the test fails, check credentials, network access, and PHP extension availabi
 | HTTP-based access that works on any hosting | **PostgREST ([Supabase](https://supabase.com/))** - no PHP extensions required. Works on shared hosting, managed WordPress, and environments without database TCP access. |
 | External AI text generation (LLM) | **[OpenAI](https://openai.com), [Anthropic](https://www.anthropic.com), [Gemini](https://deepmind.google/technologies/gemini/), or [DeepSeek](https://deepseek.com)** |
 | External embeddings or reranking | **[Voyage AI](https://www.voyageai.com)** (embeddings + reranking) or **[Cohere](https://cohere.com)** (embeddings + reranking) |
-| Local embeddings, accurate IDF weighting | **[TF-IDF 300D](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)** (`tfidf-300`) - requires corpus vocabulary |
 | Local embeddings, zero setup | **[HashingTF Murmur3 1024D](https://en.wikipedia.org/wiki/MurmurHash)** (`hashingtf-murmur3-1024`) - stateless, no vocabulary needed |
 
 ---

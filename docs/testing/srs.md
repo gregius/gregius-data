@@ -147,7 +147,6 @@ Requirement notation:
 | GG_Data_HashingTF_Embeddings | Test_GG_Data_HashingTF_Embeddings.php | 9 |
 | GG_Data_LLM_Registry | Test_GG_Data_LLM_Registry.php | 5 |
 | GG_Data_Settings_Manager | Test_GG_Data_Settings_Manager.php | 13 |
-| GG_Data_TFIDF_300_Embeddings | Test_GG_Data_TFIDF_300_Embeddings.php | 5 |
 | GG_Data_Vector_Generator | Test_GG_Data_Vector_Generator.php | 6 |
 | **Total** | **7 files** | **50 tests** |
 

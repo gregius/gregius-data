@@ -144,7 +144,7 @@ Visit the contributor profiles on WordPress.org:
 1. Models tab for provider and model configuration
 2. Connections tab with PostgreSQL health checks
 3. Sync tab with selective post type synchronization controls
-4. Vectors tab for embeddings and vocabulary workflows
+4. Vectors tab for embedding workflows
 5. Prompts tab for prompt templates and orchestration settings
 6. Search tab for retrieval and generation execution
 7. Logs tab for interaction and operational trace visibility

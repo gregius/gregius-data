@@ -82,7 +82,7 @@ Mapping:
    - `GG_Data_REST_API` binds `rest_api_init` and registers domain controllers.
 
 2. **Administrative Controllers**
-   - Settings, connections, connection health/models, schema, sync, sync validation, search, vectors, vocabulary, retry queue, models, prompts, logs.
+   - Settings, connections, connection health/models, schema, sync, sync validation, search, vectors, retry queue, models, prompts, logs.
    - Predominantly admin-gated using capability checks.
    - Logs controller delegates retention purge behavior to logger/runtime contracts, including site-scoped table boundaries.
    - Vector controller includes timeout-safe batch deletion semantics for large vector tables.

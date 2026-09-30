@@ -53,13 +53,6 @@ if ( ! class_exists( 'GG_Data' ) ) {
 		public $content_processor;
 
 		/**
-		 * Vector processor instance
-		 *
-		 * @var GG_Data_Vector_Processor
-		 */
-		public $vector_processor;
-
-		/**
 		 * REST API instance
 		 *
 		 * @var GG_Data_REST_API
@@ -102,9 +95,6 @@ if ( ! class_exists( 'GG_Data' ) ) {
 			// Initialize content processing hooks.
 			$this->init_content_processing();
 
-			// Initialize vector processing.
-			$this->init_vector_processing();
-
 			// Initialize REST API.
 			$this->init_rest_api();
 
@@ -129,19 +119,6 @@ if ( ! class_exists( 'GG_Data' ) ) {
 				$this->logger->log( 'Content processing initialized', 'debug', 'system' );
 			} else {
 				$this->logger->log( 'Content processing skipped - vectors table not available', 'debug', 'system' );
-			}
-		}
-
-		/**
-		 * Initialize vector processing
-		 */
-		protected function init_vector_processing() {
-			// Only initialize if the gg_data_vectors table exists.
-			if ( $this->is_vectors_table_available() ) {
-				$this->vector_processor = new GG_Data_Vector_Processor();
-				$this->logger->log( 'Vector processing initialized', 'debug', 'system' );
-			} else {
-				$this->logger->log( 'Vector processing skipped - vectors table not available', 'debug', 'system' );
 			}
 		}
 

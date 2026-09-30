@@ -32,7 +32,7 @@ function gg_data_get_default_search_settings() {
 	return array(
 		'enabled'                         => false, // Disabled by default - user must opt-in.
 		'connection'                      => '',    // Database connection to use for search queries.
-		'embedding_model'                 => 'tfidf-300', // Default to free TF-IDF embeddings.
+		'embedding_model'                 => 'hashingtf-murmur3-1024', // Default to the free stateless HashingTF embeddings.
 		'retrieval_mode'                  => 'hybrid_default', // PostgreSQL + MySQL merge by default.
 		'observability_enabled'           => false, // Full observability probes are opt-in.
 		'description'                     => 'Enable PostgreSQL full-text search with field weighting and stemming',
@@ -56,7 +56,7 @@ function gg_data_init_search_settings() {
 	if ( null === $enabled ) {
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', false );
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'connection', '' );
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'tfidf-300' );
+		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
 	}

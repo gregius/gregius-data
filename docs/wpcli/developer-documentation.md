@@ -54,7 +54,7 @@ wp gg-data logs --help
 wp gg-data sync all --connection=gregius-data --batch-size=200
 
 # Generate vectors for pending items
-wp gg-data vectors generate --connection=gregius-data --embedding-model=tfidf-300
+wp gg-data vectors generate --connection=gregius-data --embedding-model=hashingtf-murmur3-1024
 
 # RAG answer
 wp gg-data answer "What is dementia care?" --format=json
@@ -133,7 +133,7 @@ Subcommands:
 
 Options:
 - `--connection=<name>` (default `gregius-data`)
-- `--embedding-model=<model>` (default `tfidf-300`)
+- `--embedding-model=<model>` (default `hashingtf-murmur3-1024`)
 - `--post-type=<type>` (default `all`)
 - `--batch-size=<number>` (default `50`)
 - `--force` (documented alias intent for rebuild workflows)
@@ -142,7 +142,6 @@ Options:
 Implementation notes:
 - Batch validation uses `gg_data_cli_vectors_max_batch_size` (default max `200`).
 - `run_vector_generation()` orchestrates batching and summary output.
-- TF-IDF paths call `build_vocabulary()` via `GG_Data_Vocabulary_Manager`.
 - Generation delegates to `GG_Data_Vector_Generator::generate_batch()`.
 - Post counting uses `get_posts_for_vectors()` with rebuild/non-rebuild query paths.
 
@@ -157,7 +156,7 @@ Command:
 
 Options:
 - `--connection=<name>` (default `gregius-data`)
-- `--embedding-model=<model>` (default `tfidf-300`)
+- `--embedding-model=<model>` (default `hashingtf-murmur3-1024`)
 - `--agentic-model=<model>` (optional)
 - `--rerank-model=<model>` (optional)
 - `--answer-model=<model>` (default `gpt-4o-mini`)
@@ -322,7 +321,6 @@ Delegated managers/services:
 - `GG_Data_Post_Sync`
 - `GG_Data_Taxonomy_Sync`
 - `GG_Data_Vector_Generator`
-- `GG_Data_Vocabulary_Manager`
 - `GG_Data_Abilities_Manager`
 - `GG_Data_Logger`
 - `GG_Data_Settings_Manager`

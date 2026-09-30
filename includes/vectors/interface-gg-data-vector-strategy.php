@@ -3,7 +3,7 @@
  * Vector Generation Strategy Interface
  *
  * Defines the contract for vector generation strategies. Each strategy
- * implements a different approach to generating embeddings (TF-IDF, API-based, etc).
+ * implements a different approach to generating embeddings (internal hashing, API-based, etc).
  *
  * @package Gregius_Data
  * @subpackage GG_Data/includes/vectors
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Interface GG_Data_Vector_Strategy_Interface
  *
  * Strategy Pattern for vector generation. Allows different generation
- * approaches (TF-IDF, OpenAI, Voyage AI) to be used interchangeably.
+ * approaches (HashingTF, OpenAI, Voyage AI) to be used interchangeably.
  *
  * @since 1.0.0
  */
@@ -56,7 +56,7 @@ interface GG_Data_Vector_Strategy_Interface {
 	 * Get strategy identifier
 	 *
 	 * @since 1.0.0
-	 * @return string Strategy ID (e.g., 'tfidf', 'api-embeddings').
+	 * @return string Strategy ID (e.g., 'api-embeddings', 'hashingtf').
 	 */
 	public function get_id(): string;
 
@@ -64,7 +64,7 @@ interface GG_Data_Vector_Strategy_Interface {
 	 * Get strategy display name
 	 *
 	 * @since 1.0.0
-	 * @return string Strategy name (e.g., 'TF-IDF', 'API Embeddings').
+	 * @return string Strategy name (e.g., 'HashingTF', 'API Embeddings').
 	 */
 	public function get_name(): string;
 

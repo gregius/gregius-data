@@ -686,7 +686,7 @@ class GG_Data_HashingTF_Embeddings {
 	 *
 	 * Unicode-aware tokenization. Uses mb_strtolower and preg_replace with
 	 * Unicode word boundary to handle non-ASCII content better than the
-	 * ASCII-only TF-IDF approach.
+	 * ASCII-only hashing approach.
 	 *
 	 * @param string $text Input text.
 	 * @return array Array of terms.

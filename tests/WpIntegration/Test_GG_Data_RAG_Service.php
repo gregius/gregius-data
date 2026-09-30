@@ -12,11 +12,11 @@ class Test_GG_Data_RAG_Service extends WP_UnitTestCase {
 
 	public function set_up() {
 		parent::set_up();
-		$this->rag = new GG_Data_RAG_Service( 'default', 'hashingtf-embeddings' );
+		$this->rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 	}
 
 	public function test_constructor_accepts_connection_and_model() {
-		$rag = new GG_Data_RAG_Service( 'test_conn', 'tfidf-300-embeddings' );
+		$rag = new GG_Data_RAG_Service( 'test_conn', 'hashingtf-murmur3-1024' );
 		$this->assertInstanceOf( GG_Data_RAG_Service::class, $rag );
 	}
 

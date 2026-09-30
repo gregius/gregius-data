@@ -12,15 +12,14 @@ Upstream Specification: [srs.md](srs.md)
 
 ### 1.1 Purpose and Scope
 
-This architecture describes how Gregius Data generates and manages semantic vectors through strategy orchestration, vocabulary lifecycle controls, and operational APIs while keeping contracts stable for Search and RAG retrieval consumers.
+This architecture describes how Gregius Data generates and manages semantic vectors through strategy orchestration, generation controls, and operational APIs while keeping contracts stable for Search and RAG retrieval consumers.
 
 Scope includes:
 - Vector orchestration and strategy routing
-- TF-IDF and API embeddings execution paths
+- Internal hashing and API embeddings execution paths
 - HashingTF/stateless internal embeddings execution path
-- Vocabulary preparation/status/cache lifecycle
 - Connection-model association and model routing behavior
-- Vector and vocabulary REST operational controls
+- Vector REST operational controls
 - Timeout-safe batch deletion for large vector tables
 - Row-per-embedding storage model and contract constraints
 
@@ -34,7 +33,7 @@ Explicitly excluded:
 | Stakeholder | Concern | Priority |
 |---|---|---|
 | Plugin developers | Stable strategy interfaces and model contracts for extensibility | High |
-| Site administrators | Predictable, safe, and auditable vector/vocabulary operations | High |
+| Site administrators | Predictable, safe, and auditable vector operations | High |
 | Operations | Diagnosable status endpoints, error handling, and regeneration workflows | High |
 | Integrators | Consistent model-table contracts and provider-path parity | High |
 
@@ -49,22 +48,20 @@ Explicitly excluded:
 │  Dashboard / REST Clients                                          │
 │          │                                                        │
 │          ▼                                                        │
-│  Vector and Vocabulary REST Layer                                  │
+│  Vector REST Layer                                  │
 │  - /vector-queue                                                   │
 │  - /vectors/*                                                      │
-│  - /vocabulary/*                                                   │
 │  - /connections/{connection}/vectors/models                        │
 │          │                                                        │
 │          ▼                                                        │
 │  Vector Orchestration Layer                                        │
 │  - GG_Data_Vector_Generator                                        │
-│  - Strategy selection (TF-IDF | Hashing TF | API embeddings)       │
+│  - Strategy selection (Hashing TF | API embeddings)       │
 │          │                                                        │
 │          ▼                                                        │
 │  Data and Model Dependencies                                       │
 │  - Model registry + connection-model associations                  │
 │  - Cleaned/chunked content contracts                               │
-│  - Vocabulary manager                                               │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
            │                                   │
@@ -76,7 +73,7 @@ Explicitly excluded:
 Architecture intent:
 - Keep vector generation and model routing centralized in one orchestrator.
 - Keep strategy implementations swappable behind a stable interface contract.
-- Keep operational control explicit through dedicated vector and vocabulary endpoints.
+- Keep operational control explicit through dedicated vector endpoints.
 
 Mapping:
 - AV-01 -> VEC-FR-01 to VEC-FR-10
@@ -94,13 +91,10 @@ Mapping:
 - Executes generation and logs operational outcomes.
 
 2. Vector Strategy Components (`GG_Data_Vector_Strategy_Interface`)
-- `GG_Data_TFIDF_Strategy` for internal TF-IDF model workflows.
 - `GG_Data_HashingTF_Strategy` for internal stateless hashing model workflows (no vocabulary prerequisite).
 - `GG_Data_API_Embeddings_Strategy` for provider-backed embeddings.
 - Shared result contract (`success`, `message`, `processed`, `failed`, `total_tokens`).
 
-3. Vocabulary Management Component (`GG_Data_Vocabulary_Manager`)
-- Builds vocabulary from cleaned content corpus.
 - Supports provider-path-aware execution (PDO and PostgREST/Supabase style).
 - Exposes status and cache clear operations.
 
@@ -108,8 +102,6 @@ Mapping:
 - Queue visibility, single item generation, batch generation, batch deletion, status, and clear operations.
 - Posts-list status endpoint for operational inspection.
 
-5. Vocabulary REST Management Component (`GG_Data_REST_Vocabulary_Controller`)
-- Vocabulary prepare, status, and cache clear routes.
 
 6. Connection-Model REST Component (`GG_Data_REST_Connection_Models_Controller`)
 - Lists, adds, and removes active models per connection.
@@ -118,8 +110,7 @@ Mapping:
 7. Storage Contract Component (PostgreSQL vector tables)
 - Row-per-embedding model with `post_id + field_type + chunk_index` uniqueness.
 - Supports title, excerpt, and chunk embeddings under one table per model.
-- Each model family owns independent DDL columns: TF-IDF uses `vocabulary_version`; provider-backed tables may use `model_used`; HashingTF uses `tokenizer_version`. No column uniformity is required across model families.
-- The search SQL function detects presence of `vocabulary_version` at runtime. If absent, the dense/stateless search path is used automatically.
+- Each model family owns independent DDL columns: Provider-backed tables may use `model_used`; HashingTF uses `tokenizer_version`. No column uniformity is required across model families.
 
 ### 3.2 Contract Boundaries
 
@@ -151,8 +142,6 @@ Resolve model by connection + model_key
     ▼
 Vector generator selects strategy by supports_model()
     │
-    ├─ TF-IDF strategy path
-    │    ├─ validate vocabulary readiness
     │    ├─ consume cleaned/chunked content
     │    └─ upsert row-per-embedding vectors
     │
@@ -168,27 +157,6 @@ Vector generator selects strategy by supports_model()
     │
     ▼
 Structured response and operational logging
-```
-
-### 4.2 Vocabulary Runtime Flow
-
-```
-POST /gg-data/v1/vocabulary/prepare
-    │
-    ▼
-Permission check (manage_options)
-    │
-    ▼
-Detect connection type (PDO or PostgREST-compatible)
-    │
-    ▼
-Read wp_posts_clean corpus
-    │
-    ▼
-Build vocabulary and persist metadata/cache
-    │
-    ▼
-Return version and readiness metadata
 ```
 
 ### 4.3 Connection-Model Runtime Flow
@@ -281,22 +249,6 @@ Consequences:
 Linked requirements:
 - AD-02 -> VEC-FR-10, VEC-DR-03, VEC-DR-04, VEC-QR-02
 
-### AD-03: Vocabulary as a Managed Runtime Dependency for TF-IDF
-
-Decision:
-- Treat vocabulary readiness as a prerequisite state for TF-IDF generation.
-
-Rationale:
-- Preserves deterministic TF-IDF output and avoids repeated expensive rebuilds.
-- Enables operators to control regeneration windows.
-
-Consequences:
-- TF-IDF generation can be blocked by stale/missing vocabulary states.
-- Operational guidance must include vocabulary health workflows.
-
-Linked requirements:
-- AD-03 -> VEC-FR-04, VEC-FR-05, VEC-FR-06, VEC-OR-06, VEC-QR-03
-
 ### AD-04: Connection-Aware Model Activation
 
 Decision:
@@ -316,7 +268,7 @@ Linked requirements:
 ### AD-05: Admin-Gated Operational Endpoints
 
 Decision:
-- Require administrative authorization for vector and vocabulary mutation paths.
+- Require administrative authorization for vector mutation paths.
 
 Rationale:
 - Prevents unauthorized vector operations and model changes.
@@ -341,7 +293,6 @@ Rationale:
 Consequences:
 - HashingTF vectors lack IDF weighting, which may reduce precision compared to corpus-informed TF-IDF.
 - Tokenizer version bumps (instead of vocabulary version bumps) trigger regeneration workflows.
-- The search function's runtime vocabulary_version column detection automatically routes HashingTF to the dense/stateless search path without code changes.
 
 Linked requirements:
 - AD-06 -> VEC-FR-02, VEC-FR-15, VEC-DR-03, VEC-DR-04
@@ -372,14 +323,12 @@ Linked requirements:
 | C-01 | Vectors rely on upstream cleaned and chunked content contracts. | Out-of-date sync/chunking can degrade vector quality or completeness. |
 | C-02 | Provider-backed models depend on external API capabilities, quotas, and connectivity. | Generation reliability varies by provider runtime conditions. |
 | C-03 | Row-per-embedding contracts require stable table naming and model metadata. | Model misconfiguration can break downstream search/RAG expectations. |
-| C-04 | Vocabulary management requires connection-aware data access paths. | Provider-path divergences can create parity drift without explicit checks. |
 
 ### 6.2 Risks
 
 | Risk ID | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
 | R-01 | Strategy/provider parity drift over time | Medium | High | Keep shared strategy result contract and parity tests across model/provider paths |
-| R-02 | Vocabulary drift causes stale TF-IDF output quality | Medium | Medium | Enforce status reporting and explicit regeneration workflows |
 | R-03 | Misconfigured model associations target wrong vector tables | Low | High | Validate model metadata and expose clear status/diagnostic payloads |
 | R-04 | Operational misuse triggers expensive or unnecessary generation | Medium | Medium | Keep admin gating and explicit endpoint semantics for destructive/regenerative actions |
 | R-05 | Downstream consumers assume unavailable model tables | Medium | Medium | Keep integration checks and fallback expectations explicit in Search/RAG integration docs |

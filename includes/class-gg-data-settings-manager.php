@@ -666,7 +666,7 @@ class GG_Data_Settings_Manager {
 			return null;
 		}
 
-		return $this->normalize_postgrest_keys( $settings );
+		return $settings;
 	}
 
 	/**
@@ -687,10 +687,6 @@ class GG_Data_Settings_Manager {
 				);
 			}
 			$connections[ $connection_name ][ $setting['setting_key'] ] = $setting['setting_value'];
-		}
-
-		foreach ( $connections as $connection_name => $connection_config ) {
-			$connections[ $connection_name ] = $this->normalize_postgrest_keys( $connection_config );
 		}
 
 		return $connections;
@@ -945,23 +941,4 @@ class GG_Data_Settings_Manager {
 		return $settings;
 	}
 
-	/**
-	 * Normalize PostgREST/Supabase settings for runtime usage.
-	 *
-	 * Runtime is canonical-only: publishable_key + secret_key.
-	 *
-	 * @param array $settings Connection settings.
-	 * @return array Normalized settings.
-	 */
-	private function normalize_postgrest_keys( $settings ) {
-		if ( ! is_array( $settings ) ) {
-			return $settings;
-		}
-
-		if ( ! isset( $settings['type'] ) || 'postgrest' !== $settings['type'] ) {
-			return $settings;
-		}
-
-		return $settings;
-	}
 }

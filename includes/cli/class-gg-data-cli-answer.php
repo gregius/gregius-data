@@ -73,7 +73,7 @@ class GG_Data_CLI_Answer {
 	 * [--embedding-model=<model>]
 	 * : Model for semantic search.
 	 * ---
-	 * default: tfidf-300
+	 * default: hashingtf-murmur3-1024
 	 * ---
 	 *
 	 * [--agentic-model=<model>]
@@ -114,7 +114,7 @@ class GG_Data_CLI_Answer {
 	 *     # Full model specification
 	 *     $ wp gg-data answer "What are best practices?" \
 	 *         --connection=gregius-data \
-	 *         --embedding-model=tfidf-300 \
+	 *         --embedding-model=hashingtf-murmur3-1024 \
 	 *         --answer-model=gpt-4
 	 *
 	 *     # Dev/testing - skip interaction recording
@@ -143,7 +143,7 @@ class GG_Data_CLI_Answer {
 
 		$query           = $args[0];
 		$connection      = $assoc_args['connection'] ?? 'gregius-data';
-		$embedding_model = $assoc_args['embedding-model'] ?? 'tfidf-300';
+		$embedding_model = $assoc_args['embedding-model'] ?? 'hashingtf-murmur3-1024';
 		$agentic_model   = $assoc_args['agentic-model'] ?? '';
 		$rerank_model    = $assoc_args['rerank-model'] ?? '';
 		$answer_model    = $assoc_args['answer-model'] ?? 'gpt-4o-mini';

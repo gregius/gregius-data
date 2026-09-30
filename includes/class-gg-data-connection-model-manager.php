@@ -249,33 +249,4 @@ class GG_Data_Connection_Model_Manager {
 		return true;
 	}
 
-	/**
-	 * Auto-add TF-IDF model to connection if not present
-	 *
-	 * TF-IDF is the free, internal embedding model that should
-	 * be available on all connections by default.
-	 *
-	 * @since  1.0.0
-	 * @param  string $connection_name Connection name.
-	 * @return bool Success.
-	 */
-	public function auto_add_tfidf( string $connection_name ): bool {
-		$models = $this->get_connection_models( $connection_name );
-
-		// Check if TF-IDF already added.
-		$has_tfidf = false;
-		foreach ( $models as $model ) {
-			if ( 'tfidf-300' === $model['model_key'] ) {
-				$has_tfidf = true;
-				break;
-			}
-		}
-
-		if ( ! $has_tfidf ) {
-			$result = $this->add_model_to_connection( $connection_name, 'tfidf-300' );
-			return ! is_wp_error( $result );
-		}
-
-		return true;
-	}
 }

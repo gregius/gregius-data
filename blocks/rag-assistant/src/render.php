@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Get attributes with defaults.
 $block_id            = isset( $attributes['blockId'] ) ? $attributes['blockId'] : 'gregius-rag-assistant-' . wp_unique_id();
 $connection_id       = isset( $attributes['connectionId'] ) ? $attributes['connectionId'] : '';
-$embedding_model_key = isset( $attributes['embeddingModelKey'] ) ? $attributes['embeddingModelKey'] : 'tfidf-300';
+$embedding_model_key = isset( $attributes['embeddingModelKey'] ) ? $attributes['embeddingModelKey'] : 'hashingtf-murmur3-1024';
 $llm_model_id        = isset( $attributes['llmModelId'] ) ? $attributes['llmModelId'] : '';
 $rewrite_model       = isset( $attributes['rewriteModelId'] ) ? $attributes['rewriteModelId'] : '';
 $rerank_model        = isset( $attributes['rerankModelId'] ) ? $attributes['rerankModelId'] : '';

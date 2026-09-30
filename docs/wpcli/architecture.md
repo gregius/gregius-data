@@ -90,7 +90,7 @@ CLI acts as an orchestration shell that validates inputs, invokes manager APIs, 
 3. **Vectors Commands (`GG_Data_CLI_Vectors`)**
 - Routes `generate`, `rebuild`
 - Applies vector-specific batch bounds
-- Coordinates vocabulary build and batch generation loops
+- Coordinates batch generation loops
 
 4. **Answer Command (`GG_Data_CLI_Answer`)**
 - Handles required `<query>` and model options

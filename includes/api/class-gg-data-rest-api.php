@@ -50,10 +50,6 @@ class GG_Data_REST_API {
 		$vector_queue_controller = new GG_Data_REST_Vector_Queue_Controller();
 		$vector_queue_controller->register_routes();
 
-		// Vocabulary controller .
-		$vocabulary_controller = new GG_Data_REST_Vocabulary_Controller();
-		$vocabulary_controller->register_routes();
-
 		// Retry Queue controller .
 		$retry_queue_controller = new GG_Data_REST_Retry_Queue_Controller();
 		$retry_queue_controller->register_routes();

@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Endpoints:
  * - GET /gg-data/v1/vector-queue - List synced posts ready for vectorization
- * - POST /gg-data/v1/vector-queue/generate/{id} - Generate TF-IDF vectors for a post
+ * - POST /gg-data/v1/vector-queue/generate/{id} - Generate vectors for a post
  * - POST /gg-data/v1/vectors/batch-generate - Generate vectors for all posts
  * - GET /gg-data/v1/vectors/status - Monitor batch processing progress
  * - DELETE /gg-data/v1/vectors - Clear all generated vectors
@@ -304,7 +304,7 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 			}
 
 			// Determine vector table name.
-			$vector_table = 'wp_posts_tfidf_300'; // Default.
+			$vector_table = 'wp_posts_hashingtf_murmur3_1024'; // Default.
 			if ( ! empty( $model_key ) ) {
 				$registry = new GG_Data_Model_Registry();
 				$model    = $registry->get_model( GG_Data_Model_Registry::MODEL_SCOPE_GLOBAL, $model_key );
@@ -377,7 +377,7 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Generate TF-IDF vectors for a post
+	 * Generate vectors for a post using the resolved embedding model
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response
@@ -386,6 +386,15 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 		$start_time      = microtime( true );
 		$post_id         = $request->get_param( 'id' );
 		$connection_name = $request->get_param( 'connection_name' );
+		$model_key       = $request->get_param( 'model_key' );
+		$batch_size      = $request->get_param( 'batch_size' );
+
+		if ( empty( $model_key ) ) {
+			$model_key = 'hashingtf-murmur3-1024';
+		}
+		if ( empty( $batch_size ) ) {
+			$batch_size = 50;
+		}
 
 		try {
 			// Get database instance.
@@ -420,10 +429,21 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 				);
 			}
 
-			// Generate vectors using cached vocabulary (10-20x performance improvement)
-			// Uses GG_Data_Vocabulary_Manager for vocabulary caching with drift detection.
-			$embeddings = new GG_Data_TFIDF_300_Embeddings( $connection_name );
-			$result     = $embeddings->generate_all_vectors();
+			// Generate vectors via the model-aware generator.
+			$generator = new GG_Data_Vector_Generator();
+			$result    = $generator->generate_batch( $model_key, (int) $batch_size, $connection_name );
+
+			if ( is_wp_error( $result ) ) {
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'message' => $result->get_error_message(),
+						'post_id' => $post_id,
+					),
+					$result->get_error_data()['status'] ?? 500
+				);
+			}
+
 			if ( ! $result['success'] ) {
 				return new WP_REST_Response(
 					array(
@@ -448,9 +468,9 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 						'type'  => $post['post_type'],
 					),
 					'vectors'         => array(
-						'type'      => 'tfidf',
-						'processed' => $result['processed'],
-						'total'     => $result['total'],
+						'model_key' => $model_key,
+						'processed' => $result['processed'] ?? 0,
+						'failed'    => $result['failed'] ?? 0,
 					),
 					'processing_time' => round( $processing_time, 2 ) . ' ms',
 				),
@@ -475,7 +495,7 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 	/**
 	 * Batch generate vectors using Vector Generator
 	 *
-	 * Processes a batch of posts using the appropriate strategy (TF-IDF or API).
+	 * Processes a batch of posts using the appropriate strategy (internal hashing or API).
 	 * Frontend loops calling this endpoint repeatedly until all posts processed.
 	 *
 	 * @param WP_REST_Request $request Request object.
@@ -845,30 +865,12 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 				);
 			}
 
-			// Legacy logic.
-			// Get processing status from vector processor.
-			$processor = new GG_Data_Vector_Processor( $connection_name );
-			$status    = $processor->get_processing_status( $connection_name );
-
-			// Add time calculations if processing.
-			if ( $status['is_processing'] && ! empty( $status['start_time'] ) ) {
-				$elapsed                = time() - $status['start_time'];
-				$status['elapsed_time'] = $elapsed;
-
-				// Estimate remaining time based on current progress.
-				if ( $status['processed_posts'] > 0 ) {
-					$rate                          = $elapsed / $status['processed_posts'];
-					$remaining_posts               = $status['total_posts'] - $status['processed_posts'];
-					$status['estimated_remaining'] = round( $rate * $remaining_posts );
-				}
-			}
-
 			return new WP_REST_Response(
 				array(
-					'success' => true,
-					'status'  => $status,
+					'success' => false,
+					'message' => 'A model_key is required to retrieve vector status.',
 				),
-				200
+				400
 			);
 
 		} catch ( Exception $e ) {
@@ -888,7 +890,7 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 	/**
 	 * Clear all generated vectors
 	 *
-	 * Deletes all vectors from wp_posts_tfidf_300 table.
+	 * Deletes all vectors from wp_posts_hashingtf_murmur3_1024 table.
 	 * Used for testing and vector regeneration.
 	 *
 	 * @param WP_REST_Request $request Request object.
@@ -943,34 +945,12 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 				);
 			}
 
-			// Legacy logic.
-			// Clear all vectors using vector processor.
-			$processor = new GG_Data_Vector_Processor( $connection_name );
-			$result    = $processor->clear_simple_vectors( $connection_name );
-
-			if ( ! $result['success'] ) {
-				return new WP_REST_Response(
-					array(
-						'success' => false,
-						'message' => $result['message'],
-					),
-					500
-				);
-			}
-
-			// Extract count of cleared vectors from result message.
-			$cleared = 0;
-			if ( preg_match( '/(\d+)/', $result['message'], $matches ) ) {
-				$cleared = (int) $matches[1];
-			}
-
 			return new WP_REST_Response(
 				array(
-					'success' => true,
-					'message' => $result['message'],
-					'cleared' => $cleared,
+					'success' => false,
+					'message' => 'A model_key is required to clear vectors.',
 				),
-				200
+				400
 			);
 
 		} catch ( Exception $e ) {
@@ -1263,7 +1243,7 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 			}
 
 			// Determine vector table name.
-			$vector_table = 'wp_posts_tfidf_300'; // Default.
+			$vector_table = 'wp_posts_hashingtf_murmur3_1024'; // Default.
 			if ( ! empty( $model_key ) ) {
 				$registry = new GG_Data_Model_Registry();
 				$model    = $registry->get_model( GG_Data_Model_Registry::MODEL_SCOPE_GLOBAL, $model_key );

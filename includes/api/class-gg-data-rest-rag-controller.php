@@ -486,7 +486,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 			'embedding_model_key' => array(
 				'required'          => true,
 				'type'              => 'string',
-				'description'       => __( 'Embedding model key (e.g., tfidf-300, text-embedding-3-small).', 'gregius-data' ),
+				'description'       => __( 'Embedding model key (e.g., hashingtf-murmur3-1024, text-embedding-3-small).', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			'llm_model_id'        => array(
@@ -645,7 +645,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		// We need an embedding model, but it may not be used for all tools.
 		$embedding_model_key = $request->get_param( 'embedding_model_key' );
 		if ( null === $embedding_model_key || '' === $embedding_model_key ) {
-			$embedding_model_key = 'tfidf-300';
+			$embedding_model_key = 'hashingtf-murmur3-1024';
 		}
 		$rag = new GG_Data_RAG_Service( $connection_name, $embedding_model_key );
 
@@ -770,7 +770,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		$connection_name = $request->get_param( 'connection_name' );
 
 		// Create RAG service to get tool definitions.
-		$rag = new GG_Data_RAG_Service( $connection_name, 'tfidf-300' );
+		$rag = new GG_Data_RAG_Service( $connection_name, 'hashingtf-murmur3-1024' );
 
 		// Access private method via reflection.
 		$reflection = new ReflectionMethod( $rag, 'get_tool_definitions' );
@@ -831,7 +831,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 			'embedding_model_key' => array(
 				'required'          => false,
 				'type'              => 'string',
-				'default'           => 'tfidf-300',
+				'default'           => 'hashingtf-murmur3-1024',
 				'description'       => __( 'Embedding model key (if action needs search).', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),

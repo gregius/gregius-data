@@ -36,7 +36,7 @@ Not covered:
 Use the RAG service directly when you are inside plugin code and already know the connection and model IDs. This path implements the main subsystem flow described in the SRS. [SRS: RAG-FR-01, RAG-FR-05, RAG-FR-14, RAG-FR-17]
 
 ```php
-$rag = new GG_Data_RAG_Service( 'default', 'tfidf-300' );
+$rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 
 $result = $rag->generate_answer(
 	'How do I install WordPress?',
@@ -69,7 +69,7 @@ curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
 	-d '{
 	  "query": "How do I install WordPress?",
 	  "connection_name": "default",
-	  "embedding_model_key": "tfidf-300",
+	  "embedding_model_key": "hashingtf-murmur3-1024",
 	  "llm_model_id": "gpt-4o-mini",
 	  "messages": []
 	}'
@@ -97,7 +97,7 @@ Canonical contract reference:
 - [RAG Manifest Contract](manifest-contract.md)
 
 ```php
-$rag = new GG_Data_RAG_Service( 'default', 'tfidf-300' );
+$rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 
 $result = $rag->generate_answer(
 	'Summarize this post',
@@ -638,7 +638,7 @@ The RAG Assistant is the foundation Gutenberg block that exposes the RAG endpoin
 |---|---|---|---|
 | `blockId` | string | `""` | Unique block instance ID, set from `clientId` on mount |
 | `connectionId` | string | `""` | PostgreSQL connection name |
-| `embeddingModelKey` | string | `"tfidf-300"` | Embedding model key for retrieval |
+| `embeddingModelKey` | string | `"hashingtf-murmur3-1024"` | Embedding model key for retrieval |
 | `llmModelId` | string | `""` | LLM model ID for answer generation |
 | `rewriteModelId` | string | `""` | Agentic/rewrite model ID (optional) |
 | `rerankModelId` | string | `""` | Rerank model ID (optional) |

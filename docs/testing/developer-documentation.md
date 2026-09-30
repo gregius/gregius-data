@@ -218,7 +218,6 @@ $instance   = $reflection->newInstanceWithoutConstructor();
 $vector     = $instance->generate_hashingtf_vector('hello', 'post_title');
 ```
 
-This pattern applies to: GG_Data_HashingTF_Embeddings, GG_Data_TFIDF_300_Embeddings, GG_Data_Content_Cleaner, GG_Data_DB, GG_Data_Settings_Manager, GG_Data_Vector_Generator.
 
 ## 6. Integration Points and Hooks
 

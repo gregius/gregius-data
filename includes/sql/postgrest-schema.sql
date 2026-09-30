@@ -232,50 +232,6 @@ CREATE INDEX IF NOT EXISTS idx_chunks_source_hash ON wp_posts_chunks(source_hash
 -- chunk_index: NULL for title/excerpt, 0-N for chunks
 -- ================================================
 
--- TF-IDF Vectors (free tier semantic search) - 300 dimensions
-CREATE TABLE IF NOT EXISTS wp_posts_tfidf_300 (
-    id SERIAL PRIMARY KEY,
-    post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
-    field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
-    chunk_index INTEGER,
-    embedding vector(300),
-    content_hash VARCHAR(32) NOT NULL,
-    token_count INTEGER NOT NULL DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'pending',
-    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    vocabulary_version INTEGER DEFAULT 1,
-    error_message TEXT,
-    
-    UNIQUE(post_id, field_type, chunk_index),
-    CHECK (
-        (field_type IN ('title', 'excerpt') AND chunk_index IS NULL) OR
-        (field_type = 'chunk' AND chunk_index IS NOT NULL)
-    )
-);
-
--- Ensure vocabulary_version column exists (for updates to existing tables)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name = 'wp_posts_tfidf_300' 
-        AND column_name = 'vocabulary_version'
-    ) THEN
-        ALTER TABLE wp_posts_tfidf_300 ADD COLUMN vocabulary_version INT DEFAULT 1;
-    END IF;
-END $$;
-
--- Single HNSW index for TF-IDF (optimized for row-per-embedding)
-CREATE INDEX IF NOT EXISTS idx_wp_posts_tfidf_300_embedding_hnsw 
-ON wp_posts_tfidf_300 USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
-
-CREATE INDEX IF NOT EXISTS idx_wp_posts_tfidf_300_post_id ON wp_posts_tfidf_300(post_id);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_tfidf_300_field_type ON wp_posts_tfidf_300(field_type);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_tfidf_300_status ON wp_posts_tfidf_300(status);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_tfidf_300_vocab_version ON wp_posts_tfidf_300(vocabulary_version);
-
 -- OpenAI text-embedding-3-small (1536 dimensions)
 CREATE TABLE IF NOT EXISTS wp_posts_openai_text_embedding_3_small_1536 (
     id SERIAL PRIMARY KEY,
@@ -436,8 +392,6 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_hash ON wp_posts_cohere_embed
 -- ================================================
 -- HashingTF Murmur3 1024D (stateless internal embeddings)
 -- Stateless feature hashing — no vocabulary required.
--- tokenizer_version replaces vocabulary_version; the search function detects
--- absence of vocabulary_version at runtime and uses the dense/stateless path.
 -- ================================================
 CREATE TABLE IF NOT EXISTS wp_posts_hashingtf_murmur3_1024 (
     id SERIAL PRIMARY KEY,
@@ -465,20 +419,6 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_post_id ON wp_posts_hashi
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_field_type ON wp_posts_hashingtf_murmur3_1024(field_type);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_status ON wp_posts_hashingtf_murmur3_1024(status);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_tokenizer_version ON wp_posts_hashingtf_murmur3_1024(tokenizer_version);
-
--- Vocabulary cache for TF-IDF (stores entire vocabulary as JSONB)
-CREATE TABLE IF NOT EXISTS wp_posts_vocabulary_cache (
-    vocabulary_version INT PRIMARY KEY,
-    connection_name VARCHAR(255) NOT NULL DEFAULT 'default',
-    site_id BIGINT NOT NULL DEFAULT 1,
-    vocabulary_data JSONB NOT NULL,
-    post_count INT NOT NULL,
-    unique_terms INT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_vocabulary_version ON wp_posts_vocabulary_cache(vocabulary_version);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_connection ON wp_posts_vocabulary_cache(connection_name);
 
 -- ================================================
 -- RPC FUNCTIONS
@@ -533,7 +473,7 @@ CREATE OR REPLACE FUNCTION search_rag_get_context(
     query_vector vector,
     match_count int DEFAULT 5,
     max_tokens int DEFAULT 2000,
-    vector_table_name text DEFAULT 'wp_posts_tfidf_300',
+    vector_table_name text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     post_types text[] DEFAULT NULL
 )
 RETURNS TABLE (
@@ -609,7 +549,6 @@ DECLARE
     v_version text;
     v_post_count bigint;
     v_chunk_count bigint;
-    v_tfidf_count bigint;
     v_openai_small_count bigint;
     v_openai_large_count bigint;
     v_gemini_count bigint;
@@ -626,7 +565,6 @@ BEGIN
     -- Get counts
     SELECT COUNT(*) INTO v_post_count FROM wp_posts;
     SELECT COUNT(*) INTO v_chunk_count FROM wp_posts_chunks;
-    SELECT COUNT(*) INTO v_tfidf_count FROM wp_posts_tfidf_300;
     SELECT COUNT(*) INTO v_openai_small_count FROM wp_posts_openai_text_embedding_3_small_1536;
     SELECT COUNT(*) INTO v_openai_large_count FROM wp_posts_openai_text_embedding_3_large_3072;
     SELECT COUNT(*) INTO v_gemini_count FROM wp_posts_gemini_gemini_embedding_2_3072;
@@ -644,7 +582,6 @@ BEGIN
         'version', COALESCE(v_version, 'unknown'),
         'post_count', COALESCE(v_post_count, 0),
         'chunk_count', COALESCE(v_chunk_count, 0),
-        'tfidf_embedding_count', COALESCE(v_tfidf_count, 0),
         'openai_small_embedding_count', COALESCE(v_openai_small_count, 0),
         'openai_large_embedding_count', COALESCE(v_openai_large_count, 0),
         'gemini_embedding_count', COALESCE(v_gemini_count, 0),
@@ -668,14 +605,12 @@ ALTER TABLE wp_postmeta ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_terms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_term_taxonomy ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_term_relationships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_posts_tfidf_300 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_small_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_large_3072 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_gemini_gemini_embedding_2_3072 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_voyage_voyage_4_1024 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_cohere_embed_v40_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_hashingtf_murmur3_1024 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_posts_vocabulary_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gg_schema_meta ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies (if any) before recreating
@@ -686,14 +621,12 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_postmeta;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_terms;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_term_taxonomy;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_term_relationships;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_tfidf_300;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_vocabulary_cache;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON gg_schema_meta;
 
 -- Create permissive policies for service_role
@@ -704,14 +637,12 @@ CREATE POLICY "Enable all access for service_role" ON wp_postmeta FOR ALL USING 
 CREATE POLICY "Enable all access for service_role" ON wp_terms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_term_taxonomy FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_term_relationships FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_tfidf_300 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_vocabulary_cache FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL USING (true) WITH CHECK (true);
 
 -- ================================================
@@ -739,7 +670,7 @@ $$;
 
 -- Core vector candidate generator for multi-model retrieval.
 -- Resolves the query vector and candidate set from the embedding model's registered table.
--- Handles TF-IDF (vocabulary-versioned), OpenAI dense, Cohere, and any future models
+-- Handles dense embedding models (HashingTF, OpenAI, Cohere) and any future models
 -- without hardcoding table names anywhere in the call chain.
 DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text);
 DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text, text);
@@ -767,51 +698,15 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_query_vector         vector;
-    v_vocab_filter_clause  text    := '';
-    v_latest_vocab_version int;
-    v_has_vocab_col        int     := 0;
-    v_valid_vector_count   int     := 0;
+    v_query_vector       vector;
+    v_valid_vector_count int := 0;
 BEGIN
     IF precomputed_query_vector IS NOT NULL AND precomputed_query_vector <> '' THEN
         EXECUTE 'SELECT $1::vector' INTO v_query_vector USING precomputed_query_vector;
     END IF;
 
-    -- Determine whether this table uses vocabulary versioning (TF-IDF style models).
-    -- Dense embedding models (OpenAI, Cohere, etc.) do not carry this column.
     IF v_query_vector IS NULL THEN
-        SELECT COUNT(*) INTO v_has_vocab_col
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name   = vector_table
-          AND column_name  = 'vocabulary_version';
-
-        IF v_has_vocab_col > 0 THEN
-            -- TF-IDF / vocabulary-versioned model path.
-            SELECT COALESCE(MAX(vocabulary_version), 1) INTO v_latest_vocab_version
-            FROM wp_posts_vocabulary_cache;
-
-            EXECUTE format(
-                'SELECT COUNT(*) FROM %I WHERE vocabulary_version = $1',
-                vector_table
-            ) INTO v_valid_vector_count USING v_latest_vocab_version;
-
-            IF v_valid_vector_count < 10 THEN
-                RETURN;
-            END IF;
-
-            v_vocab_filter_clause := format('AND v.vocabulary_version = %L', v_latest_vocab_version);
-
-            -- Query vector via vocabulary-aware document averaging.
-            SELECT gen.vector INTO v_query_vector
-            FROM gg_generate_search_vector(
-                search_text, search_language, vector_table, vector_column,
-                v_vocab_filter_clause, v_latest_vocab_version
-            ) gen;
-
-        ELSE
-            -- Dense embedding model path (OpenAI, Cohere, future providers).
-            -- No vocabulary versioning; just confirm embeddings exist.
+        -- Confirm embeddings exist before querying.
             EXECUTE format(
                 'SELECT COUNT(*) FROM (SELECT 1 FROM %I WHERE embedding IS NOT NULL LIMIT 10) sub',
                 vector_table
@@ -821,7 +716,7 @@ BEGIN
                 RETURN;
             END IF;
 
-            -- Query vector via document averaging without vocabulary_version filter.
+            -- Query vector via document averaging.
             -- Use pre-computed search_vector_weighted (GIN-indexed) instead of
             -- recomputing to_tsvector on every embedding row.
             EXECUTE format(
@@ -843,7 +738,6 @@ BEGIN
                  ) v',
                 vector_table
             ) INTO v_query_vector USING search_language, search_text;
-        END IF;
     END IF;
 
     IF v_query_vector IS NULL THEN
@@ -875,13 +769,11 @@ BEGIN
              v.embedding IS NOT NULL
              AND (1.0 - (v.embedding <=> $1)) > 0.5
              AND p.post_type   = ANY($2)
-             AND p.post_status = ''publish''
-             %s
-         ORDER BY v.embedding <=> $1 ASC
-         LIMIT $3',
-        vector_table,
-        v_vocab_filter_clause
-    )
+              AND p.post_status = ''publish''
+          ORDER BY v.embedding <=> $1 ASC
+          LIMIT $3',
+         vector_table
+     )
     USING v_query_vector, post_types, GREATEST(limit_count, 20);
 
 END;
@@ -901,7 +793,7 @@ CREATE OR REPLACE FUNCTION search_native_orchestrate(
     enable_trigram boolean DEFAULT false,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT false,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     rrf_k integer DEFAULT 60,
     precomputed_query_vector text DEFAULT NULL
@@ -1094,7 +986,7 @@ CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     enable_trigram boolean DEFAULT true,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT true,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     metadata_filter jsonb DEFAULT '{}'::jsonb,
     rrf_k integer DEFAULT 60
@@ -1326,47 +1218,21 @@ $$;
 -- Drop old helper function signatures
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text);
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text);
+DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text, text);
 
 -- Helper function: Generate search vector using document averaging
 -- For row-per-embedding schema, averages embeddings from matching documents
--- p_vocab_filter_clause / p_vocab_version: pre-resolved vocabulary info from caller.
--- When both are provided, information_schema and vocab cache lookups are skipped.
 CREATE OR REPLACE FUNCTION gg_generate_search_vector(
     search_text text,
     search_language text DEFAULT 'english',
-    vector_table_name text DEFAULT 'wp_posts_tfidf_300',
-    vector_column_name text DEFAULT 'embedding',
-    p_vocab_filter_clause text DEFAULT NULL,
-    p_vocab_version int DEFAULT NULL
+    vector_table_name text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
+    vector_column_name text DEFAULT 'embedding'
 )
 RETURNS TABLE (vector vector) 
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-    v_has_vocab_col       INT := 0;
-    v_latest_vocab_version INT;
-    v_vocab_clause        TEXT := '';
 BEGIN
-    -- Use pre-resolved vocabulary info when caller provides it (fast path).
-    -- Otherwise query information_schema and vocab cache (standalone / RPC path).
-    IF p_vocab_filter_clause IS NOT NULL AND p_vocab_version IS NOT NULL THEN
-        v_vocab_clause := p_vocab_filter_clause;
-    ELSE
-        SELECT COUNT(*) INTO v_has_vocab_col
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name   = vector_table_name
-          AND column_name  = 'vocabulary_version';
-
-        IF v_has_vocab_col > 0 THEN
-            SELECT COALESCE(MAX(vocabulary_version), 1) INTO v_latest_vocab_version
-            FROM wp_posts_vocabulary_cache;
-
-            v_vocab_clause := format('AND v.vocabulary_version = %L', v_latest_vocab_version);
-        END IF;
-    END IF;
-
     -- Use pre-computed search_vector_weighted (GIN-indexed) when language
     -- matches the indexed column, avoiding per-row to_tsvector recomputation.
     IF search_language = 'english' THEN
@@ -1378,14 +1244,13 @@ BEGIN
                 INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
                 WHERE 
                     v.embedding IS NOT NULL
-                    %s
                     AND pc.search_vector_weighted @@ plainto_tsquery(%L::regconfig, %L)
                 ORDER BY 
                     ts_rank_cd(pc.search_vector_weighted, plainto_tsquery(%L::regconfig, %L)) DESC,
                     CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
                 LIMIT 10
             ) v
-        ', vector_table_name, v_vocab_clause, search_language, search_text);
+        ', vector_table_name, search_language, search_text);
     ELSE
         RETURN QUERY EXECUTE format('
             SELECT AVG(v.embedding)::vector
@@ -1395,13 +1260,12 @@ BEGIN
                 INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
                 WHERE 
                     v.embedding IS NOT NULL
-                    %s
                     AND to_tsvector(%L::regconfig, pc.post_title_clean || '' '' || pc.post_content_clean) @@ plainto_tsquery(%L::regconfig, %L)
                 ORDER BY 
                     CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
                 LIMIT 10
             ) v
-        ', vector_table_name, v_vocab_clause, search_language, search_language, search_text);
+        ', vector_table_name, search_language, search_language, search_text);
     END IF;
 END;
 $$;
@@ -1460,7 +1324,7 @@ USING GIN (to_tsvector('english', post_title_clean || ' ' || post_content_clean)
 -- 5. enable_trigram: Enable typo tolerance with word similarity matching (default: false)
 -- 6. similarity_threshold: Minimum similarity score 0.0-1.0 (default: 0.3)
 -- 7. enable_vector: Enable semantic vector search for related content (default: false)
--- 8. vector_table: Name of the vector table (default: 'wp_posts_tfidf_300')
+-- 8. vector_table: Name of the vector table (default: 'wp_posts_hashingtf_murmur3_1024')
 -- 9. vector_column: Name of the embedding column (default: 'embedding')
 --
 -- ============================================

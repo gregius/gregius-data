@@ -726,7 +726,7 @@ class GG_Data_Search_Integration {
 				':enable_trigram'           => $typo_tolerance ? 'true' : 'false',
 				':similarity_threshold'     => $similarity_threshold,
 				':enable_vector'            => $vector_search ? 'true' : 'false',
-				':vector_table'             => ! empty( $vector_table ) ? $vector_table : 'wp_posts_tfidf_300',
+				':vector_table'             => ! empty( $vector_table ) ? $vector_table : 'wp_posts_hashingtf_murmur3_1024',
 				':vector_column'            => ! empty( $vector_column ) ? $vector_column : 'embedding',
 				':rrf_k'                    => 60,
 				':precomputed_query_vector' => $precomputed_query_vector,
@@ -1065,7 +1065,7 @@ class GG_Data_Search_Integration {
 			'enable_trigram'       => $typo_tolerance,
 			'similarity_threshold' => (float) $similarity_threshold,
 			'enable_vector'        => $vector_search,
-			'vector_table'         => ! empty( $vector_table ) ? $vector_table : 'wp_posts_tfidf_300',
+			'vector_table'         => ! empty( $vector_table ) ? $vector_table : 'wp_posts_hashingtf_murmur3_1024',
 			'vector_column'        => ! empty( $vector_column ) ? $vector_column : 'embedding',
 			'rrf_k'                => 60,
 		);
@@ -1171,11 +1171,11 @@ class GG_Data_Search_Integration {
 	 * Uses row-per-embedding schema with single 'embedding' column and 'field_type' for differentiation.
 	 *
 	 * @param string $connection_name Connection name.
-	 * @param string $model_key       Embedding model key (e.g., 'tfidf-300').
+	 * @param string $model_key       Embedding model key (e.g., 'hashingtf-murmur3-1024').
 	 * @return array|WP_Error {
 	 *     Vector table configuration or error.
 	 *
-	 *     @type string $table_name        PostgreSQL table name (e.g., 'wp_posts_tfidf_300').
+	 *     @type string $table_name        PostgreSQL table name (e.g., 'wp_posts_hashingtf_murmur3_1024').
 	 *     @type string $content_column    Column name for vectors (always 'embedding' in row-per-embedding schema).
 	 * }
 	 */
@@ -1227,7 +1227,7 @@ class GG_Data_Search_Integration {
 	 * Determines which embedding model to use based on:
 	 * 1. Explicit parameter (highest priority)
 	 * 2. Connection's search setting
-	 * 3. Default fallback (tfidf-300)
+	 * 3. Default fallback (hashingtf-murmur3-1024)
 	 *
 	 * @param string      $connection_name Connection name.
 	 * @param string|null $model_key_param Optional model key passed as parameter.
@@ -1246,7 +1246,7 @@ class GG_Data_Search_Integration {
 		}
 
 		// Priority 3: Default fallback.
-		return 'tfidf-300';
+		return 'hashingtf-murmur3-1024';
 	}
 
 	/**

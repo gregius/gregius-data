@@ -146,7 +146,7 @@ Acceptance baseline:
 |---|---|---|
 | CLI-FR-01, CLI-QR-05 | `includes/cli/class-gg-data-cli.php` | Namespace and command registration contracts |
 | CLI-FR-02, CLI-DR-01, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
-| CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-vectors.php` | Vector commands, batch bounds, vocabulary step, summary output |
+| CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
 | CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-OR-06, CLI-QR-04 | `includes/cli/class-gg-data-cli-answer.php` | Query contract, prompt override handling, tracking control, errors |
 | CLI-FR-05, CLI-DR-04, CLI-DR-07 | `includes/cli/class-gg-data-cli-list-connections.php`, `includes/cli/class-gg-data-cli-list-models.php` | Connections/models inventory command contracts and optional list-connections enrichment flags |
 | CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-06 | `includes/cli/class-gg-data-cli-logs.php` | Logs management command contracts and validation |

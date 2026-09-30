@@ -79,7 +79,6 @@ The provider architecture operates as a foundational layer within the Gregius Da
 | PDO | PHP Data Objects |
 | RPC | Remote Procedure Call |
 | LLM | Large Language Model |
-| TF-IDF | Term Frequency–Inverse Document Frequency |
 | API | Application Programming Interface |
 
 ## 2. References
@@ -130,7 +129,7 @@ Requirement notation:
 | PA-FR-14 | The AI provider registry MUST allow third-party code to register additional AI providers via a WordPress filter without modifying core plugin files. | Must |
 | PA-FR-15 | The software MUST provide a fluent AI client facade that allows callers to initiate a text generation request and optionally chain provider, model, system message, and named connection selections before executing. | Must |
 | PA-FR-16 | The AI client facade MUST support per-request selection of a named connection, enabling multiple API credentials to be used for the same provider type. | Must |
-| PA-FR-17 | The software MUST ship native AI provider implementations for: OpenAI, Anthropic, Google Gemini, DeepSeek, Voyage AI, Cohere, and an internal provider with TF-IDF 300D and HashingTF Murmur3 1024D embedding models. | Must |
+| PA-FR-17 | The software MUST ship native AI provider implementations for: OpenAI, Anthropic, Google Gemini, DeepSeek, Voyage AI, Cohere, and an internal provider with the HashingTF Murmur3 1024D embedding model. | Must |
 
 #### 3.1.3 Tool Calling Strategy Layer
 

@@ -203,7 +203,6 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 ### AD-01: ReflectionClass::newInstanceWithoutConstructor for coupled constructors
 
-**Context:** Many plugin classes (GG_Data_HashingTF_Embeddings, GG_Data_TFIDF_300_Embeddings, GG_Data_Content_Cleaner, GG_Data_DB, GG_Data_Settings_Manager, GG_Data_Vector_Generator) create their own internal dependencies in constructors rather than accepting them as parameters.
 
 **Decision:** Tests create instances via `ReflectionClass::newInstanceWithoutConstructor()` and inject mock dependencies through private property reflection.
 

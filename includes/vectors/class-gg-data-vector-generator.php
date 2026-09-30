@@ -3,7 +3,7 @@
  * Vector Generator Orchestrator
  *
  * Routes vector generation requests to appropriate strategy implementations
- * based on model configuration (TF-IDF vs API embeddings).
+ * based on model configuration (internal hashing vs API embeddings).
  *
  * @package Gregius_Data
  * @subpackage GG_Data/includes/vectors
@@ -63,10 +63,6 @@ class GG_Data_Vector_Generator {
 	 * @return void
 	 */
 	private function register_default_strategies(): void {
-		// Register TF-IDF strategy (internal, free).
-		require_once GG_DATA_PLUGIN_DIR . 'includes/vectors/strategies/class-gg-data-tfidf-strategy.php';
-		$this->register_strategy( new GG_Data_TFIDF_Strategy() );
-
 		// Register API embeddings strategy (OpenAI, Voyage AI, etc).
 		require_once GG_DATA_PLUGIN_DIR . 'includes/vectors/strategies/class-gg-data-api-embeddings-strategy.php';
 		$this->register_strategy( new GG_Data_API_Embeddings_Strategy() );

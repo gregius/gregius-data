@@ -97,9 +97,6 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-benchmark-service.php', // Benchmark orchestration service.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-evaluation-service.php', // Evaluation orchestration service.
 	GG_DATA_PLUGIN_DIR . 'includes/sync/class-gg-data-sync-hooks.php', // Sync hooks.
-	GG_DATA_PLUGIN_DIR . 'includes/vectors/class-gg-data-tfidf-300-embeddings.php', // TF-IDF 300D embeddings.
-	GG_DATA_PLUGIN_DIR . 'includes/vectors/class-gg-data-vocabulary-manager.php', // Vocabulary cache manager.
-	GG_DATA_PLUGIN_DIR . 'includes/vectors/class-gg-data-vector-processor.php', // Vector processing controller.
 	GG_DATA_PLUGIN_DIR . 'includes/vectors/interface-gg-data-vector-strategy.php', // Vector strategy interface.
 	GG_DATA_PLUGIN_DIR . 'includes/vectors/class-gg-data-vector-generator.php', // Vector generator orchestrator.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-admin.php', // Admin interface (menu + React dashboard container, no duplicate AJAX).
@@ -290,7 +287,7 @@ function gg_data_register_providers( $providers ) {
 	// Register Cohere provider (Rerank only - Industry-leading reranking).
 	$providers['cohere'] = new GG_Data_Cohere_Provider();
 
-	// Register Internal provider (TF-IDF Embeddings - Free Tier).
+	// Register Internal provider (HashingTF Embeddings - Free Tier).
 	$providers['internal'] = new GG_Data_Internal_Provider();
 
 	return $providers;

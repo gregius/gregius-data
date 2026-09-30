@@ -98,7 +98,7 @@ Vector commands generate and rebuild semantic embeddings from your synced conten
 | Flag | Default | Description |
 |---|---|---|
 | `--connection` | `gregius-data` | Target data connection name |
-| `--embedding-model` | `tfidf-300` | Embedding model ID to use |
+| `--embedding-model` | `hashingtf-murmur3-1024` | Embedding model ID to use |
 | `--post-type` | `all` | Specific post type to process |
 | `--batch-size` | `50` | Items per batch (max `200`) |
 | `--force` | off | Force regeneration even when vectors exist |
@@ -131,7 +131,7 @@ wp gg-data answer <query>
 | Flag | Default | Description |
 |---|---|---|
 | `--connection` | `gregius-data` | Target data connection |
-| `--embedding-model` | `tfidf-300` | Embedding model for search |
+| `--embedding-model` | `hashingtf-murmur3-1024` | Embedding model for search |
 | `--agentic-model` | (none) | Model for agentic routing |
 | `--rerank-model` | (none) | Model for result reranking |
 | `--answer-model` | `gpt-4o-mini` | Model for answer generation |

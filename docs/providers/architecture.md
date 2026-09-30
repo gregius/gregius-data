@@ -239,7 +239,7 @@ AI Registry
 4. **Concrete Providers** (7 implementations):
    - OpenAI, Anthropic, Gemini, DeepSeek: LLM support
    - Voyage, Cohere: Embedding/reranking support
-   - Internal: TF-IDF 300D and HashingTF Murmur3 1024D embeddings (free, no API required)
+   - Internal: HashingTF Murmur3 1024D embeddings (free, no API required)
 
 5. **Tool Strategy Layer** — per-provider adapters:
    - OpenAI/DeepSeek native format (function objects)

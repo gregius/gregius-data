@@ -153,7 +153,7 @@ Overridden permission checks:
   "source": { "type": "frontend" },
   "models": {
     "agentic": "gpt-4o-mini",
-    "embedding": "tfidf-300",
+    "embedding": "hashingtf-murmur3-1024",
     "rerank": "rerank-2.5",
     "answer": "deepseek-reasoner"
   },

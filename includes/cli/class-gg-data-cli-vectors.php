@@ -84,7 +84,7 @@ class GG_Data_CLI_Vectors {
 	 * [--embedding-model=<model>]
 	 * : Embedding model to use.
 	 * ---
-	 * default: tfidf-300
+	 * default: hashingtf-murmur3-1024
 	 * ---
 	 *
 	 * [--post-type=<type>]
@@ -124,7 +124,7 @@ class GG_Data_CLI_Vectors {
 	 */
 	public function generate( $args, $assoc_args ) {
 		$connection      = $assoc_args['connection'] ?? 'gregius-data';
-		$embedding_model = $assoc_args['embedding-model'] ?? 'tfidf-300';
+		$embedding_model = $assoc_args['embedding-model'] ?? 'hashingtf-murmur3-1024';
 		$post_type       = $assoc_args['post-type'] ?? 'all';
 		$batch_size      = intval( $assoc_args['batch-size'] ?? 50 );
 		$format          = $assoc_args['format'] ?? 'table';
@@ -146,7 +146,7 @@ class GG_Data_CLI_Vectors {
 	 * [--embedding-model=<model>]
 	 * : Embedding model to use.
 	 * ---
-	 * default: tfidf-300
+	 * default: hashingtf-murmur3-1024
 	 * ---
 	 *
 	 * [--post-type=<type>]
@@ -189,7 +189,7 @@ class GG_Data_CLI_Vectors {
 	 */
 	public function rebuild( $args, $assoc_args ) {
 		$connection      = $assoc_args['connection'] ?? 'gregius-data';
-		$embedding_model = $assoc_args['embedding-model'] ?? 'tfidf-300';
+		$embedding_model = $assoc_args['embedding-model'] ?? 'hashingtf-murmur3-1024';
 		$post_type       = $assoc_args['post-type'] ?? 'all';
 		$batch_size      = intval( $assoc_args['batch-size'] ?? 50 );
 		$format          = $assoc_args['format'] ?? 'table';
@@ -231,12 +231,6 @@ class GG_Data_CLI_Vectors {
 		$action    = $rebuild ? 'Rebuilding' : 'Generating';
 
 		WP_CLI::log( sprintf( '%s vectors for %d posts in %d batches...', $action, $total, $batches ) );
-
-		// If using TF-IDF, build vocabulary first.
-		if ( strpos( $embedding_model, 'tfidf' ) !== false ) {
-			WP_CLI::log( 'Building vocabulary...' );
-			$this->build_vocabulary( $connection );
-		}
 
 		$progress = \WP_CLI\Utils\make_progress_bar( "{$action} vectors", $total );
 		$results  = array();
@@ -284,28 +278,6 @@ class GG_Data_CLI_Vectors {
 
 		// Output results.
 		$this->output_results( $results, $format, $processed, $failed, $duration, $avg_time, $rebuild );
-	}
-
-	/**
-	 * Build vocabulary for TF-IDF
-	 *
-	 * @param string $connection Connection name.
-	 */
-	private function build_vocabulary( $connection ) {
-		$vocab_manager = new GG_Data_Vocabulary_Manager( $connection );
-		$result        = $vocab_manager->build_vocabulary();
-
-		if ( is_wp_error( $result ) ) {
-			WP_CLI::warning( 'Vocabulary build failed: ' . $result->get_error_message() );
-		} else {
-			WP_CLI::log(
-				sprintf(
-					'Vocabulary built: %d terms from %d posts',
-					$result['term_count'] ?? 0,
-					$result['post_count'] ?? 0
-				)
-			);
-		}
 	}
 
 	/**

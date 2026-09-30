@@ -70,7 +70,7 @@ class GG_Data_HashingTF_Strategy implements GG_Data_Vector_Strategy_Interface {
 	 * Check if strategy supports a specific model
 	 *
 	 * Matches models with provider='internal' and model_key containing 'hashingtf'.
-	 * Intentionally does not match 'tfidf' keys — each internal strategy is narrowly scoped.
+	 * Scoped narrowly to the internal HashingTF model.
 	 *
 	 * @since 1.0.0
 	 * @param array $model Model configuration.

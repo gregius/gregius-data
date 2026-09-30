@@ -51,7 +51,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 	const [savingTypoSettings, setSavingTypoSettings] = useState(false);
 
 	// Embedding model state
-	const [embeddingModel, setEmbeddingModel] = useState('tfidf-300');
+	const [embeddingModel, setEmbeddingModel] = useState('hashingtf-murmur3-1024');
 	const [availableModels, setAvailableModels] = useState([]);
 	const [loadingModels, setLoadingModels] = useState(false);
 	const [savingEmbeddingModel, setSavingEmbeddingModel] = useState(false);
@@ -348,7 +348,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 	// Load available embedding models from the selected search connection
 	const loadAvailableModels = async () => {
 		if (!searchConnection) {
-			setAvailableModels([{ model_key: 'tfidf-300', model_name: 'TF-IDF 300D' }]);
+			setAvailableModels([{ model_key: 'hashingtf-murmur3-1024', model_name: 'Hashing TF Murmur3 1024D' }]);
 			return;
 		}
 
@@ -367,7 +367,6 @@ const SearchSettingsCard = ({ connections = [] }) => {
 						.split('-')
 						.map(word => word.charAt(0).toUpperCase() + word.slice(1))
 						.join(' ')
-						.replace('Tfidf', 'TF-IDF')
 						.replace(/(\d+)D?$/, '$1D');
 					
 					return {
@@ -378,11 +377,11 @@ const SearchSettingsCard = ({ connections = [] }) => {
 				setAvailableModels(models);
 			} else {
 				// Use default if no models configured
-				setAvailableModels([{ model_key: 'tfidf-300', model_name: 'TF-IDF 300D' }]);
+				setAvailableModels([{ model_key: 'hashingtf-murmur3-1024', model_name: 'Hashing TF Murmur3 1024D' }]);
 			}
 		} catch (err) {
 			// Use default if loading fails
-			setAvailableModels([{ model_key: 'tfidf-300', model_name: 'TF-IDF 300D' }]);
+			setAvailableModels([{ model_key: 'hashingtf-murmur3-1024', model_name: 'Hashing TF Murmur3 1024D' }]);
 		} finally {
 			setLoadingModels(false);
 		}

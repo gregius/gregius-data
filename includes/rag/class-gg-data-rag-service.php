@@ -150,7 +150,7 @@ class GG_Data_RAG_Service {
 	 *
 	 * @since 1.0.0
 	 * @param string $connection_name Connection name.
-	 * @param string $embedding_model_key Embedding model key (e.g., 'tfidf-300', 'text-embedding-3-small').
+	 * @param string $embedding_model_key Embedding model key (e.g., 'hashingtf-murmur3-1024', 'text-embedding-3-small').
 	 */
 	public function __construct( $connection_name, $embedding_model_key ) {
 		$this->connection_name     = $connection_name;

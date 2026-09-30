@@ -31,7 +31,7 @@ $$;
 
 -- Core vector candidate generator for multi-model retrieval.
 -- Resolves the query vector and candidate set from the embedding model's registered table.
--- Handles TF-IDF (vocabulary-versioned), OpenAI dense, Cohere, and any future models
+-- Handles dense embedding models (HashingTF, OpenAI, Cohere) and any future models
 -- without hardcoding table names anywhere in the call chain.
 DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text);
 DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text, text);
@@ -59,51 +59,15 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_query_vector         vector;
-    v_vocab_filter_clause  text    := '';
-    v_latest_vocab_version int;
-    v_has_vocab_col        int     := 0;
-    v_valid_vector_count   int     := 0;
+    v_query_vector       vector;
+    v_valid_vector_count int := 0;
 BEGIN
     IF precomputed_query_vector IS NOT NULL AND precomputed_query_vector <> '' THEN
         EXECUTE 'SELECT $1::vector' INTO v_query_vector USING precomputed_query_vector;
     END IF;
 
-    -- Determine whether this table uses vocabulary versioning (TF-IDF style models).
-    -- Dense embedding models (OpenAI, Cohere, etc.) do not carry this column.
     IF v_query_vector IS NULL THEN
-        SELECT COUNT(*) INTO v_has_vocab_col
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name   = vector_table
-          AND column_name  = 'vocabulary_version';
-
-        IF v_has_vocab_col > 0 THEN
-            -- TF-IDF / vocabulary-versioned model path.
-            SELECT COALESCE(MAX(vocabulary_version), 1) INTO v_latest_vocab_version
-            FROM wp_posts_vocabulary_cache;
-
-            EXECUTE format(
-                'SELECT COUNT(*) FROM %I WHERE vocabulary_version = $1',
-                vector_table
-            ) INTO v_valid_vector_count USING v_latest_vocab_version;
-
-            IF v_valid_vector_count < 10 THEN
-                RETURN;
-            END IF;
-
-            v_vocab_filter_clause := format('AND v.vocabulary_version = %L', v_latest_vocab_version);
-
-            -- Query vector via vocabulary-aware document averaging.
-            SELECT gen.vector INTO v_query_vector
-            FROM gg_generate_search_vector(
-                search_text, search_language, vector_table, vector_column,
-                v_vocab_filter_clause, v_latest_vocab_version
-            ) gen;
-
-        ELSE
-            -- Dense embedding model path (OpenAI, Cohere, future providers).
-            -- No vocabulary versioning; just confirm embeddings exist.
+        -- Confirm embeddings exist before querying.
             EXECUTE format(
                 'SELECT COUNT(*) FROM (SELECT 1 FROM %I WHERE embedding IS NOT NULL LIMIT 10) sub',
                 vector_table
@@ -113,7 +77,7 @@ BEGIN
                 RETURN;
             END IF;
 
-            -- Query vector via document averaging without vocabulary_version filter.
+            -- Query vector via document averaging.
             -- Use pre-computed search_vector_weighted (GIN-indexed) instead of
             -- recomputing to_tsvector on every embedding row.
             EXECUTE format(
@@ -135,7 +99,6 @@ BEGIN
                  ) v',
                 vector_table
             ) INTO v_query_vector USING search_language, search_text;
-        END IF;
     END IF;
 
     IF v_query_vector IS NULL THEN
@@ -167,13 +130,11 @@ BEGIN
              v.embedding IS NOT NULL
              AND (1.0 - (v.embedding <=> $1)) > 0.5
              AND p.post_type   = ANY($2)
-             AND p.post_status = ''publish''
-             %s
-         ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
-         LIMIT $3',
-        vector_table,
-        v_vocab_filter_clause
-    )
+              AND p.post_status = ''publish''
+          ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
+          LIMIT $3',
+         vector_table
+     )
     USING v_query_vector, post_types, GREATEST(limit_count, 20);
 
 END;
@@ -193,7 +154,7 @@ CREATE OR REPLACE FUNCTION search_native_orchestrate(
     enable_trigram boolean DEFAULT false,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT false,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     rrf_k integer DEFAULT 60,
     precomputed_query_vector text DEFAULT NULL
@@ -385,7 +346,7 @@ CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     enable_trigram boolean DEFAULT true,
     similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT true,
-    vector_table text DEFAULT 'wp_posts_tfidf_300',
+    vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     metadata_filter jsonb DEFAULT '{}'::jsonb,
     rrf_k integer DEFAULT 60
@@ -618,47 +579,21 @@ $$;
 -- Drop old helper function signatures
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text);
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text);
+DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text, text);
 
 -- Helper function: Generate search vector using document averaging
 -- For row-per-embedding schema, averages embeddings from matching documents
--- p_vocab_filter_clause / p_vocab_version: pre-resolved vocabulary info from caller.
--- When both are provided, information_schema and vocab cache lookups are skipped.
 CREATE OR REPLACE FUNCTION gg_generate_search_vector(
     search_text text,
     search_language text DEFAULT 'english',
-    vector_table_name text DEFAULT 'wp_posts_tfidf_300',
-    vector_column_name text DEFAULT 'embedding',
-    p_vocab_filter_clause text DEFAULT NULL,
-    p_vocab_version int DEFAULT NULL
+    vector_table_name text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
+    vector_column_name text DEFAULT 'embedding'
 )
 RETURNS TABLE (vector vector) 
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-    v_has_vocab_col       INT := 0;
-    v_latest_vocab_version INT;
-    v_vocab_clause        TEXT := '';
 BEGIN
-    -- Use pre-resolved vocabulary info when caller provides it (fast path).
-    -- Otherwise query information_schema and vocab cache (standalone / RPC path).
-    IF p_vocab_filter_clause IS NOT NULL AND p_vocab_version IS NOT NULL THEN
-        v_vocab_clause := p_vocab_filter_clause;
-    ELSE
-        SELECT COUNT(*) INTO v_has_vocab_col
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name   = vector_table_name
-          AND column_name  = 'vocabulary_version';
-
-        IF v_has_vocab_col > 0 THEN
-            SELECT COALESCE(MAX(vocabulary_version), 1) INTO v_latest_vocab_version
-            FROM wp_posts_vocabulary_cache;
-
-            v_vocab_clause := format('AND v.vocabulary_version = %L', v_latest_vocab_version);
-        END IF;
-    END IF;
-
     -- Use pre-computed search_vector_weighted (GIN-indexed) when language
     -- matches the indexed column, avoiding per-row to_tsvector recomputation.
     IF search_language = 'english' THEN
@@ -670,14 +605,13 @@ BEGIN
                 INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
                 WHERE 
                     v.embedding IS NOT NULL
-                    %s
                     AND pc.search_vector_weighted @@ plainto_tsquery(%L::regconfig, %L)
                 ORDER BY 
                     ts_rank_cd(pc.search_vector_weighted, plainto_tsquery(%L::regconfig, %L)) DESC,
                     CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
                 LIMIT 10
             ) v
-        ', vector_table_name, v_vocab_clause, search_language, search_text);
+        ', vector_table_name, search_language, search_text);
     ELSE
         RETURN QUERY EXECUTE format('
             SELECT AVG(v.embedding)::vector
@@ -687,13 +621,12 @@ BEGIN
                 INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
                 WHERE 
                     v.embedding IS NOT NULL
-                    %s
                     AND to_tsvector(%L::regconfig, pc.post_title_clean || '' '' || pc.post_content_clean) @@ plainto_tsquery(%L::regconfig, %L)
                 ORDER BY 
                     CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
                 LIMIT 10
             ) v
-        ', vector_table_name, v_vocab_clause, search_language, search_language, search_text);
+        ', vector_table_name, search_language, search_language, search_text);
     END IF;
 END;
 $$;
@@ -753,7 +686,7 @@ USING GIN (to_tsvector('english', post_title_clean || ' ' || post_content_clean)
 -- 5. enable_trigram: Enable typo tolerance with word similarity matching (default: false)
 -- 6. similarity_threshold: Minimum similarity score 0.0-1.0 (default: 0.3)
 -- 7. enable_vector: Enable semantic vector search for related content (default: false)
--- 8. vector_table: Name of the vector table (default: 'wp_posts_tfidf_300')
+-- 8. vector_table: Name of the vector table (default: 'wp_posts_hashingtf_murmur3_1024')
 -- 9. vector_column: Name of the embedding column (default: 'embedding')
 --
 -- ============================================

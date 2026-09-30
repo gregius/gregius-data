@@ -392,26 +392,6 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 				// Use metadata for PostgreSQL counts (already tracked in wp_gg_sync_metadata.pg_count).
 				$pg_total = (int) $mysql_data['synced'];
 
-				// Legacy RPC check (unreachable - metadata is source of truth).
-				if ( false && $rpc_summary && isset( $rpc_summary['success'] ) && $rpc_summary['success'] ) {
-					switch ( $entity_type ) {
-						case 'term':
-							$pg_total = isset( $rpc_summary['terms'] ) ? (int) $rpc_summary['terms'] : 0;
-							break;
-						case 'term_taxonomy':
-							$pg_total = isset( $rpc_summary['term_taxonomy'] ) ? (int) $rpc_summary['term_taxonomy'] : 0;
-							break;
-						case 'term_relationship':
-							$pg_total = isset( $rpc_summary['term_relationships'] ) ? (int) $rpc_summary['term_relationships'] : 0;
-							break;
-						case 'postmeta':
-							$pg_total = isset( $rpc_summary['postmeta'] ) ? (int) $rpc_summary['postmeta'] : 0;
-							break;
-						case 'post':
-							// Handled per post type below.
-							break;
-					}
-				}
 				// Fallback: Query actual PostgreSQL tables for real-time counts.
 				// Use provider if it supports count_records (Supabase).
 				// NOTE: We intentionally skip live remote queries here to rely on the metadata table (wp_gg_sync_metadata)

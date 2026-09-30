@@ -47,7 +47,7 @@ const ModelsPage = () => {
     // Cohere
     "embed-v4.0": 1536,
     // Internal
-    "tfidf-300": 300,
+    "hashingtf-murmur3-1024": 1024,
   };
 
   // Model context window limits (tokens)
@@ -843,7 +843,7 @@ const ModelsPage = () => {
                   setFormData({ ...formData, dimensions: val })
                 }
                 help={__(
-                  "Automatically set based on model. TF-IDF: 300, OpenAI small: 1536, OpenAI large: 3072",
+                  "Automatically set based on model. OpenAI small: 1536, OpenAI large: 3072",
                   "gregius-data",
                 )}
                 disabled={true}

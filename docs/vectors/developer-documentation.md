@@ -7,7 +7,7 @@ Standard: ISO/IEC/IEEE 26514:2022
 This document explains how to use, operate, and extend the Gregius Data vectors and embeddings subsystem.
 
 Audience:
-- Core contributors maintaining vector generation, strategy routing, and vocabulary operations
+- Core contributors maintaining vector generation, strategy routing, and generation operations
 - Integrators working with model configuration and connection-level embedding behavior
 - Engineers validating vector contracts consumed by Search and RAG
 
@@ -19,7 +19,6 @@ Companion documents:
 
 Covered:
 - Vector orchestration and strategy contracts
-- Vocabulary lifecycle endpoints and behaviors
 - Vector queue, generation, status, and clear endpoints
 - Connection-model association endpoints
 - Row-per-embedding storage contract and integration boundaries
@@ -62,15 +61,10 @@ Required generation response keys:
 - `failed`
 - `total_tokens`
 
-### 3.3 Vocabulary Manager (`GG_Data_Vocabulary_Manager`)
 
-Source: [../../includes/vectors/class-gg-data-vocabulary-manager.php](../../includes/vectors/class-gg-data-vocabulary-manager.php)
 
 Core responsibilities:
-- Build and cache vocabulary from `wp_posts_clean` corpus.
 - Route execution by connection provider type (PDO vs PostgREST/Supabase compatible).
-- Validate vocabulary readiness and drift state.
-- Clear cached vocabulary artifacts.
 
 ### 3.4 Vector Queue REST Controller (`GG_Data_REST_Vector_Queue_Controller`)
 
@@ -81,12 +75,9 @@ Core responsibilities:
 - Expose status and posts-list diagnostics.
 - Expose vector clear operation.
 
-### 3.5 Vocabulary REST Controller (`GG_Data_REST_Vocabulary_Controller`)
 
-Source: [../../includes/api/class-gg-data-rest-vocabulary-controller.php](../../includes/api/class-gg-data-rest-vocabulary-controller.php)
 
 Core responsibilities:
-- Expose vocabulary prepare/status/cache-clear operations.
 - Return connection-scoped status metadata for operators.
 
 ### 3.6 Connection Models REST Controller (`GG_Data_REST_Connection_Models_Controller`)
@@ -106,7 +97,7 @@ Sources:
 
 Core responsibilities:
 - Generate 1024-dimensional vectors via PHP-native MurmurHash3 feature hashing.
-- Require no vocabulary preparation — generation can run immediately after schema creation.
+- Require no preparation step — generation can run immediately after schema creation.
 - Use signed hashing (sign bit from hash byte) to reduce collision accumulation bias.
 - Apply field-type weighting (title 1.5×, excerpt 1.2×, chunk 1.0×) and L2 normalization.
 - Implement row-per-embedding storage under `wp_posts_hashingtf_murmur3_1024`.
@@ -137,10 +128,6 @@ Batch delete contract notes:
 - Returns progress fields: `deleted`, `total_deleted`, `has_more`, `next_offset`, `duration_ms`, `errors`.
 - Includes an anti-loop safety guard if zero rows are deleted while rows still remain.
 
-Vocabulary management:
-- `POST /vocabulary/prepare`
-- `GET /vocabulary/status`
-- `DELETE /vocabulary/cache`
 
 Connection-model associations:
 - `GET /connections/{connection}/vectors/models`
@@ -170,7 +157,7 @@ Behavior notes:
 - `vector_table_name` determines target embedding table per model.
 - `provider` and `model_type` drive strategy selection.
 - Connection-model association controls which models are active for a connection.
-- Internal models that use `tokenizer_version` (e.g. HashingTF) trigger regeneration by bumping the version constant, not by vocabulary invalidation.
+- Internal models that use `tokenizer_version` (e.g. HashingTF) trigger regeneration by bumping the version constant, not by content invalidation.
 
 ## 6. Storage Contract
 
@@ -185,12 +172,11 @@ Expected per-row shape:
 - `token_count`
 - `status`
 - `generated_at`
-- Optional model-specific metadata (for example `model_used`, `vocabulary_version`)
+- Optional model-specific metadata (for example `model_used`)
 
 Contract invariants:
 - Uniqueness across `post_id + field_type + chunk_index`.
 - Field-type semantics must remain stable for consumer weighting and deduplication flows.
-- Model-specific metadata columns are independent per model family: `vocabulary_version` for TF-IDF; `model_used` for API-provider models; `tokenizer_version` for HashingTF. No column uniformity is required or enforced across model families.
 
 ## 7. Extension Points
 
@@ -202,7 +188,7 @@ Practical guidance:
 - Keep `supports_model()` deterministic and narrowly scoped.
 - Return normalized result keys regardless of strategy internals.
 - Preserve connection-aware behavior and error payload consistency.
-- For stateless internal strategies (e.g. hashing), omit vocabulary readiness checks — generation must be immediately runnable without any preparation step.
+- For stateless internal strategies (e.g. hashing), omit any preparation checks — generation must be immediately runnable without any preparation step.
 
 ### 7.2 Extend Provider/Model Coverage
 
@@ -226,8 +212,6 @@ Practical guidance:
 
 ### 8.3 Provider-Path Behavior
 
-- Vocabulary manager detects connection type and uses matching execution path.
-- Maintain parity for vocabulary and generation outcomes across connection types.
 - Batch deletion follows provider parity as well:
 	- PDO: SQL `SELECT id`, `DELETE ... IN (...)`, `COUNT(*)`.
 	- PostgREST/Supabase: provider `get_ids`, `delete_ids`, `count_records`.
@@ -240,13 +224,6 @@ Checklist:
 - Verify model exists in registry for connection.
 - Verify expected fallback/global model scope when connection-local model is missing.
 - Verify model key supplied to route matches registry entry exactly.
-
-### 9.2 TF-IDF Generation Fails Due to Vocabulary State
-
-Checklist:
-- Run `POST /vocabulary/prepare` for target connection.
-- Check `GET /vocabulary/status` for readiness and drift indicators.
-- Re-run generation after cache refresh if status indicates regeneration need.
 
 ### 9.3 Connection-Based Endpoint Errors
 
@@ -282,7 +259,6 @@ Checklist:
 ## 10. Traceability (SRS Mapping)
 
 - Orchestration and strategy behavior: [SRS: VEC-FR-01, VEC-FR-02, VEC-FR-03, VEC-DR-01, VEC-DR-02]
-- Vocabulary lifecycle: [SRS: VEC-FR-04, VEC-FR-05, VEC-FR-06, VEC-OR-06]
 - Route and permissions controls: [SRS: VEC-FR-07, VEC-FR-08, VEC-FR-09, VEC-OR-01]
 - Storage and contract invariants: [SRS: VEC-FR-10, VEC-DR-03, VEC-DR-04, VEC-QR-02]
 - Quality/parity expectations: [SRS: VEC-QR-03, VEC-QR-04, VEC-QR-05, VEC-QR-08]

@@ -30,7 +30,7 @@ const PROGRESS_STAGES = {
  *
  * @param {Object} props Component properties.
  * @param {string} props.connectionId PostgreSQL connection ID.
- * @param {string} props.embeddingModelKey Embedding model key (e.g., 'tfidf-300').
+ * @param {string} props.embeddingModelKey Embedding model key (e.g., 'hashingtf-murmur3-1024').
  * @param {string} props.llmModelId LLM model ID for answer generation.
  * @param {string} props.rewriteModelId LLM model ID for query rewriting (optional).
  * @param {string} props.rerankModelId Rerank model ID for result reranking (optional).
