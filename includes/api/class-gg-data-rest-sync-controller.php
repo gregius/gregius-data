@@ -299,37 +299,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			)
 		);
 
-		// POST /gg-data/v1/sync/post-type/{type}.
-		register_rest_route(
-			$this->namespace,
-			'/' . $this->rest_base . '/post-type/(?P<type>[a-zA-Z0-9_-]+)',
-			array(
-				array(
-					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'sync_post_type' ),
-					'permission_callback' => array( $this, 'permissions_check' ),
-					'args'                => array(
-						'type'       => array(
-							'description' => __( 'Post type to sync', 'gregius-data' ),
-							'type'        => 'string',
-							'required'    => true,
-						),
-						'connection' => array(
-							'description' => __( 'Connection name to sync to', 'gregius-data' ),
-							'type'        => 'string',
-							'default'     => 'default',
-							'required'    => false,
-						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
-							'required'    => false,
-						),
-					),
-				),
-			)
-		);
 
 		// POST /gg-data/v1/sync/post-type/{type}/clean.
 		register_rest_route(
@@ -1672,54 +1641,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 		}
 	}
 
-	/**
-	 * Sync specific post type
-	 *
-	 * @param WP_REST_Request $request Full data about the request.
-	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
-	 */
-	public function sync_post_type( $request ) {
-		try {
-			$post_type       = $request->get_param( 'type' );
-			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
-
-			$service = new GG_Data_Sync_Service( $connection_name );
-			$results = $service->sync_post_type( $post_type, $site_id );
-
-			// Check if there was an error during sync.
-			if ( isset( $results['error'] ) ) {
-				return new WP_Error(
-					'post_type_sync_failed',
-					$results['error'],
-					array( 'status' => 400 )
-				);
-			}
-
-			return rest_ensure_response(
-				array(
-					'success'   => true,
-					'data'      => $results,
-					'message'   => sprintf(
-					/* translators: 1: post type, 2: number synced, 3: number failed */
-						__( 'Synced %1$d/%2$d %3$s posts', 'gregius-data' ),
-						$results['success'],
-						$results['total'],
-						$post_type
-					),
-					'timestamp' => current_time( 'mysql' ),
-				)
-			);
-
-		} catch ( Exception $e ) {
-			return new WP_Error(
-				'post_type_sync_failed',
-				/* translators: %s: error message */
-				sprintf( __( 'Post type sync failed: %s', 'gregius-data' ), $e->getMessage() ),
-				array( 'status' => 500 )
-			);
-		}
-	}
 
 	/**
 	 * Sync postmeta in bulk with smart scoping

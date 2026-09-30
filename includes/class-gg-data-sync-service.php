@@ -90,49 +90,6 @@ class GG_Data_Sync_Service {
 		return $result;
 	}
 
-	/**
-	 * Sync all posts of a specific type (Legacy/Full Sync)
-	 *
-	 * @param string $post_type Post type slug.
-	 * @param int    $site_id   Site ID.
-	 * @return array Result array.
-	 * @throws Exception On error.
-	 */
-	public function sync_post_type( $post_type, $site_id = 1 ) {
-		$this->logger->log(
-			sprintf( 'Sync Service: Starting full sync for post type "%s"', $post_type ),
-			'info',
-			'sync',
-			$this->connection_name,
-			array(
-				'post_type' => $post_type,
-				'site_id'   => $site_id,
-			)
-		);
-
-		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-post-sync.php';
-		$syncer = new GG_Data_Post_Sync( $this->connection_name );
-		$result = $syncer->sync_post_type( $post_type, $site_id );
-
-		$this->logger->log(
-			sprintf(
-				'Sync Service: Completed full sync for post type "%s" - %d synced',
-				$post_type,
-				isset( $result['synced'] ) ? $result['synced'] : 0
-			),
-			'info',
-			'sync',
-			$this->connection_name,
-			array(
-				'post_type' => $post_type,
-				'synced'    => isset( $result['synced'] ) ? $result['synced'] : 0,
-				'failed'    => isset( $result['failed'] ) ? $result['failed'] : 0,
-				'total'     => isset( $result['total'] ) ? $result['total'] : 0,
-			)
-		);
-
-		return $result;
-	}
 
 	/**
 	 * Batch sync postmeta
@@ -445,11 +402,7 @@ class GG_Data_Sync_Service {
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-clean-batch.php';
 		$cleaner = new GG_Data_Clean_Batch( $this->connection_name );
 
-		if ( method_exists( $cleaner, 'batch_clean_post_type' ) ) {
-			$result = $cleaner->batch_clean_post_type( $post_type, $batch_size, $offset );
-		} else {
-			$result = $cleaner->clean_post_type( $post_type, $batch_size );
-		}
+		$result = $cleaner->batch_clean_post_type( $post_type, $batch_size, $offset );
 
 		$this->logger->log(
 			sprintf(

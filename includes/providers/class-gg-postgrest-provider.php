@@ -243,12 +243,6 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 			if ( isset( $schema_result['version'] ) ) {
 				$result['version'] = $schema_result['version'];
 			}
-
-			// Check for pgvector extension.
-			$extensions_check = $this->execute_rpc( 'check_extensions', array() );
-			if ( ! empty( $extensions_check ) ) {
-				$result['extensions'] = $extensions_check;
-			}
 		}
 
 		return $result;
