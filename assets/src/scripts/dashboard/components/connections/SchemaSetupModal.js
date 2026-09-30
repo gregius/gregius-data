@@ -26,7 +26,6 @@ const SchemaSetupModal = ({
     isOpen, 
     onRequestClose, 
     connectionName,
-    dashboardUrl,
     onSuccess 
 }) => {
     const [sqlContent, setSqlContent] = useState('');

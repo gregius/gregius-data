@@ -117,11 +117,11 @@ const ConnectionForm = ({
 
         // Type-specific validation
         if (formData.type === 'postgrest') {
-            // PostgREST validation (Supabase, Neon, etc.)
+            // Supabase (PostgREST) validation
             if (!formData.project_url || formData.project_url.trim() === '') {
                 newErrors.project_url = __('Project URL is required', 'gregius-data');
-            } else if (!/^https:\/\/.+\.supabase\.co$/.test(formData.project_url.trim())) {
-                newErrors.project_url = __('Invalid Supabase URL format (should be https://xxx.supabase.co)', 'gregius-data');
+            } else if (!/^https?:\/\/[^\s]+$/i.test(formData.project_url.trim())) {
+                newErrors.project_url = __('Invalid URL. Enter a valid http(s):// URL.', 'gregius-data');
             }
 
             if (!formData.publishable_key || formData.publishable_key.trim() === '') {
@@ -194,10 +194,6 @@ const ConnectionForm = ({
                 if (formData.secret_key && formData.secret_key !== '***') {
                     submitData.secret_key = formData.secret_key;
                 }
-                // Include access_token if provided (stored for future Edge Functions deployment)
-                if (formData.access_token && formData.access_token !== '***') {
-                    submitData.access_token = formData.access_token;
-                }
             } else {
                 // PostgreSQL fields
                 submitData.host = formData.host;
@@ -237,7 +233,6 @@ const ConnectionForm = ({
                 newData.project_url = '';
                 newData.publishable_key = '';
                 newData.secret_key = '';
-                newData.access_token = '';
             } else {
                 newData.host = 'localhost';
                 newData.port = 5432;
@@ -325,7 +320,7 @@ const ConnectionForm = ({
                 {formData.type === 'postgrest' ? (
                     <fieldset style={{ border: '1px solid #ddd', padding: '16px', borderRadius: '4px' }}>
                         <legend style={{ fontWeight: 'bold', padding: '0 8px' }}>
-                            {__('Supabase Project Details', 'gregius-data')}
+                            {__('PostgREST Project Details', 'gregius-data')}
                         </legend>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -335,8 +330,8 @@ const ConnectionForm = ({
                                 value={formData.project_url || ''}
                                 onChange={(value) => handleFieldChange('project_url', value)}
                                 error={errors.project_url}
-                                placeholder="https://abcdefgh.supabase.co"
-                                help={__('Your Supabase project URL (Settings → API → Project URL)', 'gregius-data')}
+                                placeholder="https://host:port"
+                                help={__('Your PostgREST endpoint URL (e.g. https://your-project.supabase.co or http://host:54421)', 'gregius-data')}
                                 __next40pxDefaultSize={true}
                                 __nextHasNoMarginBottom={true}
                             />

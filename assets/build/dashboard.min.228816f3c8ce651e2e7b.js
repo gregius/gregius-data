@@ -769,11 +769,11 @@ const ConnectionForm = ({
 
     // Type-specific validation
     if (formData.type === 'postgrest') {
-      // PostgREST validation (Supabase, Neon, etc.)
+      // Supabase (PostgREST) validation
       if (!formData.project_url || formData.project_url.trim() === '') {
         newErrors.project_url = (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Project URL is required', 'gregius-data');
-      } else if (!/^https:\/\/.+\.supabase\.co$/.test(formData.project_url.trim())) {
-        newErrors.project_url = (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Invalid Supabase URL format (should be https://xxx.supabase.co)', 'gregius-data');
+      } else if (!/^https?:\/\/[^\s]+$/i.test(formData.project_url.trim())) {
+        newErrors.project_url = (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Invalid URL. Enter a valid http(s):// URL.', 'gregius-data');
       }
       if (!formData.publishable_key || formData.publishable_key.trim() === '') {
         newErrors.publishable_key = (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Publishable Key is required', 'gregius-data');
@@ -837,10 +837,6 @@ const ConnectionForm = ({
         if (formData.secret_key && formData.secret_key !== '***') {
           submitData.secret_key = formData.secret_key;
         }
-        // Include access_token if provided (stored for future Edge Functions deployment)
-        if (formData.access_token && formData.access_token !== '***') {
-          submitData.access_token = formData.access_token;
-        }
       } else {
         // PostgreSQL fields
         submitData.host = formData.host;
@@ -881,7 +877,6 @@ const ConnectionForm = ({
         newData.project_url = '';
         newData.publishable_key = '';
         newData.secret_key = '';
-        newData.access_token = '';
       } else {
         newData.host = 'localhost';
         newData.port = 5432;
@@ -956,7 +951,7 @@ const ConnectionForm = ({
             fontWeight: 'bold',
             padding: '0 8px'
           },
-          children: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Supabase Project Details', 'gregius-data')
+          children: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('PostgREST Project Details', 'gregius-data')
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
           style: {
             display: 'flex',
@@ -968,8 +963,8 @@ const ConnectionForm = ({
             value: formData.project_url || '',
             onChange: value => handleFieldChange('project_url', value),
             error: errors.project_url,
-            placeholder: "https://abcdefgh.supabase.co",
-            help: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Your Supabase project URL (Settings → API → Project URL)', 'gregius-data'),
+            placeholder: "https://host:port",
+            help: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)('Your PostgREST endpoint URL (e.g. https://your-project.supabase.co or http://host:54421)', 'gregius-data'),
             __next40pxDefaultSize: true,
             __nextHasNoMarginBottom: true
           })
@@ -1556,7 +1551,6 @@ const ConnectionList = ({
         setSchemaModalConnection(null);
       },
       connectionName: Object.keys(connections).find(name => connections[name] === schemaModalConnection),
-      dashboardUrl: schemaModalConnection.project_url ? `${schemaModalConnection.project_url.replace('/rest/v1', '')}/sql/new` : null,
       onSuccess: handleSchemaSetupSuccess
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
       style: {
@@ -1868,7 +1862,6 @@ const SchemaSetupModal = ({
   isOpen,
   onRequestClose,
   connectionName,
-  dashboardUrl,
   onSuccess
 }) => {
   const [sqlContent, setSqlContent] = (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_0__.useState)('');
@@ -5530,7 +5523,7 @@ __webpack_require__.r(__webpack_exports__);
  * - Error handling and retry logic
  * - Cancellation support via AbortController
  *
- * Reusable for TF-IDF, API embeddings, and future post deletion.
+ * Reusable for internal hashing, API embeddings, and future post deletion.
  *
  * @package    Gregius_Data
  * @subpackage Gregius_Data/assets/src/scripts/dashboard/components/vectors
@@ -5989,10 +5982,9 @@ const ConnectionsPage = ({
     setCrudError(null);
     setCrudSuccess(null);
 
-    // Extract name and access_token from connectionData, rest goes into config
+    // Extract name from connectionData, rest goes into config
     const {
       name,
-      access_token,
       ...configFields
     } = connectionData;
 
@@ -6020,16 +6012,11 @@ const ConnectionsPage = ({
       sanitizedConfig.ssl_mode = typeof configFields.ssl_mode === "string" ? configFields.ssl_mode : "";
     }
     try {
-      // Make API call directly in component - POST expects { name, config, access_token }
+      // Make API call directly in component
       const requestData = {
         name: name,
         config: sanitizedConfig
       };
-
-      // Add access_token for Supabase connections (one-time use)
-      if (providerType === "postgrest" && access_token) {
-        requestData.access_token = access_token;
-      }
       const response = await _wordpress_api_fetch__WEBPACK_IMPORTED_MODULE_4___default()({
         path: "/gg-data/v1/connections",
         method: "POST",
@@ -7622,7 +7609,7 @@ const ModelsPage = () => {
             ...formData,
             dimensions: val
           }),
-          help: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)("Automatically set based on model. TF-IDF: 300, OpenAI small: 1536, OpenAI large: 3072", "gregius-data"),
+          help: (0,_wordpress_i18n__WEBPACK_IMPORTED_MODULE_1__.__)("Automatically set based on model. OpenAI small: 1536, OpenAI large: 3072", "gregius-data"),
           disabled: true,
           __next40pxDefaultSize: true,
           __nextHasNoMarginBottom: true
@@ -11788,4 +11775,4 @@ window.ggPgDashboard = {
 
 /******/ })()
 ;
-//# sourceMappingURL=dashboard.min.37507f2ca1f47bae8871.js.map
+//# sourceMappingURL=dashboard.min.228816f3c8ce651e2e7b.js.map

@@ -327,10 +327,6 @@ const ConnectionList = ({
                     connectionName={Object.keys(connections).find(
                         name => connections[name] === schemaModalConnection
                     )}
-                    dashboardUrl={schemaModalConnection.project_url 
-                        ? `${schemaModalConnection.project_url.replace('/rest/v1', '')}/sql/new` 
-                        : null
-                    }
                     onSuccess={handleSchemaSetupSuccess}
                 />
             )}

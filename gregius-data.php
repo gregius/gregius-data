@@ -113,7 +113,6 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-schema-controller.php', // Schema API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-sync-controller.php', // Sync API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-vector-queue-controller.php', // Vector Queue API.
-	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-vocabulary-controller.php', // Vocabulary API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-retry-queue-controller.php', // Retry Queue API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-connection-health-controller.php', // Connection Health API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-sync-validator-controller.php', // Sync Validator API.

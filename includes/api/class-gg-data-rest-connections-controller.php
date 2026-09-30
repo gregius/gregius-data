@@ -786,12 +786,6 @@ class GG_Data_REST_Connections_Controller extends WP_REST_Controller {
 					'is_active'       => array( 'type' => 'boolean' ),
 				),
 			),
-			'access_token' => array(
-				'description'       => 'Supabase Management API access token (one-time use, not stored)',
-				'type'              => 'string',
-				'required'          => false,
-				'sanitize_callback' => 'sanitize_text_field',
-			),
 		);
 	}
 

@@ -78,8 +78,8 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
     setCrudError(null);
     setCrudSuccess(null);
 
-    // Extract name and access_token from connectionData, rest goes into config
-    const { name, access_token, ...configFields } = connectionData;
+    // Extract name from connectionData, rest goes into config
+    const { name, ...configFields } = connectionData;
 
     // Sanitize config based on provider type
     const providerType = configFields.type || "postgresql";
@@ -127,16 +127,11 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
     }
 
     try {
-      // Make API call directly in component - POST expects { name, config, access_token }
+      // Make API call directly in component
       const requestData = {
         name: name,
         config: sanitizedConfig,
       };
-
-      // Add access_token for Supabase connections (one-time use)
-      if (providerType === "postgrest" && access_token) {
-        requestData.access_token = access_token;
-      }
 
       const response = await apiFetch({
         path: "/gg-data/v1/connections",

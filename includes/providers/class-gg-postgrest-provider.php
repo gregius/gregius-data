@@ -570,7 +570,7 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * @return array|WP_Error Canonical runtime config or error when required fields are missing.
 	 */
 	public static function get_runtime_supabase_config( $connection_config ) {
-		$project_url     = isset( $connection_config['project_url'] ) ? trim( (string) $connection_config['project_url'] ) : '';
+		$project_url     = isset( $connection_config['project_url'] ) ? rtrim( trim( (string) $connection_config['project_url'] ), '/' ) : '';
 		$publishable_key = isset( $connection_config['publishable_key'] ) ? (string) $connection_config['publishable_key'] : '';
 		$secret_key      = isset( $connection_config['secret_key'] ) ? (string) $connection_config['secret_key'] : '';
 

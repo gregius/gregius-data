@@ -639,7 +639,7 @@ class GG_Data_Settings_Manager {
 		}
 
 		$masked         = $config;
-		$sensitive_keys = array( 'password', 'publishable_key', 'secret_key', 'access_token', 'api_key', 'token' );
+		$sensitive_keys = array( 'password', 'publishable_key', 'secret_key', 'api_key', 'token' );
 
 		foreach ( $sensitive_keys as $key ) {
 			if ( isset( $masked[ $key ] ) && '' !== (string) $masked[ $key ] ) {
