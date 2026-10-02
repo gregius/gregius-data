@@ -86,6 +86,7 @@ const EXCLUDE_PATTERNS = [
 	'*.tmp',
 	'*.md',
 	'*.zip',
+	'*.map',
 
 	// Test files
 	'tests',

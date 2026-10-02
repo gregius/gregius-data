@@ -79,9 +79,10 @@ const EXCLUDE_PATTERNS = [
 	'composer.json',
 	'composer.lock',
 
-	// Markdown and zips
+	// Markdown, zips, and source maps
 	'*.md',
 	'*.zip',
+	'*.map',
 ];
 
 function shouldExclude( filePath ) {
