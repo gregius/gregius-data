@@ -58,6 +58,51 @@ class GG_Data_SSE_Handler {
 	}
 
 	/**
+	 * Whether the anonymous streaming request exceeds the guest rate limit.
+	 *
+	 * Mirrors the REST limiter (SEC-003): a bounded number of anonymous requests
+	 * per window, keyed by client IP. Limits/window reuse the REST controller
+	 * constants so both surfaces stay consistent.
+	 *
+	 * @since 1.0.0
+	 * @return bool True if the request should be blocked.
+	 */
+	private function is_guest_stream_rate_limited() {
+		$limit  = (int) apply_filters( 'gg_data_rag_rate_limit_anonymous', GG_Data_REST_RAG_Controller::RATE_LIMIT_ANON, null, 'stream' );
+		$window = (int) apply_filters( 'gg_data_rag_rate_limit_window_seconds', GG_Data_REST_RAG_Controller::RATE_LIMIT_WINDOW_SECONDS, null, 'stream', 'anonymous' );
+
+		if ( $limit < 1 || $window < 1 ) {
+			return false;
+		}
+
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) ) : '';
+		if ( '' === $ip ) {
+			return false;
+		}
+
+		$now   = time();
+		$key   = GG_Data_REST_RAG_Controller::RATE_LIMIT_KEY_PREFIX . 'anonymous_stream_' . wp_hash( $ip );
+		$state = get_transient( $key );
+
+		if ( ! is_array( $state ) || ! isset( $state['count'], $state['window_started'] ) ) {
+			$state = array(
+				'count'          => 0,
+				'window_started' => $now,
+			);
+		}
+
+		if ( absint( $state['count'] ) >= $limit ) {
+			return true;
+		}
+
+		$state['count'] = absint( $state['count'] ) + 1;
+		$ttl            = max( 1, absint( $state['window_started'] ) + $window - $now );
+		set_transient( $key, $state, $ttl );
+
+		return false;
+	}
+
+	/**
 	 * Handle streaming failure logging.
 	 *
 	 * Logs streaming failures for diagnostics without blocking the user.
@@ -125,7 +170,13 @@ class GG_Data_SSE_Handler {
 
 		// Apply permission filter (same as REST endpoint).
 		// Can return: true (allow), false (deny), or WP_Error (deny with message).
-		$allowed = apply_filters( 'gg_data_rag_endpoint_permission', false, null );
+		// A route+params context is passed so the policy can evaluate guest access.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Endpoint nonce verified above; the policy sanitizes each field it reads.
+		$permission_context = (object) array(
+			'route'  => 'gg-data/rag/stream',
+			'params' => $_POST,
+		);
+		$allowed = apply_filters( 'gg_data_rag_endpoint_permission', false, $permission_context );
 		if ( is_wp_error( $allowed ) ) {
 			$this->send_error( $allowed->get_error_message() );
 			exit;
@@ -133,6 +184,13 @@ class GG_Data_SSE_Handler {
 		if ( ! $allowed ) {
 			$this->send_error( 'You do not have permission to access this endpoint.' );
 			exit;
+		}
+
+		// Initialize the guest session before streaming begins so the
+		// `gg_rag_sid` cookie is set while headers can still be sent (a
+		// streaming response cannot set cookies after output starts).
+		if ( ! is_user_logged_in() ) {
+			GG_Data_Interaction::get_guest_session_hash( true );
 		}
 
 		/**
@@ -149,6 +207,13 @@ class GG_Data_SSE_Handler {
 		$rate_limit_check = apply_filters( 'gg_data_rag_rate_limit', true, get_current_user_id() );
 		if ( is_wp_error( $rate_limit_check ) ) {
 			$this->send_error( $rate_limit_check->get_error_message() );
+			exit;
+		}
+
+		// Guest throttle (parity with the REST limiter, SEC-003): limit anonymous
+		// streaming requests per client IP.
+		if ( ! is_user_logged_in() && $this->is_guest_stream_rate_limited() ) {
+			$this->send_error( 'Too many requests. Please retry later.' );
 			exit;
 		}
 

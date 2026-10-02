@@ -50,6 +50,9 @@ export default function ChatInterface({
     securityPromptId = 0,
     placeholder,
     useSSE = true,
+    guestAccessNonce = '',
+    guestAccessBlockId = '',
+    guestAccessPostId = 0,
 }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [testQuery, setTestQuery] = useState('');
@@ -546,6 +549,9 @@ export default function ChatInterface({
                         security_prompt_id: parseInt(securityPromptId, 10) || 0,
                         messages: getMessagesForAPI(),
                         conversation_id: conversationId,
+                        guest_access_nonce: guestAccessNonce || '',
+                        guest_access_block_id: guestAccessBlockId || '',
+                        guest_access_post_id: String(guestAccessPostId || 0),
                     },
                 });
 
@@ -573,6 +579,9 @@ export default function ChatInterface({
             getMessagesForAPI,
             handleComplete,
             handleError,
+            guestAccessNonce,
+            guestAccessBlockId,
+            guestAccessPostId,
         ]
     );
 
@@ -666,6 +675,9 @@ export default function ChatInterface({
             formData.append('security_prompt_id', (parseInt(securityPromptId, 10) || 0).toString());
             formData.append('messages', JSON.stringify(getMessagesForAPI()));
             formData.append('conversation_id', conversationId);
+            formData.append('guest_access_nonce', guestAccessNonce || '');
+            formData.append('guest_access_block_id', guestAccessBlockId || '');
+            formData.append('guest_access_post_id', String(guestAccessPostId || 0));
 
             const abortController = new AbortController();
             requestAbortControllerRef.current = abortController;
@@ -786,6 +798,9 @@ export default function ChatInterface({
             handleError,
             sendWithREST,
             logStreamingFailure,
+            guestAccessNonce,
+            guestAccessBlockId,
+            guestAccessPostId,
         ]
     );
 

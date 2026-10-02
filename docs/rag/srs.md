@@ -126,7 +126,7 @@ Requirement notation:
 | RAG-FR-30 | The software MUST expose a REST endpoint for session-bound guest journey continuity that accepts a reference identifier, optional block metadata, and returns a journey interaction record for first-time or prior session users. | Must |
 | RAG-FR-31 | The software MUST expose a REST endpoint to retrieve and append RAG interactions to an existing session-bound journey record via a session hash ownership mechanism that validates caller session state. | Must |
 | RAG-FR-32 | The software MUST expose a REST endpoint to list RAG interactions within a session-bound journey that applies guest session hash validation and returns interaction history scoped to the caller's session. | Must |
-| RAG-FR-33 | The software MUST support per-surface permission seed behavior where RAG chat and action endpoints use fail-closed default permission (deny unless explicitly allowed), and journey and SSE endpoints use fail-open default permission (allow unless explicitly denied). | Must |
+| RAG-FR-33 | The software MUST support per-surface permission seed behavior where RAG chat and action endpoints use fail-closed default permission (deny unless explicitly allowed), and journey and SSE endpoints use fail-closed default permission (deny unless explicitly allowed). | Must |
 
 ### 3.2 Data and Contract Requirements
 

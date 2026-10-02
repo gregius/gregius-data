@@ -365,8 +365,8 @@ This filter uses different permission seed defaults depending on which endpoint 
 | Surface | Endpoint | Seed | Semantics |
 |---|---|---|---|
 | RAG Chat/Action | `POST /rag/chat`, `POST /rag/action`, `GET /rag/actions` | Fail-Closed (False) | Default deny unless filter explicitly allows |
-| RAG Journey | `POST /rag/journey/issue`, `POST /rag/journey/consume`, `GET /rag/journey/history` | Fail-Open (True) | Default allow unless filter explicitly denies |
-| SSE Streaming | `GET /rag/stream` | Fail-Open (True) | Default allow unless filter explicitly denies |
+| RAG Journey | `POST /rag/journey/issue`, `POST /rag/journey/consume`, `GET /rag/journey/history` | Fail-Closed (False) | Default deny unless filter explicitly allows |
+| SSE Streaming | `GET /rag/stream` | Fail-Closed (False) | Default deny unless filter explicitly allows |
 
 **Filter Return Values:**
 - Return `true` to allow access (overrides seed).
@@ -376,7 +376,7 @@ This filter uses different permission seed defaults depending on which endpoint 
 
 **Use Cases:**
 - Tighten RAG chat/action access to capability-gated only (fail-closed by default).
-- Block guest journey access during maintenance (fail-open by default, so explicit deny required).
+- Block guest journey access during maintenance (fail-closed by default, so explicit allow required).
 - Implement custom rate-limiting or soft-throttling by returning rate-limit `WP_Error`.
 - Route-scoped or request-aware permission logic based on `$request` context.
 

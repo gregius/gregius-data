@@ -24,23 +24,24 @@ $prompt_id           = isset( $attributes['promptId'] ) ? absint( $attributes['p
 $security_prompt_id  = isset( $attributes['securityPromptId'] ) ? absint( $attributes['securityPromptId'] ) : 0;
 $placeholder         = isset( $attributes['placeholder'] ) ? $attributes['placeholder'] : __( 'Ask a question...', 'gregius-data' );
 $enable_streaming    = isset( $attributes['enableStreaming'] ) ? (bool) $attributes['enableStreaming'] : true;
-$require_login       = isset( $attributes['requireLogin'] ) ? wp_validate_boolean( $attributes['requireLogin'] ) : true;
-$access_level        = 'logged_in';
+$require_login = isset( $attributes['requireLogin'] ) ? wp_validate_boolean( $attributes['requireLogin'] ) : true;
 
-if ( class_exists( 'GG_Data_Settings_Manager' ) ) {
-	$settings_manager = new GG_Data_Settings_Manager();
-	$access_level     = (string) $settings_manager->get( 'rag_access_level', 'logged_in' );
-}
+// Site-wide policy is filter-driven and fail-closed by default (logged_in).
+$access_level = (string) apply_filters( 'gg_data_rag_access_level', 'logged_in' );
 
-$access_level = apply_filters( 'gg_data_rag_access_level', $access_level );
-$guest_api_blocked   = ! is_user_logged_in() && 'public' !== $access_level;
-$effective_gate      = $require_login || $guest_api_blocked;
+// Guests may use a block that opts in (requireLogin = false), unless the
+// site-wide policy is `capability` (the only hard ceiling for guests).
+$guest_allowed = ( 'capability' !== $access_level )
+	&& ( 'public' === $access_level || ! $require_login );
 
-if ( $effective_gate && ! is_user_logged_in() ) {
+if ( ! is_user_logged_in() && ! $guest_allowed ) {
 	$login_url = wp_login_url( get_permalink() );
 	echo '<div class="gg-rag-login-required"><p>' . esc_html__( 'Please sign in to use this feature.', 'gregius-data' ) . ' <a href="' . esc_url( $login_url ) . '">' . esc_html__( 'Sign in', 'gregius-data' ) . '</a></p></div>';
 	return;
 }
+
+$guest_post_id      = get_queried_object_id();
+$guest_access_nonce = $guest_allowed ? wp_create_nonce( 'gg_rag_guest_access:' . $block_id . ':' . $guest_post_id ) : '';
 ?>
 
 <div
@@ -57,8 +58,11 @@ if ( $effective_gate && ! is_user_logged_in() ) {
 				'data-prompt-id'           => $prompt_id,
 				'data-security-prompt-id'  => $security_prompt_id,
 
-				'data-placeholder'         => $placeholder,
-				'data-enable-streaming'    => $enable_streaming ? 'true' : 'false',
+				'data-placeholder'           => $placeholder,
+				'data-enable-streaming'      => $enable_streaming ? 'true' : 'false',
+				'data-gg-block-id'           => $block_id,
+				'data-current-post-id'       => $guest_post_id,
+				'data-gg-guest-access-nonce' => $guest_access_nonce,
 			)
 		)
 	);

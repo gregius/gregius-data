@@ -355,14 +355,13 @@ The RAG subsystem exposes multiple surface entry points (REST chat/action/action
 | `POST /rag/chat` | RAG Controller | POST | Caller (logged-in or guest session) | Fail-Closed (False) | Fixed-window per-route | Chat may be public-eligible; guest session validates ownership via session hash |
 | `POST /rag/action` | RAG Controller | POST | Caller (logged-in or guest session) | Fail-Closed (False) | Fixed-window per-route | Action execution requires caller capability or public override; guest session validates ownership |
 | `GET /rag/actions` | RAG Controller | GET | Caller (logged-in or guest session) | Fail-Closed (False) | Per-scope default | Action discovery lists available tools; guest session does not require ownership for discovery |
-| `POST /rag/journey/issue` | Journey Controller | POST | Caller (guest session or new visitor) | Fail-Open (True) | Throttled by default | New or existing journey entry point; first-time users granted access unless blocked by override hook |
-| `POST /rag/journey/consume` | Journey Controller | POST | Caller (guest session only) | Fail-Open (True) | Per-scope default | Append to journey; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
-| `GET /rag/journey/history` | Journey Controller | GET | Caller (guest session only) | Fail-Open (True) | Per-scope default | Journey interaction history; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
-| `GET /rag/stream` (SSE) | SSE Handler | GET | Caller (logged-in or guest session) | Fail-Open (True) | Generic rate-limit filter | SSE streaming; guest session hashed for session-bound continuity when applicable |
+| `POST /rag/journey/issue` | Journey Controller | POST | Caller (guest session or new visitor) | Fail-Closed (False) | Throttled by default | New or existing journey entry point; first-time users granted access unless blocked by override hook |
+| `POST /rag/journey/consume` | Journey Controller | POST | Caller (guest session only) | Fail-Closed (False) | Per-scope default | Append to journey; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
+| `GET /rag/journey/history` | Journey Controller | GET | Caller (guest session only) | Fail-Closed (False) | Per-scope default | Journey interaction history; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
+| `GET /rag/stream` (SSE) | SSE Handler | GET | Caller (logged-in or guest session) | Fail-Closed (False) | Generic rate-limit filter | SSE streaming; guest session hashed for session-bound continuity when applicable |
 
 **Permission Seed Semantics:**
 - **Fail-Closed (False)**: Default deny. Endpoint returns 403 Forbidden unless the `gg_data_rag_endpoint_permission` filter explicitly grants access (e.g., for public chat or capability-gated actions).
-- **Fail-Open (True)**: Default allow. Endpoint grants access unless the `gg_data_rag_endpoint_permission` filter explicitly blocks access (e.g., to revoke guest journey access during maintenance).
 
 **Guest Session Ownership:**
 - Guest callers are identified by a hashed session credential computed from the WordPress authentication salts and stored in a browser cookie.

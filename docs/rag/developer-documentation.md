@@ -274,9 +274,6 @@ Create a new journey record or retrieve an existing guest session's journey for 
 **Required request fields:**
 - `reference` (string): A unique identifier for the conversation thread (e.g., post slug, custom ID).
 
-**Optional request fields:**
-- `block_id` (string): Gutenberg block ID for the initiating context.
-
 **Request behavior:**
 - If the caller's session hash matches an existing journey for the reference, the record is returned.
 - If the caller has no session hash yet, a new journey record is created and a session hash is issued.
@@ -619,7 +616,7 @@ Cause:
 - Guest journey access is denied by policy filter.
 
 Check:
-- Verify the `gg_data_rag_endpoint_permission` filter for journey endpoints; journey surfaces default to fail-open (allow unless explicitly denied).
+- Verify the `gg_data_rag_endpoint_permission` filter for journey endpoints; journey surfaces default to fail-closed (deny unless explicitly allowed).
 - Confirm no custom filter is overriding the permission on journey routes.
 
 Fix:

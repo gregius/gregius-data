@@ -5,6 +5,12 @@
  * Provides configurable access control for RAG endpoints.
  * Allows site administrators to control who can use the AI chat feature.
  *
+ * Access is governed by a site-wide policy (filter `gg_data_rag_access_level`:
+ * public | logged_in | capability) plus a per-block opt-in: a block rendered
+ * with `requireLogin = false` grants guests (anonymous users) access to the
+ * whitelisted RAG routes for that block's post. `capability` is the only hard
+ * ceiling for guests. Default is fail-closed (`logged_in`).
+ *
  * @package Gregius_Data
  * @since 1.0.0
  */
@@ -17,8 +23,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * RAG Security Hooks class.
  *
- * Implements default permission handling for RAG endpoints with
- * configurable access levels via settings and filter hooks.
+ * Implements default permission handling for RAG endpoints with a
+ * filter-configurable access level and per-block guest opt-in.
  *
  * @since 1.0.0
  */
@@ -32,12 +38,14 @@ class GG_Data_RAG_Security_Hooks {
 	const ACCESS_CAPABILITY = 'capability';  // Users with specific capability.
 
 	/**
-	 * Settings manager instance.
+	 * Nonce action prefix for guest (anonymous) block-scoped access.
+	 *
+	 * Full action: `gg_rag_guest_access:<block_id>:<post_id>`.
 	 *
 	 * @since 1.0.0
-	 * @var GG_Data_Settings_Manager
+	 * @var string
 	 */
-	private $settings;
+	const GUEST_NONCE_ACTION = 'gg_rag_guest_access';
 
 	/**
 	 * Constructor.
@@ -45,7 +53,6 @@ class GG_Data_RAG_Security_Hooks {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->settings = new GG_Data_Settings_Manager();
 		$this->register_hooks();
 	}
 
@@ -57,27 +64,30 @@ class GG_Data_RAG_Security_Hooks {
 	private function register_hooks() {
 		// Add default permission handling (priority 5 to run before custom filters).
 		add_filter( 'gg_data_rag_endpoint_permission', array( $this, 'check_access_permission' ), 5, 2 );
-
-		// Add settings registration for admin UI.
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
 	}
 
 	/**
-	 * Check access permission based on configured settings.
+	 * Check access permission based on the configured policy.
 	 *
-	 * This is the default permission handler. Site admins can:
-	 * 1. Configure via settings (gg_data_rag_access_level)
-	 * 2. Override via filter hooks at higher priority
+	 * Anonymous requests are first evaluated for per-block guest access; if not
+	 * granted, the site-wide access level applies. Logged-in behavior is
+	 * unchanged by the guest path.
 	 *
 	 * @since 1.0.0
-	 * @param bool                 $allowed Whether access is currently allowed.
-	 * @param WP_REST_Request|null $request Request object (null for AJAX). Reserved for future use.
+	 * @param bool                      $allowed Whether access is currently allowed.
+	 * @param WP_REST_Request|object|null $request Request, or a lightweight context object with
+	 *                                             public `route` + `params` (AJAX/SSE).
 	 * @return bool|WP_Error True if allowed, false or WP_Error to deny.
 	 */
-	public function check_access_permission( $allowed, $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Reserved for future per-request logic.
+	public function check_access_permission( $allowed, $request ) {
 		// Respect explicit errors from earlier filters.
 		if ( is_wp_error( $allowed ) ) {
 			return $allowed;
+		}
+
+		// Anonymous access granted by an opted-in block on a whitelisted route.
+		if ( ! is_user_logged_in() && $this->guest_allowed_for_request( $request ) ) {
+			return true;
 		}
 
 		// Get configured access level.
@@ -121,7 +131,10 @@ class GG_Data_RAG_Security_Hooks {
 	}
 
 	/**
-	 * Get the configured access level.
+	 * Get the configured site-wide access level.
+	 *
+	 * Fail-closed by default (`logged_in`); overridable via the
+	 * `gg_data_rag_access_level` filter.
 	 *
 	 * @since 1.0.0
 	 * @return string Access level constant.
@@ -133,10 +146,7 @@ class GG_Data_RAG_Security_Hooks {
 		 * @since 1.0.0
 		 * @param string $access_level One of: 'public', 'logged_in', 'capability'.
 		 */
-		return apply_filters(
-			'gg_data_rag_access_level',
-			$this->settings->get( 'rag_access_level', self::ACCESS_LOGGED_IN )
-		);
+		return apply_filters( 'gg_data_rag_access_level', self::ACCESS_LOGGED_IN );
 	}
 
 	/**
@@ -152,62 +162,109 @@ class GG_Data_RAG_Security_Hooks {
 		 * @since 1.0.0
 		 * @param string $capability WordPress capability required.
 		 */
-		return apply_filters(
-			'gg_data_rag_required_capability',
-			$this->settings->get( 'rag_required_capability', 'read' )
-		);
+		return apply_filters( 'gg_data_rag_required_capability', 'read' );
 	}
 
 	/**
-	 * Register settings for the admin UI.
+	 * Whether an anonymous request is authorized by an opted-in block.
+	 *
+	 * The nonce is issued server-side at render (post content or block-theme
+	 * template/part) only when the block is guest-enabled, so a valid nonce
+	 * bound to (block_id, post_id) is the credential. `capability` remains the
+	 * hard ceiling; `public` still admits guests without a nonce.
 	 *
 	 * @since 1.0.0
+	 * @param WP_REST_Request|object|null $request Request or lightweight context object.
+	 * @return bool True if the request is an authorized guest request.
 	 */
-	public function register_settings() {
-		register_setting(
-			'gg_data_rag_settings',
-			'gg_data_rag_access_level',
-			array(
-				'type'              => 'string',
-				'default'           => self::ACCESS_LOGGED_IN,
-				'sanitize_callback' => array( $this, 'sanitize_access_level' ),
-			)
-		);
+	private function guest_allowed_for_request( $request ) {
+		if ( is_user_logged_in() ) {
+			return false;
+		}
 
-		register_setting(
-			'gg_data_rag_settings',
-			'gg_data_rag_required_capability',
-			array(
-				'type'              => 'string',
-				'default'           => 'read',
-				'sanitize_callback' => 'sanitize_text_field',
-			)
-		);
+		// `capability` is the only hard ceiling for guests.
+		if ( self::ACCESS_CAPABILITY === $this->get_access_level() ) {
+			return false;
+		}
+
+		$context = $this->request_context( $request );
+		if ( ! $this->is_guest_route( $context['route'] ) ) {
+			return false;
+		}
+
+		$params   = $context['params'];
+		$nonce    = isset( $params['guest_access_nonce'] ) ? (string) $params['guest_access_nonce'] : '';
+		$block_id = isset( $params['guest_access_block_id'] ) ? sanitize_text_field( (string) $params['guest_access_block_id'] ) : '';
+		$post_id  = isset( $params['guest_access_post_id'] ) ? absint( $params['guest_access_post_id'] ) : 0;
+
+		if ( '' === $nonce || 0 === $post_id ) {
+			return false;
+		}
+
+		return (bool) wp_verify_nonce( $nonce, self::GUEST_NONCE_ACTION . ':' . $block_id . ':' . $post_id );
 	}
 
 	/**
-	 * Sanitize access level setting.
+	 * Normalize a request into a `route` + `params` context.
+	 *
+	 * Accepts a WP_REST_Request, or a lightweight object exposing public
+	 * `route` (string) and `params` (array) properties (used for the
+	 * admin-ajax SSE path).
 	 *
 	 * @since 1.0.0
-	 * @param string $value Input value.
-	 * @return string Sanitized value.
+	 * @param mixed $request Request or context object.
+	 * @return array{route:string,params:array}
 	 */
-	public function sanitize_access_level( $value ) {
-		$valid_levels = array( self::ACCESS_PUBLIC, self::ACCESS_LOGGED_IN, self::ACCESS_CAPABILITY );
-		return in_array( $value, $valid_levels, true ) ? $value : self::ACCESS_LOGGED_IN;
-	}
+	private function request_context( $request ) {
+		if ( $request instanceof WP_REST_Request ) {
+			return array(
+				'route'  => (string) $request->get_route(),
+				'params' => (array) $request->get_params(),
+			);
+		}
 
-	/**
-	 * Get available access level options for UI.
-	 *
-	 * @since 1.0.0
-	 * @return array Associative array of value => label.
-	 */
-	public static function get_access_level_options() {
+		if ( is_object( $request ) ) {
+			return array(
+				'route'  => isset( $request->route ) ? (string) $request->route : '',
+				'params' => ( isset( $request->params ) && is_array( $request->params ) ) ? $request->params : array(),
+			);
+		}
+
 		return array(
-			self::ACCESS_PUBLIC     => __( 'Public (anyone can use)', 'gregius-data' ),
-			self::ACCESS_LOGGED_IN  => __( 'Logged-in users only', 'gregius-data' ),
-			self::ACCESS_CAPABILITY => __( 'Users with specific capability', 'gregius-data' ),
+			'route'  => '',
+			'params' => array(),
 		);
+	}
+
+	/**
+	 * Whether a route is allowed for guest (anonymous) access.
+	 *
+	 * @since 1.0.0
+	 * @param string $route Route (with or without a leading slash).
+	 * @return bool True if guests may use the route.
+	 */
+	private function is_guest_route( $route ) {
+		/**
+		 * Filter the RAG routes that guests may access when a block opts in.
+		 *
+		 * @since 1.0.0
+		 * @param string[] $routes Allowed route names (no leading slash).
+		 */
+		$allowed = apply_filters(
+			'gg_data_rag_guest_allowed_routes',
+			array(
+				'gg-data/v1/rag/chat',
+				'gg-data/v1/rag/journey/issue',
+				'gg-data/v1/rag/journey/consume',
+				'gg-data/v1/rag/journey/history',
+				'gg-intelligence/v1/rag/conversations/nba-event',
+				'gg-intelligence/v1/rag/conversations/nba-lifecycle-event',
+				'gg-intelligence/v1/rag/conversations/pill-feedback',
+				'gg-intelligence/v1/rag/conversations/turn-feedback',
+				'gg-data/rag/stream',
+			)
+		);
+
+		return in_array( ltrim( (string) $route, '/' ), $allowed, true );
 	}
 }

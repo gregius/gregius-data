@@ -294,7 +294,7 @@ Key routes:
 - `GET /rag/journey/history`
 
 Key notes:
-- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-open evaluation (default allow) for journey endpoints.
+- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-closed evaluation (default deny) for journey endpoints.
 - Caller authentication: guest users identified by session-hash credentials derived from WordPress authentication salts.
 - Session ownership is enforced on consume and history routes: caller's current session hash must match the stored journey owner hash.
 - First-claim binding: legacy journey records without session hashes can be claimed on first interaction by any guest session.
@@ -324,7 +324,7 @@ Notes:
 - `gg_data_rag_access_level`
 - `gg_data_rag_required_capability`
 
-Use these to tighten or customize runtime access policy for RAG endpoints. Note that RAG chat and action endpoints use fail-closed permission semantics (default deny), while journey and SSE endpoints use fail-open semantics (default allow).
+Use these to tighten or customize runtime access policy for RAG endpoints. Note that RAG chat and action endpoints use fail-closed permission semantics (default deny), and journey and SSE endpoints also use fail-closed semantics (default deny).
 
 ### 5.2 Streaming and Rate-Limit Extension Hook
 

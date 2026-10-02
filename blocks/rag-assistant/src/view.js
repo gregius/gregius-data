@@ -30,6 +30,9 @@ window.addEventListener('DOMContentLoaded', () => {
 		const securityPromptId = parseInt(container.getAttribute('data-security-prompt-id'), 10) || 0;
 		const placeholder = container.getAttribute('data-placeholder');
 		const enableStreaming = container.getAttribute('data-enable-streaming') !== 'false';
+		const guestAccessNonce = container.getAttribute('data-gg-guest-access-nonce') || '';
+		const guestAccessBlockId = container.getAttribute('data-gg-block-id') || '';
+		const guestAccessPostId = parseInt(container.getAttribute('data-current-post-id'), 10) || 0;
 
 		// Render React component into container
 		render(
@@ -44,6 +47,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
 				placeholder={placeholder}
 				useSSE={enableStreaming}
+				guestAccessNonce={guestAccessNonce}
+				guestAccessBlockId={guestAccessBlockId}
+				guestAccessPostId={guestAccessPostId}
 			/>,
 			container
 		);

@@ -136,16 +136,10 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 	 */
 	public function issue_token( $request ) {
 		$conversation_id = $request->get_param( 'conversation_id' );
-		$block_id        = $request->get_param( 'block_id' );
 
 		$validated_conversation_id = GG_Data_Interaction::validate_conversation_id( $conversation_id );
 		if ( is_wp_error( $validated_conversation_id ) ) {
 			return $validated_conversation_id;
-		}
-
-		$validated_block_id = $this->validate_block_id( $block_id );
-		if ( is_wp_error( $validated_block_id ) ) {
-			return $validated_block_id;
 		}
 
 		$hydration = $this->build_hydration_payload( $validated_conversation_id );
@@ -157,7 +151,6 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 		$token_key = self::TOKEN_TRANSIENT_PREFIX . $token;
 		$payload   = array(
 			'conversation_id' => $validated_conversation_id,
-			'block_id'        => $validated_block_id,
 			'user_id'         => get_current_user_id(),
 			'guest_session'   => $this->get_current_guest_session_hash(),
 			'created_at'      => time(),
@@ -184,13 +177,7 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function consume_token( $request ) {
-		$token    = sanitize_text_field( (string) $request->get_param( 'token' ) );
-		$block_id = $request->get_param( 'block_id' );
-
-		$validated_block_id = $this->validate_block_id( $block_id );
-		if ( is_wp_error( $validated_block_id ) ) {
-			return $validated_block_id;
-		}
+		$token = sanitize_text_field( (string) $request->get_param( 'token' ) );
 
 		$token_key = self::TOKEN_TRANSIENT_PREFIX . $token;
 		$payload   = get_transient( $token_key );
@@ -204,14 +191,6 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 		}
 
 		delete_transient( $token_key );
-
-		if ( ( $payload['block_id'] ?? '' ) !== $validated_block_id ) {
-			return new WP_Error(
-				'gg_data_rag_journey_block_mismatch',
-				__( 'Continuation token does not match this block instance.', 'gregius-data' ),
-				array( 'status' => 400 )
-			);
-		}
 
 		$token_user_id = isset( $payload['user_id'] ) ? absint( $payload['user_id'] ) : 0;
 		if ( $token_user_id > 0 ) {
@@ -482,60 +461,6 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Validate block id contract for journey continuity.
-	 *
-	 * @since 1.0.0
-	 * @param string $block_id Candidate block id.
-	 * @return string|WP_Error
-	 */
-	private function validate_block_id( $block_id ) {
-		$block_id = sanitize_text_field( (string) $block_id );
-
-		if ( '' === $block_id ) {
-			return new WP_Error(
-				'gg_data_rag_journey_missing_block_id',
-				__( 'Block ID is required.', 'gregius-data' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		/**
-		 * Filters the list of allowed block ID prefixes for RAG journey validation.
-		 *
-		 * Each prefix must be a non-empty string. The suffix following the prefix
-		 * must match [A-Za-z0-9_-]+. Register additional prefixes here to allow
-		 * third-party block IDs to pass journey token validation.
-		 *
-		 * @since 1.1.0
-		 * @param string[] $prefixes Allowed block ID prefix strings.
-		 */
-		$allowed_prefixes = apply_filters( 'gg_data_rag_journey_allowed_block_id_prefixes', array( 'gg-rag-chat-' ) );
-
-		$matched = false;
-		foreach ( $allowed_prefixes as $prefix ) {
-			$prefix = (string) $prefix;
-			if ( '' === $prefix || ! str_starts_with( $block_id, $prefix ) ) {
-				continue;
-			}
-			$suffix = substr( $block_id, strlen( $prefix ) );
-			if ( '' !== $suffix && preg_match( '/^[A-Za-z0-9_-]+$/', $suffix ) ) {
-				$matched = true;
-				break;
-			}
-		}
-
-		if ( ! $matched ) {
-			return new WP_Error(
-				'gg_data_rag_journey_invalid_block_id',
-				__( 'Block ID is invalid.', 'gregius-data' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		return $block_id;
-	}
-
-	/**
 	 * Param schema for issue endpoint.
 	 *
 	 * @since 1.0.0
@@ -547,12 +472,6 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'Conversation UUID.', 'gregius-data' ),
-				'sanitize_callback' => 'sanitize_text_field',
-			),
-			'block_id'        => array(
-				'required'          => true,
-				'type'              => 'string',
-				'description'       => __( 'Block instance identifier.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 		);
@@ -570,12 +489,6 @@ class GG_Data_REST_RAG_Journey_Controller extends WP_REST_Controller {
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'One-time continuation token.', 'gregius-data' ),
-				'sanitize_callback' => 'sanitize_text_field',
-			),
-			'block_id' => array(
-				'required'          => true,
-				'type'              => 'string',
-				'description'       => __( 'Block instance identifier.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 		);
