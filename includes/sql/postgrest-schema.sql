@@ -1218,7 +1218,7 @@ $$;
 -- Drop old helper function signatures
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text);
 DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text);
-DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text, text);
+DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text, integer);
 
 -- Helper function: Generate search vector using document averaging
 -- For row-per-embedding schema, averages embeddings from matching documents
@@ -1250,7 +1250,7 @@ BEGIN
                     CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
                 LIMIT 10
             ) v
-        ', vector_table_name, search_language, search_text);
+        ', vector_table_name, search_language, search_text, search_language, search_text);
     ELSE
         RETURN QUERY EXECUTE format('
             SELECT AVG(v.embedding)::vector
