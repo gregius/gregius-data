@@ -116,7 +116,7 @@ This documentation is organized for **active development**. User-facing document
 - **[tools/](tools/)** - Tools and utilities subsystem documentation
   - **[tools/srs.md](tools/srs.md)** - Software Requirements Specification for developer tooling, utilities, and helper contracts
   - **[tools/architecture.md](tools/architecture.md)** - Architecture views, decisions, constraints, and risks for utility services and tooling infrastructure
-  - **[tools/developer-documentation.md](tools/developer-documentation.md)** - Developer reference for utility APIs, helper classes, and tooling integration patterns
+  - **[tools/developer-documentation.md](tools/developer-documentation.md)** - Developer reference for the built-in tool catalog (incl. entity-scoped `search_entity_content`), signatures, and integration patterns
 
 ---
 

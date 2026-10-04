@@ -122,6 +122,7 @@ Requirement notation:
 | HOOKS-FR-22 | The software MUST expose a `gg_data_sync_post_types_updated` Tier 1 action hook after sync post type configuration is persisted for a connection, so downstream plugins can rebuild connection-scoped corpus artifacts. Signature: `(string $connection_name, array $enabled_post_types): void`. | Must |
 | HOOKS-FR-23 | The software MUST expose a `gg_data_rag_journey_allowed_block_id_prefixes` Tier 1 filter hook inside `validate_block_id()` so downstream plugins can register their own block ID prefixes without modifying core validation. Signature: `(string[] $prefixes): string[]`. Default: `['gg-rag-chat-']`. | Must |
 | HOOKS-FR-24 | The software MUST expose a `gg_data_vector_delete_batch_size` Tier 1 filter hook for operational tuning of vector batch deletion by model and connection. Signature: `(int $batch_size, string $model_key, string $connection_name): int`. | Must |
+| HOOKS-FR-25 | The software MUST expose a `gg_data_rag_tool_selection_system_prompt` Tier 1 filter hook in every tool-selection strategy so downstream plugins can inject context into the routing model's system prompt (e.g. entity grounding). Signature: `(string $system_prompt): string`. | Must |
 
 ### 3.2 Data and Contract Requirements
 

@@ -156,6 +156,8 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/rag/class-gg-data-manifest-validator.php', // Manifest schema contract + normalizer.
 	GG_DATA_PLUGIN_DIR . 'includes/rag/class-gg-data-coverage-gate.php', // Coverage gate (evidence sufficiency policy).
 	GG_DATA_PLUGIN_DIR . 'includes/rag/class-gg-data-rag-service.php', // RAG service (embedding-agnostic).
+	GG_DATA_PLUGIN_DIR . 'includes/rag/class-gg-data-entity-grounding.php', // Entity grounding (current post → RAG prompts).
+	GG_DATA_PLUGIN_DIR . 'includes/rag/class-gg-data-entity-content-tool.php', // search_entity_content RAG tool.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-rag-controller.php', // RAG REST API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-rag-journey-controller.php', // RAG journey continuity REST API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-sse-handler.php', // SSE streaming for RAG progress.
@@ -257,6 +259,12 @@ function gg_data_init() {
 
 	// Initialize RAG security hooks (access control for public endpoints).
 	new GG_Data_RAG_Security_Hooks();
+
+	// Initialize entity grounding (inject the current post into RAG prompts).
+	new GG_Data_Entity_Grounding();
+
+	// Register the search_entity_content RAG tool.
+	GG_Data_Entity_Content_Tool::init();
 }
 // Hook into plugins_loaded to ensure all dependencies are loaded.
 add_action( 'plugins_loaded', 'gg_data_init' );

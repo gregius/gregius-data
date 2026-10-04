@@ -96,8 +96,8 @@ Mapping:
    - Purpose: tool registration/execution, journey block ID allowlist extension, and policy tuning.
 
 6b. **RAG Lifecycle Extension Hooks** (added Tier 1)
-   - Examples: `gg_data_rag_pre_retrieval_filter`, `gg_data_rag_llm_response`.
-   - Purpose: generic retrieval filtering and LLM response post-processing without feature-specific coupling.
+   - Examples: `gg_data_rag_system_prompt`, `gg_data_rag_tool_selection_system_prompt`, `gg_data_rag_pre_retrieval_filter`, `gg_data_rag_llm_response`.
+   - Purpose: generic seams across the RAG lifecycle — answer/routing prompt composition, retrieval filtering, and LLM response post-processing — without feature-specific coupling.
 
 7. **Provider and Auxiliary Hooks**
    - Examples: `gg_data_llm_providers`, provider request/call filters/actions, streaming/rate hooks.

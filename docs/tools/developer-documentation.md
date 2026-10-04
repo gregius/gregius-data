@@ -331,6 +331,80 @@ array(
 
 ---
 
+### 2.6 Tool: `search_entity_content`
+
+**Purpose:** Answer a question grounded in the CURRENT entity's content (the post/page the RAG block is rendered on), resolved from the request manifest. Complements `search_content` (site-wide retrieval) with single-document grounding.
+
+**When Invoked:**
+- User asks about "this post", "this page", "the current content", or a term/feature/section of it
+- The block manifest carries an `entity` (id/type/title)
+- Preferred over `search_content` when the question is explicitly about the current document
+
+**Selection Example:**
+```json
+{
+  "tool": "search_entity_content",
+  "query": "what are the hook tiers?",
+  "reason": "question about the current document"
+}
+```
+
+**Handler Signature:**
+```php
+/**
+ * Execute search_entity_content tool (built-in).
+ *
+ * @param array|null $result    Previous result (null on first call).
+ * @param string     $tool_name Tool name.
+ * @param array      $context   Tool execution context.
+ * @return array {
+ *     'answer'   => string,   // Grounded answer with [Source 1] citation
+ *     'sources'  => array,    // The current entity as a single source
+ *     'metadata' => array,    // tool_selected, suggestions_title, suggested_questions, llm_model, usage, entity_id
+ * }
+ */
+```
+
+**Response Structure:**
+```php
+array(
+    'answer'   => 'The hook tiers are Tier 1 (public, stable), Tier 2 (semi-public), Tier 3 (internal) [Source 1].',
+    'sources'  => array(
+        array(
+            'post_id' => 556,
+            'type'    => 'docs',
+            'title'   => 'Gregius Data - Hooks',
+            'url'     => 'https://example.com/docs/gregius-data-hooks/',
+        ),
+    ),
+    'metadata' => array(
+        'tool_selected'       => 'search_entity_content',
+        'chunks_used'         => 1,
+        'entity_id'           => 556,
+        'llm_model'           => 'gpt-4o-mini',
+        'suggestions_title'   => 'Understanding the hook tiers',
+        'suggested_questions' => array(
+            array( 'question' => 'What are Tier 1 hooks?', 'context' => array( 'post_id' => 556 ) ),
+        ),
+    ),
+)
+```
+
+**Empty-Fetch Contract:**
+- No `entity` in the manifest → `answer`: "I could not determine which content to search."
+- Entity present but no content (unsynced / missing) → `answer`: "I could not find content for this post. Try asking a general question instead."
+- No automatic fallback to `search_content`; the caller / agentic loop handles re-routing.
+
+**Retrieval & Grounding:**
+- Content is fetched by direct id lookup (`wp_posts_clean` → `get_post` fallback), uncapped, with a 24,000-character overflow guardrail. No vector/embedding search.
+- The current entity is injected into the RAG prompts by `GG_Data_Entity_Grounding` (`gg_data_rag_system_prompt` + `gg_data_rag_tool_selection_system_prompt`).
+- `metadata.suggestions_title` (short framing heading) and `metadata.suggested_questions` (question list) are produced by the shared `GG_Data_RAG_Service::generate_suggestions()` helper (one LLM call returning `{ title, questions }`; input = content + title + user prompt).
+
+**Parameters in Tool Selection:**
+- `query` (string, required) — The user question to answer from the current document.
+
+---
+
 ## 3. Tool Selection Contract
 
 All tools receive the same execution context via the `gg_data_rag_tool_{name}` filter:
@@ -377,7 +451,7 @@ Canonical contract reference:
 
 Compact integration guidance:
 - Send `manifest` as an object when your tool behavior depends on entity or taxonomy context.
-- Send `forced_tool` when deterministic execution is required (`summarize_current_entity`, `recommend_related_content`).
+- Send `forced_tool` when deterministic execution is required (`summarize_current_entity`, `search_entity_content`, `recommend_related_content`).
 - Do not depend on producer-specific raw manifest shapes; rely on normalized manifest behavior documented in the canonical contract.
 - Preserve parity for `manifest` and `forced_tool` across REST and SSE clients.
 - When `forced_tool` is unsupported, expect standard routing fallback behavior.

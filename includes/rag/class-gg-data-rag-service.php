@@ -3163,17 +3163,24 @@ class GG_Data_RAG_Service {
 	}
 
 	/**
-	 * Load canonical content used for deterministic entity summaries.
+	 * Load the entity's title + cleaned content, optionally capped.
+	 *
+	 * Prefers the synchronized `wp_posts_clean` row by id; falls back to the raw
+	 * WordPress post when the entity is not synced. Direct id lookup — no
+	 * embedding/vector search involved.
 	 *
 	 * @since 1.0.0
 	 * @param int $entity_id Post ID.
+	 * @param int $max_chars Maximum characters to return (0 = uncapped).
 	 * @return string
 	 */
-	private function get_entity_content_for_summary( $entity_id ) {
+	private function fetch_entity_content( $entity_id, $max_chars = 0 ) {
 		$entity_id = absint( $entity_id );
 		if ( $entity_id <= 0 ) {
 			return '';
 		}
+
+		$text = '';
 
 		try {
 			$db         = new GG_Data_DB();
@@ -3189,15 +3196,11 @@ class GG_Data_RAG_Service {
 					$title   = isset( $row['post_title_clean'] ) ? (string) $row['post_title_clean'] : '';
 					$content = isset( $row['post_content_clean'] ) ? (string) $row['post_content_clean'] : '';
 					$text    = trim( $title . "\n\n" . $content );
-
-					if ( '' !== $text ) {
-						return mb_substr( $text, 0, 12000 );
-					}
 				}
 			}
 		} catch ( Exception $e ) {
 			$this->logger->log(
-				sprintf( 'RAG Service: Failed loading wp_posts_clean summary content for post_id=%d', $entity_id ),
+				sprintf( 'RAG Service: Failed loading wp_posts_clean entity content for post_id=%d', $entity_id ),
 				'debug',
 				'rag',
 				$this->connection_name,
@@ -3205,14 +3208,154 @@ class GG_Data_RAG_Service {
 			);
 		}
 
-		$post = get_post( $entity_id );
-		if ( ! ( $post instanceof WP_Post ) ) {
+		if ( '' === $text ) {
+			$post = get_post( $entity_id );
+			if ( $post instanceof WP_Post ) {
+				$text = trim( $post->post_title . "\n\n" . wp_strip_all_tags( (string) $post->post_content ) );
+			}
+		}
+
+		if ( '' === $text ) {
 			return '';
 		}
 
-		$text = trim( $post->post_title . "\n\n" . wp_strip_all_tags( (string) $post->post_content ) );
+		return $max_chars > 0 ? mb_substr( $text, 0, $max_chars ) : $text;
+	}
 
-		return '' !== $text ? mb_substr( $text, 0, 12000 ) : '';
+	/**
+	 * Load canonical content used for deterministic entity summaries (capped).
+	 *
+	 * @since 1.0.0
+	 * @param int $entity_id Post ID.
+	 * @return string
+	 */
+	private function get_entity_content_for_summary( $entity_id ) {
+		return $this->fetch_entity_content( $entity_id, 12000 );
+	}
+
+	/**
+	 * Load the FULL entity content (uncapped) for grounded answering.
+	 *
+	 * @since 1.0.0
+	 * @param int $entity_id Post ID.
+	 * @return string
+	 */
+	public function get_entity_content_full( $entity_id ) {
+		return $this->fetch_entity_content( $entity_id );
+	}
+
+	/**
+	 * Generate follow-up questions for the current document.
+	 *
+	 * Shared helper: given the document content, its title, and the user's
+	 * current question, produce 2-3 natural follow-up questions about the
+	 * document. Used by the `search_entity_content` tool and, via the public
+	 * contract, by premium handlers.
+	 *
+	 * @since 1.0.0
+	 * @param string $content           Document content.
+	 * @param string $title             Document title.
+	 * @param string $query             The user's current question.
+	 * @param string $llm_model_id      LLM model id.
+	 * @param int    $post_id           Source post id (context anchor).
+	 * @param array  $exclude_questions Questions that must not be proposed again.
+	 * @return array { title: string, questions: array<{question, context}> }.
+	 */
+	public function generate_suggestions( $content, $title, $query, $llm_model_id, $post_id = 0, $exclude_questions = array() ) {
+		$empty = array(
+			'title'     => '',
+			'questions' => array(),
+		);
+
+		$content = trim( (string) $content );
+		if ( '' === $content || '' === (string) $llm_model_id ) {
+			return $empty;
+		}
+
+		$excluded = array();
+		foreach ( (array) $exclude_questions as $excluded_question ) {
+			$excluded_question = trim( (string) $excluded_question );
+			if ( '' !== $excluded_question ) {
+				$excluded[ strtolower( $excluded_question ) ] = $excluded_question;
+			}
+		}
+
+		$system_prompt = 'You are a content analyst. Return only a JSON object.';
+		$prompt        = sprintf(
+			"Document titled \"%1\$s\":\n%2\$s\n\nThe user just asked: \"%3\$s\"\n\nReturn ONLY a JSON object with a short (3-6 word) framing heading and 2-3 concise follow-up questions the user might ask next about this document. Output example: {\"title\": \"Exploring the hook system\", \"questions\": [\"question one\", \"question two\"]}",
+			(string) $title,
+			$content,
+			(string) $query
+		);
+
+		if ( ! empty( $excluded ) ) {
+			$prompt .= "\n\nDo NOT propose any of the following questions:\n- " . implode( "\n- ", array_values( $excluded ) );
+		}
+
+		$response = $this->stream_llm( $prompt, $llm_model_id, $system_prompt, null, array( 'max_tokens' => 300 ) );
+		if ( is_wp_error( $response ) ) {
+			return $empty;
+		}
+
+		$parsed = $this->extract_suggestions( (string) ( $response['text'] ?? '' ) );
+
+		$questions = array();
+		foreach ( $parsed['questions'] as $question ) {
+			$question = trim( (string) $question );
+			if ( '' === $question || isset( $excluded[ strtolower( $question ) ] ) ) {
+				continue;
+			}
+
+			$questions[] = array(
+				'question' => $question,
+				'context'  => array( 'post_id' => absint( $post_id ) ),
+			);
+		}
+
+		return array(
+			'title'     => $parsed['title'],
+			'questions' => $questions,
+		);
+	}
+
+	/**
+	 * Extract a framing title and question list from an LLM response.
+	 *
+	 * @since 1.0.0
+	 * @param string $text LLM response text.
+	 * @return array { title: string, questions: string[] }.
+	 */
+	private function extract_suggestions( $text ) {
+		$empty = array(
+			'title'     => '',
+			'questions' => array(),
+		);
+
+		$text = trim( (string) $text );
+		if ( '' === $text ) {
+			return $empty;
+		}
+
+		$start = strpos( $text, '{' );
+		$end   = strrpos( $text, '}' );
+		if ( false === $start || false === $end || $end <= $start ) {
+			return $empty;
+		}
+
+		$decoded = json_decode( substr( $text, $start, $end - $start + 1 ), true );
+		if ( ! is_array( $decoded ) ) {
+			return $empty;
+		}
+
+		$title     = isset( $decoded['title'] ) && is_string( $decoded['title'] ) ? trim( $decoded['title'] ) : '';
+		$questions = isset( $decoded['questions'] ) && is_array( $decoded['questions'] )
+			? array_values( array_filter( $decoded['questions'], 'is_string' ) )
+			: array();
+
+		return array(
+			'title'     => $title,
+			'questions' => $questions,
+		);
 	}
 
 	/**

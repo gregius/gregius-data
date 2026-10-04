@@ -82,7 +82,7 @@ class GG_Data_Anthropic_Tool_Strategy implements GG_Data_Tool_Calling_Strategy {
 		}
 
 		// Build API request.
-		$system_prompt = $this->build_system_prompt();
+		$system_prompt = apply_filters( 'gg_data_rag_tool_selection_system_prompt', $this->build_system_prompt() );
 		$api_messages  = $this->build_messages( $query, $messages );
 		$api_tools     = $this->format_tools( $tools );
 

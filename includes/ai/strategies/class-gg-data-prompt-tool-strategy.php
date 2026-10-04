@@ -65,7 +65,7 @@ class GG_Data_Prompt_Tool_Strategy implements GG_Data_Tool_Calling_Strategy {
 		$conversation_context = $this->build_conversation_context( $messages );
 
 		// Build system prompt with tools.
-		$system_prompt = $this->build_system_prompt( $tools );
+		$system_prompt = apply_filters( 'gg_data_rag_tool_selection_system_prompt', $this->build_system_prompt( $tools ) );
 
 		// Build user prompt.
 		$prompt = $conversation_context . "User query: \"{$query}\"\n\nSelect tool:";

@@ -200,6 +200,13 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Signature: `(mixed $result, string $tool_name, array $tool_context): mixed`
 - Emitted in: `includes/rag/class-gg-data-rag-service.php`
 
+#### `gg_data_rag_tool_selection_system_prompt`
+- Type: Filter
+- Signature: `(string $system_prompt): string`
+- Emitted in: `includes/ai/strategies/class-gg-data-{openai,anthropic,gemini,prompt}-tool-strategy.php`
+- Use case: append context to the tool-selection (routing) model's system prompt. Used by `GG_Data_Entity_Grounding` to inject the current entity so questions about the current document route to `search_entity_content`. Applied in all four built-in strategies (native + prompt fallback).
+- Stability: Tier 1 (public).
+
 #### `gg_data_rag_tool_executed`
 - Type: Action
 - Signature: `(string $tool_name, mixed $result, array $tool_context): void`
@@ -257,6 +264,13 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Use case: adjust minimum relevance needed for source inclusion.
 
 ### 2.8 RAG Answer Generation Hooks
+
+#### `gg_data_rag_system_prompt`
+- Type: Filter
+- Signature: `(string $system_prompt, array $chunks, string $query, string $current_date, string $current_time): string`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php`
+- Use case: append or rewrite the answer model's system prompt. Used by `GG_Data_Entity_Grounding` to inject the current entity ("the user is currently viewing …") so answers about "this post" are grounded in the current document.
+- Stability: Tier 1 (public).
 
 #### `gg_data_rag_llm_response`
 - Type: Filter

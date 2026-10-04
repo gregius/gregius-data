@@ -210,6 +210,9 @@ Rules:
 			),
 		);
 
+		// Ground tool routing in the current entity (injected by GG_Data_Entity_Grounding).
+		$api_messages[0]['content'] = apply_filters( 'gg_data_rag_tool_selection_system_prompt', $api_messages[0]['content'] );
+
 		// Add conversation history.
 		if ( ! empty( $messages ) ) {
 			foreach ( $messages as $msg ) {

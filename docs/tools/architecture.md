@@ -132,9 +132,15 @@ Canonical Contracts
 
 **Tool Category: Comparison**
 - `compare_content` — Side-by-side comparison of topics
-  - Selection criteria: "compare X and Y", "difference between A and B"
+  - Selection criteria: "compare X and Y", "difference between X and Y"
   - Parameters: items to compare
   - Returns: structured comparison (table or narrative)
+
+**Tool Category: Entity Grounding**
+- `search_entity_content` — Answer a question grounded in the CURRENT entity's content (from the request manifest)
+  - Selection criteria: "this post", "this page", "the current content", or a term/section of it
+  - Parameters: query
+  - Returns: grounded answer with `[Source 1]` citation + `suggestions_title` + `suggested_questions`
 
 ### 3.3 Tool Execution Layer
 

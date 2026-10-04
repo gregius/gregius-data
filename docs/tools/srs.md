@@ -24,7 +24,7 @@ This SRS defines what the Gregius Data tool subsystem must do to provide a stabl
 ### 1.2 System Scope
 
 The subsystem includes:
-- Built-in tool definitions and execution handlers
+- Built-in tool definitions and execution handlers (including the entity-scoped `search_entity_content` tool)
 - Tool selection via LLM agentic routing
 - Strategy pattern for provider-specific tool calling (OpenAI, Anthropic, Gemini, DeepSeek, fallback)
 - Extension points (hooks and filters) for custom tools
@@ -48,6 +48,7 @@ The tool subsystem sits at the heart of agentic RAG workflows. When a user submi
 - Route tool selection through the appropriate LLM strategy
 - Execute tools and return standardized responses (answer, sources, metadata)
 - Support post-selection filtering for policy overrides and custom logic
+- Provide entity-scoped grounding (`search_entity_content`) with system-initiated follow-up questions
 
 #### 1.3.3 User Characteristics
 
@@ -120,6 +121,7 @@ Requirement notation:
 | `respond_directly` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
 | `clarify_previous` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
 | `compare_content` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
+| `search_entity_content` | 1 | Approved | `(query, tool_context, model_id) → {answer, sources, metadata}` |
 
 ### 3.3 Hook Catalog Requirements
 
