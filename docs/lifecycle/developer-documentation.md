@@ -92,6 +92,34 @@ Registered schedules:
 | `gg_data_every_minute` | 60 seconds | Retry queue processing | `gg_data_process_retry_queue` |
 | `gg_data_every_five_minutes` | 300 seconds | Connection health checks | `gg_data_check_connection_health` |
 
+### `GG_Data_Uninstaller`
+
+```php
+const RETENTION_OPTION = 'gg_data_remove_data_on_uninstall';
+
+public static function get_retention_flag();
+public static function set_retention_flag( $value );
+public static function run();
+```
+
+Retention flag storage: a site option on multisite (`get_site_option` / `update_site_option`) and a blog option on single-site (`get_option` / `update_option`).
+
+Uninstall behavior summary:
+- `run()` preserves all plugin data by default (flag unset),
+- always clears cron (Action Scheduler + WP-Cron), removes `manage_gg_pg`, and deletes the `gg_data_clear_localstorage` transient,
+- when the flag is set: deletes `gg_data_*`/`gregius_data_*` options and transients, drops `gg_settings`, `gg_sync_metadata`, and `gg_data_logs`, deletes `gg_prompt` posts/terms/meta, and (multisite) `sitemeta` keys,
+- never touches the external PostgreSQL/Supabase mirror.
+
+### `GG_Data_REST_Data_Retention_Controller`
+
+```php
+protected $namespace = 'gg-data/v1';
+protected $rest_base  = 'data-retention';
+```
+
+- `POST /gg-data/v1/data-retention` with body `{ remove_data: boolean }`.
+- Permission: `manage_network_options` on multisite, `manage_options` otherwise.
+
 ---
 
 ## 3. Default Option Contracts
@@ -152,20 +180,27 @@ Fallback when Action Scheduler is unavailable:
 
 ## 5. Uninstall Cleanup Sequence
 
-`uninstall.php` performs destructive cleanup only when `WP_UNINSTALL_PLUGIN` is defined.
+`uninstall.php` delegates to `GG_Data_Uninstaller::run()`, which performs destructive cleanup only when the `gg_data_remove_data_on_uninstall` flag is enabled.
 
-Single-site flow:
-1. Unschedule Action Scheduler actions or cron fallbacks.
-2. Delete `gg_data_*` and `gregius_data_*` options.
-3. Delete matching transients and transient timeouts.
-4. Drop `{prefix}gg_data_settings` and `{prefix}gg_data_sync_metadata`.
+Always (flag on or off):
+1. Clear cron (Action Scheduler actions, or WP-Cron fallbacks).
+2. Remove the `manage_gg_pg` capability from the administrator role.
+3. Delete the `gg_data_clear_localstorage` transient.
+
+When the flag is enabled (opt-in removal):
+1. Delete `gg_data_*` and `gregius_data_*` options.
+2. Delete matching transients and transient timeouts.
+3. Drop `{prefix}gg_settings`, `{prefix}gg_sync_metadata`, and `{prefix}gg_data_logs`.
+4. Delete prompt data: `gg_prompt` posts, `_gg_prompt_*` meta, and `gg_prompt_type` terms.
 5. Flush object cache.
 
 Multisite additions:
 1. Query all blog IDs.
-2. `switch_to_blog()` for each site before site-scoped cleanup.
-3. `restore_current_blog()` after each site.
-4. Delete matching network-level `sitemeta` keys after per-site cleanup completes.
+2. `switch_to_blog()` for each site before site-scoped cleanup; `restore_current_blog()` after.
+3. The retention flag is a single network-wide site option.
+4. Delete matching network-level `sitemeta` keys after per-site cleanup (flag enabled).
+
+The external PostgreSQL/Supabase mirror is never removed by uninstall; it is managed through the plugin's delete-synced-data action while active.
 
 ---
 
@@ -226,10 +261,9 @@ Operational note:
 
 ### Uninstall
 
-1. Uninstall the plugin through WordPress.
-2. Confirm `gg_data_*` and `gregius_data_*` options are removed.
-3. Confirm the settings and sync metadata tables are dropped.
-4. In multisite, confirm all sites and matching `sitemeta` keys are cleaned.
+1. Deactivate with "Keep" (default) and delete the plugin: confirm options, tables, and prompt data remain; only cron, the capability, and the transient are removed.
+2. Deactivate with "Remove" and delete the plugin: confirm `gg_data_*`/`gregius_data_*` options, the three tables (`gg_settings`, `gg_sync_metadata`, `gg_data_logs`), prompt data, and (multisite) `sitemeta` keys are removed.
+3. In both cases, confirm the external PostgreSQL/Supabase mirror remains intact.
 
 ---
 
@@ -265,3 +299,13 @@ Root cause:
 Resolution:
 1. Re-run uninstall through WordPress-managed flow.
 2. Inspect remaining `gg_data_*` and `gregius_data_*` keys manually if needed.
+
+### Symptom: Delete dialog says "will also delete its data" but data remains
+
+Root cause:
+- WordPress core shows that wording for any plugin with an uninstall script and cannot be customized.
+- Gregius Data preserves data by default; it removes data only when the "Remove" choice was selected at deactivation.
+
+Resolution:
+1. Expected behavior — no action needed.
+2. To actually remove data, deactivate again and choose "Remove all data when the plugin is deleted," then delete the plugin.

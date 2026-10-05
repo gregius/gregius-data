@@ -102,6 +102,7 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-admin.php', // Admin interface (menu + React dashboard container, no duplicate AJAX).
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-activator.php',
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-deactivator.php',
+	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-uninstaller.php',
 	GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-post-sync.php', // Post sync.
 	GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-postmeta-sync.php', // Postmeta sync.
 	GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-taxonomy-sync.php', // Taxonomy sync.
@@ -109,6 +110,7 @@ $gg_data_files = array(
 
 	// REST API classes.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-settings-controller.php',
+	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-data-retention-controller.php',
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-connections-controller.php', // Connection API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-schema-controller.php', // Schema API.
 	GG_DATA_PLUGIN_DIR . 'includes/api/class-gg-data-rest-sync-controller.php', // Sync API.

@@ -26,12 +26,13 @@ const assetsConfig = {
 		frontend: path.resolve(__dirname, 'src/scripts/frontend.js'),
 		editor: path.resolve(__dirname, 'src/scripts/editor.js'),
 		dashboard: path.resolve(__dirname, 'src/scripts/dashboard.js'),
+		'deactivation-modal': path.resolve(__dirname, 'src/scripts/deactivation-modal.js'),
 	},
 	output: {
 		...defaultConfig.output,
 		filename: (chunkData) => {
-			return chunkData.chunk.name === 'editor'
-				? 'editor.js'
+			return chunkData.chunk.name === 'editor' || chunkData.chunk.name === 'deactivation-modal'
+				? `${chunkData.chunk.name}.js`
 				: '[name].min.[fullhash].js';
 		},
 		path: buildDir,

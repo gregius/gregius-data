@@ -215,21 +215,25 @@ admin_head → gg_data_clear_localstorage_script()
 Plugin uninstalled via WordPress
     │
     ▼
-uninstall.php
+uninstall.php → GG_Data_Uninstaller::run()
     │
-    ├─ verify WP_UNINSTALL_PLUGIN
+    ├─ read retention flag (site option on multisite, option otherwise)
     ├─ determine blog_ids (single-site => [1], multisite => all blogs)
     ├─ foreach blog_id:
     │   ├─ switch_to_blog() when multisite
-    │   ├─ unschedule Action Scheduler jobs when available
-    │   ├─ else clear cron hooks directly
-    │   ├─ delete gg_data_* and gregius_data_* options
-    │   ├─ delete transient and site transient keys
-    │   ├─ drop gg_data_settings table
-    │   ├─ drop gg_data_sync_metadata table
-    │   ├─ wp_cache_flush()
+    │   ├─ clear cron (Action Scheduler when available, else WP-Cron)
+    │   ├─ remove manage_gg_pg capability
+    │   ├─ delete gg_data_clear_localstorage transient
+    │   ├─ if retention flag enabled:
+    │   │   ├─ delete gg_data_* and gregius_data_* options
+    │   │   ├─ delete transient and site transient keys
+    │   │   ├─ drop gg_settings, gg_sync_metadata, and gg_data_logs tables
+    │   │   └─ delete gg_prompt posts, _gg_prompt_* meta, and gg_prompt_type terms
     │   └─ restore_current_blog() when multisite
-    └─ delete network-level sitemeta keys for gg_data_* and gregius_data_*
+    ├─ delete retention flag
+    └─ if flag enabled: delete network-level sitemeta keys; flush object cache
+
+Note: the external PostgreSQL/Supabase mirror is never removed.
 ```
 
 Mapping:
@@ -241,21 +245,23 @@ Mapping:
 
 ## 5. Architectural Decisions (ADRs)
 
-### AD-01: Preserve Data on Deactivation
+### AD-01: Preserve Data on Deactivation and Uninstall
 
 Decision:
-- Deactivation clears scheduled runtime work and sets cleanup transients but does not delete plugin-owned data.
+- Deactivation clears scheduled runtime work and sets cleanup transients but never deletes plugin-owned data.
+- Uninstall preserves data by default and removes it only when the user opted in via the retention flag.
 
 Rationale:
 - WordPress deactivation is a pause state, not a destructive state.
+- WordPress.org data-handling expectations prefer preserving user data unless the user opts in.
 - Reactivation should restore prior operational context without forcing full setup.
 
 Consequences:
-- Uninstall becomes the only destructive lifecycle phase.
+- Data removal is opt-in, never the default.
 - Reactivation can rely on existing settings and tables.
 
 Linked requirements:
-- AD-01 -> LIFE-FR-10, LIFE-OR-01, LIFE-QR-02
+- AD-01 -> LIFE-FR-10, LIFE-FR-16, LIFE-OR-01, LIFE-QR-02, LIFE-QR-05
 
 ### AD-02: Empty Sync Defaults Require Explicit Opt-In
 
@@ -275,17 +281,19 @@ Linked requirements:
 ### AD-03: Multisite Uninstall Cleans Per Site and Network Scope
 
 Decision:
-- Uninstall iterates through each site for site-scoped cleanup and separately removes network metadata.
+- When the retention flag is enabled, uninstall iterates through each site for site-scoped cleanup and separately removes network metadata.
+- On multisite the flag is a single network-wide site option.
 
 Rationale:
 - Plugin-owned state exists in both site-scoped and network-scoped storage.
 - Partial cleanup would leave stale data behind in multisite deployments.
 
 Consequences:
-- Uninstall has wider operational blast radius and must be clearly documented.
+- Uninstall has a wider operational blast radius when removal is enabled and must be clearly documented.
+- Per-blog granular removal is intentionally not supported (one network-wide decision).
 
 Linked requirements:
-- AD-03 -> LIFE-FR-13, LIFE-FR-14, LIFE-OR-04, LIFE-QR-03
+- AD-03 -> LIFE-FR-14, LIFE-FR-16, LIFE-OR-04, LIFE-OR-07, LIFE-QR-03
 
 ### AD-04: Deferred localStorage Cleanup via Transient
 
@@ -318,6 +326,23 @@ Consequences:
 Linked requirements:
 - AD-05 -> LIFE-FR-12, LIFE-OR-02
 
+### AD-06: Opt-in Data Removal on Uninstall
+
+Decision:
+- Data removal on uninstall is governed by the `gg_data_remove_data_on_uninstall` flag, defaulting to false (preserve).
+- The flag is surfaced through the deactivation modal and writable via `POST /gg-data/v1/data-retention`.
+
+Rationale:
+- Preserve-by-default protects user data and satisfies WordPress.org data-handling expectations.
+- A single explicit preference removes ambiguity about whether deletion will occur.
+
+Consequences:
+- The WordPress core delete dialog still reads "will also delete its data" for any plugin with an uninstall script; that wording is unfilterable and does not reflect preserve-by-default behavior.
+- The external PostgreSQL/Supabase mirror is never removed by uninstall.
+
+Linked requirements:
+- AD-06 -> LIFE-FR-15, LIFE-FR-16, LIFE-FR-17, LIFE-FR-18, LIFE-DR-07, LIFE-OR-06, LIFE-QR-05
+
 ---
 
 ## 6. Constraints and Risks
@@ -330,6 +355,7 @@ Linked requirements:
 | C-02 | Deactivation cannot directly mutate browser storage. | localStorage cleanup requires a deferred bridge via transient and admin page load. |
 | C-03 | Uninstall cleanup is intentionally destructive across all sites in multisite. | Operators need clear awareness of uninstall blast radius. |
 | C-04 | Version-check logic runs on admin-init while the plugin is active. | Guarded routines must remain idempotent to avoid repeated side effects. |
+| C-05 | WordPress core delete-dialog wording ("will also delete its data") cannot be filtered for uninstallable plugins. | Documentation and modal copy must clarify actual preserve-by-default behavior. |
 
 ### 6.2 Risks
 
@@ -339,6 +365,7 @@ Linked requirements:
 | R-02 | Guarded prompt routines still execute on every admin-init path. | Medium | Low | Keep guards intact and document the repeated invocation pattern. |
 | R-03 | Sites with disabled or low-traffic admin activity may delay deferred browser cleanup. | Low | Low | Document operational expectation and rely on subsequent admin requests. |
 | R-04 | Multisite uninstall can remove plugin state across all blogs unintentionally if invoked without full awareness. | Low | High | Document uninstall behavior clearly and keep destructive work scoped to uninstall only. |
+| R-05 | The WordPress delete dialog says data will be deleted, but the default is to preserve it. | High | Low | Document the mismatch in the deactivation modal and lifecycle docs. |
 
 ---
 
@@ -346,11 +373,12 @@ Linked requirements:
 
 | Architecture Item | SRS IDs Covered |
 |---|---|
-| AV-01 (Context View) | LIFE-FR-01 to LIFE-FR-14, LIFE-OR-01 to LIFE-OR-05 |
-| AV-02 (Component View) | LIFE-FR-01 to LIFE-FR-14, LIFE-DR-01 to LIFE-DR-06 |
-| AV-03 (Runtime View) | LIFE-FR-03 to LIFE-FR-14, LIFE-OR-01 to LIFE-OR-05, LIFE-QR-01 to LIFE-QR-04 |
-| AD-01 | LIFE-FR-10, LIFE-OR-01, LIFE-QR-02 |
+| AV-01 (Context View) | LIFE-FR-01 to LIFE-FR-18, LIFE-OR-01 to LIFE-OR-07 |
+| AV-02 (Component View) | LIFE-FR-01 to LIFE-FR-18, LIFE-DR-01 to LIFE-DR-07 |
+| AV-03 (Runtime View) | LIFE-FR-03 to LIFE-FR-18, LIFE-OR-01 to LIFE-OR-07, LIFE-QR-01 to LIFE-QR-05 |
+| AD-01 | LIFE-FR-10, LIFE-FR-16, LIFE-OR-01, LIFE-QR-02, LIFE-QR-05 |
 | AD-02 | LIFE-FR-05, LIFE-FR-06 |
-| AD-03 | LIFE-FR-13, LIFE-FR-14, LIFE-OR-04, LIFE-QR-03 |
+| AD-03 | LIFE-FR-14, LIFE-FR-16, LIFE-OR-04, LIFE-OR-07, LIFE-QR-03 |
 | AD-04 | LIFE-FR-11, LIFE-DR-03, LIFE-QR-04 |
 | AD-05 | LIFE-FR-12, LIFE-OR-02 |
+| AD-06 | LIFE-FR-15, LIFE-FR-16, LIFE-FR-17, LIFE-FR-18, LIFE-DR-07, LIFE-OR-06, LIFE-QR-05 |

@@ -55,6 +55,9 @@ debug.log
 *.min.js
 *.min.css
 
+# Source maps
+*.map
+
 # PostgreSQL specific (for your plugin)
 *.dump
 *.backup

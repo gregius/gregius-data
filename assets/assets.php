@@ -175,3 +175,53 @@ function gg_data_clear_localstorage_script() {
 	}
 }
 add_action( 'admin_head', 'gg_data_clear_localstorage_script' );
+
+/**
+ * Enqueue the deactivation modal on the plugins screen.
+ *
+ * Records the keep/remove data-retention preference before deactivation.
+ * The modal never blocks deactivation; bulk/CLI deactivation bypasses it.
+ *
+ * @param string $hook_suffix Current admin page hook.
+ * @return void
+ */
+function gg_data_deactivation_modal_scripts_support( $hook_suffix ) {
+	if ( 'plugins.php' !== $hook_suffix ) {
+		return;
+	}
+
+	$can_deactivate = is_multisite() ? current_user_can( 'manage_network_options' ) : current_user_can( 'deactivate_plugins' );
+	if ( ! $can_deactivate ) {
+		return;
+	}
+
+	$asset_file_path = plugin_dir_path( __FILE__ ) . 'build/deactivation-modal.asset.php';
+	if ( ! file_exists( $asset_file_path ) ) {
+		return;
+	}
+
+	$asset_file = include $asset_file_path;
+
+	// Provide wpApiSettings (root + nonce) for the apiFetch middleware.
+	wp_enqueue_script( 'wp-api' );
+
+	wp_enqueue_script(
+		'gg-data-deactivation-modal',
+		plugin_dir_url( __FILE__ ) . 'build/deactivation-modal.js',
+		isset( $asset_file['dependencies'] ) ? $asset_file['dependencies'] : array( 'wp-element', 'wp-i18n', 'wp-components', 'wp-api-fetch', 'wp-dom-ready' ),
+		isset( $asset_file['version'] ) ? $asset_file['version'] : null,
+		true
+	);
+
+	wp_enqueue_style( 'wp-components' );
+
+	wp_localize_script(
+		'gg-data-deactivation-modal',
+		'ggDataDeactivation',
+		array(
+			'deactivateId' => 'deactivate-gregius-data/gregius-data.php',
+			'removeData'   => GG_Data_Uninstaller::get_retention_flag(),
+		)
+	);
+}
+add_action( 'admin_enqueue_scripts', 'gg_data_deactivation_modal_scripts_support' );

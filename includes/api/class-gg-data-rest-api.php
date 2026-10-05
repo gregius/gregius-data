@@ -93,5 +93,9 @@ class GG_Data_REST_API {
 		// Interactions controller (for custom feedback endpoint).
 		$interactions_controller = new GG_Data_REST_Interactions_Controller( 'gg_interaction' );
 		$interactions_controller->register_routes();
+
+		// Data retention controller (deactivation-modal preference).
+		$data_retention_controller = new GG_Data_REST_Data_Retention_Controller();
+		$data_retention_controller->register_routes();
 	}
 }

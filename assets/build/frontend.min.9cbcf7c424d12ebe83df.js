@@ -14,4 +14,4 @@
 // No vanilla JS needed here
 /******/ })()
 ;
-//# sourceMappingURL=frontend.min.228816f3c8ce651e2e7b.js.map
+//# sourceMappingURL=frontend.min.9cbcf7c424d12ebe83df.js.map

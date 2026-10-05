@@ -46,7 +46,7 @@ This documentation is organized for **active development**. User-facing document
   - **[updates/developer-documentation.md](updates/developer-documentation.md)** - Developer reference for activator/schema APIs, REST routes, and migration maintenance patterns
 
 - **[lifecycle/](lifecycle/)** - Plugin lifecycle subsystem documentation
-  - **[lifecycle/srs.md](lifecycle/srs.md)** - Software Requirements Specification for activation, deactivation, upgrade checks, and uninstall cleanup
+  - **[lifecycle/srs.md](lifecycle/srs.md)** - Software Requirements Specification for activation, deactivation, upgrade checks, and uninstall cleanup (including opt-in data retention on uninstall)
   - **[lifecycle/architecture.md](lifecycle/architecture.md)** - Architecture views, decisions, constraints, and risks for plugin startup, pause, and removal behavior
   - **[lifecycle/developer-documentation.md](lifecycle/developer-documentation.md)** - Developer reference for hook registration, option defaults, cleanup flows, and lifecycle caveats
 

@@ -107,8 +107,12 @@ Requirement notation:
 | LIFE-FR-10 | Deactivation MUST clear active and deprecated plugin-owned scheduled cron hooks without deleting plugin data. | Must |
 | LIFE-FR-11 | Deactivation MUST set a transient that triggers browser-side localStorage cleanup on the next admin page load. | Must |
 | LIFE-FR-12 | Uninstall MUST unschedule plugin-owned background jobs using Action Scheduler when available and WordPress cron fallback otherwise. | Must |
-| LIFE-FR-13 | Uninstall MUST delete plugin-owned options, transients, and custom tables. | Must |
-| LIFE-FR-14 | Uninstall MUST clean up multisite blog data for each site and remove network-level plugin metadata when multisite is active. | Must |
+| LIFE-FR-13 | Uninstall MUST preserve plugin-owned data by default and delete plugin-owned options, transients, and custom tables only when the retention flag is enabled. | Must |
+| LIFE-FR-14 | Uninstall MUST clean up multisite blog data for each site and remove network-level plugin metadata when the retention flag is enabled. | Must |
+| LIFE-FR-15 | Deactivation MUST surface a keep/remove data-retention choice and persist it to `gg_data_remove_data_on_uninstall`. | Must |
+| LIFE-FR-16 | The retention flag MUST be stored as a site option on multisite and a blog option on single-site. | Must |
+| LIFE-FR-17 | Uninstall removal MUST also drop the logs table and delete plugin-owned prompt data (`gg_prompt` posts, `_gg_prompt_*` meta, and `gg_prompt_type` terms). | Must |
+| LIFE-FR-18 | The retention preference MUST be writable through the REST endpoint `POST /gg-data/v1/data-retention`. | Must |
 
 ### 3.2 Data and Contract Requirements
 
@@ -120,6 +124,7 @@ Requirement notation:
 | LIFE-DR-04 | Uninstall cleanup contracts MUST remove option keys matching both `gg_data_*` and `gregius_data_*`. | Must |
 | LIFE-DR-05 | Cron schedule contracts MUST define `gg_data_every_minute` as 60 seconds and `gg_data_every_five_minutes` as 300 seconds. | Must |
 | LIFE-DR-06 | The lifecycle subsystem MUST preserve clear ownership boundaries for plugin-managed settings, sync metadata, and logs tables. | Must |
+| LIFE-DR-07 | The data-retention contract MUST use the option/site-option key `gg_data_remove_data_on_uninstall`. | Must |
 
 ### 3.3 Operations and Security Requirements
 
@@ -130,6 +135,8 @@ Requirement notation:
 | LIFE-OR-03 | The lifecycle subsystem SHOULD remain idempotent when activation or version-check routines are invoked multiple times. | Should |
 | LIFE-OR-04 | Multisite uninstall cleanup MUST switch site context per blog before deleting site-scoped data and restore context afterward. | Must |
 | LIFE-OR-05 | The lifecycle subsystem MUST flush object cache during uninstall cleanup after destructive operations are executed. | Must |
+| LIFE-OR-06 | Uninstall MUST NOT remove the external PostgreSQL/Supabase mirror, regardless of the retention flag. | Must |
+| LIFE-OR-07 | On multisite, the retention flag MUST be a single network-wide site option governing all blogs. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -139,6 +146,7 @@ Requirement notation:
 | LIFE-QR-02 | Deactivation behavior MUST align with WordPress expectation that data is preserved unless the plugin is uninstalled. | Manual deactivation/reactivation tests |
 | LIFE-QR-03 | Uninstall cleanup SHOULD leave no plugin-owned options or custom tables behind for either single-site or multisite installs. | Database inspection after uninstall |
 | LIFE-QR-04 | Deferred localStorage cleanup SHOULD execute on the next admin request without requiring direct user scripting actions. | Browser-based admin verification |
+| LIFE-QR-05 | With the flag off, uninstall MUST leave options, tables, and prompt data intact; with the flag on, uninstall MUST remove them; the external mirror MUST remain intact in both cases. | Database inspection after uninstall (keep and remove) |
 
 ## 4. Verification and Acceptance
 
@@ -152,6 +160,7 @@ Requirement notation:
 Acceptance baseline:
 - Canonical lifecycle package requirements reflect current activation, deactivation, version-check, and uninstall behavior.
 - Preservation-on-deactivate and cleanup-on-uninstall semantics are explicit and documented.
+- Preservation-on-uninstall-by-default with opt-in removal is explicit, including the WordPress core delete-dialog wording limitation.
 
 ## 5. Traceability
 
@@ -160,7 +169,8 @@ Acceptance baseline:
 | LIFE-FR-01 to LIFE-FR-03 | gregius-data.php, includes/class-gg-data-activator.php | Bootstrap hook registration and admin-init version check |
 | LIFE-FR-04 to LIFE-FR-09, LIFE-DR-01 to LIFE-DR-02, LIFE-OR-03, LIFE-QR-01 | includes/class-gg-data-activator.php | Activation setup, defaults, versioning, prompt seeding, idempotent guards |
 | LIFE-FR-10 to LIFE-FR-11, LIFE-DR-03, LIFE-OR-01, LIFE-QR-02, LIFE-QR-04 | includes/class-gg-data-deactivator.php, assets/assets.php | Deactivation preservation and deferred localStorage cleanup |
-| LIFE-FR-12 to LIFE-FR-14, LIFE-DR-04, LIFE-OR-02, LIFE-OR-04, LIFE-OR-05, LIFE-QR-03 | uninstall.php | Uninstall cleanup, Action Scheduler fallback, multisite cleanup, cache flush |
+| LIFE-FR-12 to LIFE-FR-14, LIFE-FR-16 to LIFE-FR-17, LIFE-DR-04, LIFE-DR-07, LIFE-OR-02, LIFE-OR-04, LIFE-OR-05, LIFE-OR-06, LIFE-OR-07, LIFE-QR-03, LIFE-QR-05 | uninstall.php, includes/class-gg-data-uninstaller.php | Uninstall cleanup, retention flag gate, Action Scheduler fallback, multisite cleanup, cache flush |
+| LIFE-FR-15, LIFE-FR-18 | includes/api/class-gg-data-rest-data-retention-controller.php, assets/src/scripts/deactivation-modal.js, assets/assets.php | Retention preference surface and REST endpoint |
 | LIFE-DR-05 | includes/class-gg-data-cron-manager.php | Custom schedule intervals and cron ownership |
 | LIFE-DR-06 | includes/class-gg-data-activator.php, uninstall.php | Table ownership boundaries |
 
@@ -171,6 +181,7 @@ Acceptance baseline:
 - This SRS is produced in SRS-first mode without separate BRS, StRS, OpsCon, or SyRS artifacts.
 - Cron schedule registration must occur before any lifecycle path attempts to schedule those events.
 - The browser-side localStorage cleanup mechanism depends on a subsequent admin request after deactivation.
+- The WordPress core delete confirmation shows "will also delete its data" for any plugin with an uninstall script; this wording is generic and unfilterable, so it does not reflect preserve-by-default behavior.
 
 ### 6.2 Open Issues
 
