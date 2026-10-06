@@ -59,7 +59,7 @@ class GG_Data_Entity_Content_Tool {
 
 		$tools['search_entity_content'] = array(
 			'name'        => 'search_entity_content',
-			'description' => 'Answer a question grounded in the CURRENT document/post the user is viewing. Use when the question is about "this post", "this page", the current content, or a term/section of it.',
+			'description' => 'Answer strictly from the single document the user is currently viewing. Use ONLY when the question explicitly refers to "this post", "this page", or asks about THIS document specifically.',
 			'parameters'  => array(
 				'type'       => 'object',
 				'properties' => array(

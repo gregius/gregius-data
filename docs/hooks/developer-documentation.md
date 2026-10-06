@@ -269,7 +269,7 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Type: Filter
 - Signature: `(string $system_prompt, array $chunks, string $query, string $current_date, string $current_time): string`
 - Emitted in: `includes/rag/class-gg-data-rag-service.php`
-- Use case: append or rewrite the answer model's system prompt. Used by `GG_Data_Entity_Grounding` to inject the current entity ("the user is currently viewing …") so answers about "this post" are grounded in the current document.
+- Use case: append or rewrite the answer model's system prompt. Used by the progressive-summary manager to inject rolling summary and NBA context.
 - Stability: Tier 1 (public).
 
 #### `gg_data_rag_llm_response`

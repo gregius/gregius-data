@@ -397,7 +397,7 @@ array(
 
 **Retrieval & Grounding:**
 - Content is fetched by direct id lookup (`wp_posts_clean` → `get_post` fallback), uncapped, with a 24,000-character overflow guardrail. No vector/embedding search.
-- The current entity is injected into the RAG prompts by `GG_Data_Entity_Grounding` (`gg_data_rag_system_prompt` + `gg_data_rag_tool_selection_system_prompt`).
+- The current entity is injected into the tool-selection prompt by `GG_Data_Entity_Grounding` (`gg_data_rag_tool_selection_system_prompt`).
 - `metadata.suggestions_title` (short framing heading) and `metadata.suggested_questions` (question list) are produced by the shared `GG_Data_RAG_Service::generate_suggestions()` helper (one LLM call returning `{ title, questions }`; input = content + title + user prompt).
 
 **Parameters in Tool Selection:**

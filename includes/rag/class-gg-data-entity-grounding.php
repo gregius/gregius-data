@@ -2,11 +2,11 @@
 /**
  * Entity Grounding Hooks
  *
- * Grounds RAG query routing and answer generation in the "current entity" —
- * the post/page the RAG block is rendered on. The entity is supplied by the
- * block request manifest, captured on `gg_data_rag_request`, then injected into
- * (a) the tool-selection router prompt and (b) the answer system prompt so that
- * questions about "this post" / "this page" resolve to the current content.
+ * Grounds RAG query routing in the "current entity" — the post/page the RAG
+ * block is rendered on. The entity is supplied by the block request manifest,
+ * captured on `gg_data_rag_request`, then injected into the tool-selection
+ * router prompt so that questions about "this post" / "this page" resolve to
+ * the current content.
  *
  * @package Gregius_Data
  * @since 1.0.0
@@ -39,7 +39,6 @@ class GG_Data_Entity_Grounding {
 	 */
 	public function __construct() {
 		add_action( 'gg_data_rag_request', array( $this, 'capture_entity' ), 10, 3 );
-		add_filter( 'gg_data_rag_system_prompt', array( $this, 'inject_answer_grounding' ), 20, 5 );
 		add_filter( 'gg_data_rag_tool_selection_system_prompt', array( $this, 'inject_routing_grounding' ), 20, 1 );
 	}
 
@@ -102,29 +101,6 @@ class GG_Data_Entity_Grounding {
 	}
 
 	/**
-	 * Inject the current-entity grounding into the answer system prompt.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $system_prompt Existing system prompt.
-	 * @param array  $chunks        Retrieved chunks.
-	 * @param string $query         User query.
-	 * @param string $current_date  Current date.
-	 * @param string $current_time  Current time.
-	 * @return string
-	 */
-	public function inject_answer_grounding( $system_prompt, $chunks, $query, $current_date, $current_time ) {
-		unset( $chunks, $query, $current_date, $current_time );
-
-		$descriptor = $this->describe_entity();
-		if ( '' === $descriptor ) {
-			return $system_prompt;
-		}
-
-		return $system_prompt . "\n\n" . $descriptor . ' ' . __( "When the user refers to 'this post', 'this page', 'the current content', or asks about a term, feature, or section without naming a source, ground the answer in this content.", 'gregius-data' );
-	}
-
-	/**
 	 * Inject the current-entity grounding into the tool-selection router prompt.
 	 *
 	 * @since 1.0.0
@@ -138,6 +114,6 @@ class GG_Data_Entity_Grounding {
 			return $system_prompt;
 		}
 
-		return $system_prompt . "\n\n" . $descriptor . ' ' . __( "If the question is about this document (or the user says 'this post' / 'this page'), select the search_entity_content tool.", 'gregius-data' );
+		return $system_prompt . "\n\n" . $descriptor . ' ' . __( "Use the search_entity_content tool ONLY when the user asks a question specifically about this document's content (for example \"what does this page say about X\"). For all other questions — including topics or terms that may span multiple documents — use search_content.", 'gregius-data' );
 	}
 }
