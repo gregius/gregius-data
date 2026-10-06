@@ -831,11 +831,11 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			$table_name = $prefix . 'posts_clean';
 			$posts_table = $prefix . 'posts';
 
-			// Detect WordPress language for search index optimization.
+			// Detect the site search language for the search-vector trigger.
 			$detected_language = GG_Data_Search_Language::get_site_search_language();
 			$this->logger->log(
 				sprintf(
-					'Creating search indexes with detected language: %s (WordPress locale: %s)',
+					'Detected search language: %s (WordPress locale: %s)',
 					$detected_language,
 					get_locale()
 				),
@@ -924,17 +924,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				ON $table_name 
 				USING GIN (search_vector_weighted)",
 
-				// Legacy: GIN index for PostgreSQL full-text search with detected language.
-				// Kept for compatibility with direct queries, but search function uses search_vector_weighted.
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_content_fts_idx 
-				ON $table_name 
-				USING GIN (to_tsvector('$detected_language', COALESCE(post_content_clean, '')))",
-
-				// Legacy: GIN index for title full-text search with detected language.
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_title_fts_idx 
-				ON $table_name 
-				USING GIN (to_tsvector('$detected_language', COALESCE(post_title_clean, '')))",
-
 				// B-tree index on content_hash for change detection.
 				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_content_hash_idx 
 				ON $table_name (content_hash)",
@@ -953,25 +942,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			foreach ( $indexes as $index_sql ) {
 				$conn->exec( $index_sql );
 			}
-
-			// Store the detected language in settings for future reference.
-			$settings_manager = new GG_Data_Settings_Manager();
-			$settings_manager->set_with_category_public(
-				'search',
-				$connection_name,
-				'index_language',
-				$detected_language
-			);
-			$this->logger->log(
-				sprintf(
-					'Stored index language "%s" in settings for connection "%s"',
-					$detected_language,
-					$connection_name
-				),
-				'info',
-				'system',
-				$connection_name
-			);
 
 			return true;
 		}

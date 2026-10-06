@@ -461,6 +461,19 @@ class GG_Data_REST_Schema_Controller extends WP_REST_Controller {
 				);
 			}
 
+			// Substitute the site search language into the search-vector trigger
+			// and backfill (the shipped SQL defaults to 'english').
+			require_once plugin_dir_path( __FILE__ ) . '../search/class-gg-data-search-language.php';
+			$site_language = GG_Data_Search_Language::get_site_search_language();
+			if ( ! GG_Data_Search_Language::is_language_supported( $site_language ) ) {
+				$site_language = 'simple';
+			}
+			$sql_content = str_replace(
+				"to_tsvector('english',",
+				"to_tsvector('{$site_language}',",
+				$sql_content
+			);
+
 			// Extract project ref for dashboard URL.
 			$project_ref = '';
 			if ( preg_match( '/https:\/\/([^\.]+)\.supabase\.co/', $config['project_url'], $matches ) ) {
