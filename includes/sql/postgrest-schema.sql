@@ -137,7 +137,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql
-SET search_path = public, pg_temp;
+SET search_path = public, extensions, pg_temp;
 
 DROP TRIGGER IF EXISTS tsvector_update ON wp_posts_clean;
 CREATE TRIGGER tsvector_update 
@@ -443,7 +443,7 @@ RETURNS TABLE (
     post_content_clean TEXT
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 BEGIN
     -- Find posts without a title embedding (simplest check for "needs vectors")
@@ -485,7 +485,7 @@ RETURNS TABLE (
     running_tokens int
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_post_type_filter text := '';
@@ -630,20 +630,42 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf
 DROP POLICY IF EXISTS "Enable all access for service_role" ON gg_schema_meta;
 
 -- Create permissive policies for service_role
-CREATE POLICY "Enable all access for service_role" ON wp_posts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_clean FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_chunks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_postmeta FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_terms FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_term_taxonomy FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_term_relationships FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_clean FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_chunks FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_postmeta FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_terms FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_term_taxonomy FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_term_relationships FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Read-only policies for the anonymous role (used by the server-side search/RAG
+-- functions, which run as `anon`). Scoped to the tables those functions read.
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_clean;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_chunks;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_2_3072;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024;
+
+CREATE POLICY "Enable read access for anon" ON wp_posts FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_clean FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_chunks FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_2_3072 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024 FOR SELECT TO anon USING (true);
 
 -- ================================================
 -- Full-Text Search Functions
@@ -661,6 +683,7 @@ CREATE OR REPLACE FUNCTION search_core_fuse_rrf(
 RETURNS real
 LANGUAGE sql
 IMMUTABLE
+SET search_path = public, extensions, pg_temp
 AS $$
     SELECT CASE
         WHEN rank_position IS NULL OR rank_position < 1 THEN 0::real
@@ -695,7 +718,7 @@ RETURNS TABLE (
     rank_position bigint
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_query_vector       vector;
@@ -808,7 +831,7 @@ RETURNS TABLE (
     match_type text
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_word_count int;
@@ -1005,7 +1028,7 @@ RETURNS TABLE (
     match_type text
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_word_count int;
@@ -1234,7 +1257,7 @@ CREATE OR REPLACE FUNCTION gg_generate_search_vector(
 )
 RETURNS TABLE (vector vector) 
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 BEGIN
     -- Use the pre-computed search_vector_weighted column (GIN-indexed) for all

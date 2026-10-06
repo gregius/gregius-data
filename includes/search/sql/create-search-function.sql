@@ -22,6 +22,7 @@ CREATE OR REPLACE FUNCTION search_core_fuse_rrf(
 RETURNS real
 LANGUAGE sql
 IMMUTABLE
+SET search_path = public, extensions, pg_temp
 AS $$
     SELECT CASE
         WHEN rank_position IS NULL OR rank_position < 1 THEN 0::real
@@ -56,7 +57,7 @@ RETURNS TABLE (
     rank_position bigint
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_query_vector       vector;
@@ -169,7 +170,7 @@ RETURNS TABLE (
     match_type text
 ) 
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_word_count int;
@@ -366,7 +367,7 @@ RETURNS TABLE (
     match_type text
 )
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_word_count int;
@@ -596,7 +597,7 @@ CREATE OR REPLACE FUNCTION gg_generate_search_vector(
 )
 RETURNS TABLE (vector vector) 
 LANGUAGE plpgsql
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 BEGIN
     -- Use the pre-computed search_vector_weighted column (GIN-indexed) for all
