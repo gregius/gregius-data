@@ -38,9 +38,6 @@ if ( ! class_exists( 'GG_Data_Admin' ) ) {
 		public function init() {
 			// Add admin menu.
 			add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-
-			// Add admin notices for missing PHP extensions.
-			add_action( 'admin_notices', array( $this, 'admin_notices' ) );
 		}
 
 		/**
@@ -72,15 +69,6 @@ if ( ! class_exists( 'GG_Data_Admin' ) ) {
 
 			// Note: Legacy PHP admin pages removed (Logs, Query).
 			// All functionality now in React dashboard tabs.
-		}
-		/**
-		 * Admin notices for missing PHP extensions
-		 *
-		 * @since 1.0.0
-		 */
-		public function admin_notices() {
-			// Notice removed - plugin now supports multiple connection methods.
-			// including Supabase, Neon, and direct PostgreSQL (when pdo_pgsql available).
 		}
 
 		/**

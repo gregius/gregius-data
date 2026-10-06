@@ -174,7 +174,7 @@ class GG_Data_Evaluation_Service {
 
 		if ( ! is_array( $spec ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-			throw new RuntimeException( 'Invalid JSON in evaluation config: ' . $config_path );
+			throw new RuntimeException( 'Invalid JSON in evaluation config: ' . esc_html( $config_path ) );
 		}
 
 		$this->assert_required_fields( $spec );
@@ -296,7 +296,7 @@ class GG_Data_Evaluation_Service {
 
 		if ( '' !== $only_id && ! $this->prompt_id_exists( $config['prompts'], $only_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-			throw new RuntimeException( 'Unknown sample ID for --only: ' . $only_id );
+			throw new RuntimeException( 'Unknown sample ID for --only: ' . esc_html( $only_id ) );
 		}
 
 		$execution_samples = $this->filter_prompts( $config['prompts'], $only_id );
@@ -383,10 +383,10 @@ class GG_Data_Evaluation_Service {
 	/**
 	 * Run one evaluation sample.
 	 *
-	 * @param array                 $sample      Sample configuration.
-	 * @param int                   $index       1-based index.
-	 * @param string                $raw_dir     Raw output directory.
-	 * @param array                 $config      Normalized config.
+	 * @param array                    $sample      Sample configuration.
+	 * @param int                      $index       1-based index.
+	 * @param string                   $raw_dir     Raw output directory.
+	 * @param array                    $config      Normalized config.
 	 * @param GG_Data_RAG_Service|null $rag_service Pre-built RAG service instance.
 	 * @return array
 	 */
@@ -558,6 +558,7 @@ class GG_Data_Evaluation_Service {
 	 * @param string $error_path        Errors dataset file path (empty if none).
 	 * @param array  $adapter_paths     Framework adapter paths.
 	 * @param string $config_path       Evaluation config file path.
+	 * @param string $wp_url            Site URL (empty if unavailable).
 	 * @return void
 	 */
 	private function write_manifest( $output_dir, $timestamp, $framework, $sample_type, $sample_count, $scope, $executed_count, $failed_count, $failure_breakdown, $prompts_path, $prompts_sha, $error_sha, $error_path, $adapter_paths, $config_path, $wp_url = '' ) {
@@ -569,7 +570,7 @@ class GG_Data_Evaluation_Service {
 		};
 
 		foreach ( $adapter_paths as $adapter => $path ) {
-			$adapter_sha = file_exists( $path ) ? hash_file( 'sha256', $path ) : '';
+			$adapter_sha          = file_exists( $path ) ? hash_file( 'sha256', $path ) : '';
 			$adapters[ $adapter ] = array(
 				'path'   => 'frameworks/' . $adapter . '/' . basename( $path ),
 				'sha256' => $adapter_sha,
@@ -669,7 +670,7 @@ class GG_Data_Evaluation_Service {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- Local artifact directory creation.
 		if ( ! mkdir( $path, 0755, true ) && ! is_dir( $path ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-			throw new RuntimeException( 'Failed to create directory: ' . $path );
+			throw new RuntimeException( 'Failed to create directory: ' . esc_html( $path ) );
 		}
 	}
 
@@ -686,7 +687,7 @@ class GG_Data_Evaluation_Service {
 
 		if ( false === $result ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-			throw new RuntimeException( 'Failed to write file: ' . $path );
+			throw new RuntimeException( 'Failed to write file: ' . esc_html( $path ) );
 		}
 	}
 
@@ -710,7 +711,7 @@ class GG_Data_Evaluation_Service {
 		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-		throw new RuntimeException( 'Missing required evaluation config fields: ' . implode( ', ', $missing ) );
+		throw new RuntimeException( 'Missing required evaluation config fields: ' . esc_html( implode( ', ', $missing ) ) );
 	}
 
 	/**
@@ -734,7 +735,7 @@ class GG_Data_Evaluation_Service {
 		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CLI exception message, not HTML output.
-		throw new RuntimeException( 'Missing required evaluation model fields: ' . implode( ', ', $missing ) );
+		throw new RuntimeException( 'Missing required evaluation model fields: ' . esc_html( implode( ', ', $missing ) ) );
 	}
 
 	/**
@@ -760,7 +761,7 @@ class GG_Data_Evaluation_Service {
 			}
 
 			if ( isset( $seen_ids[ $sample['id'] ] ) ) {
-				throw new RuntimeException( 'Duplicate evaluation prompt id: ' . $sample['id'] );
+				throw new RuntimeException( 'Duplicate evaluation prompt id: ' . esc_html( $sample['id'] ) );
 			}
 
 			$seen_ids[ $sample['id'] ] = true;

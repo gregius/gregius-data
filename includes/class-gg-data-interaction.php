@@ -717,8 +717,7 @@ class GG_Data_Interaction {
 			return;
 		}
 
-		$method = filter_input( INPUT_SERVER, 'REQUEST_METHOD', FILTER_UNSAFE_RAW );
-		$method = is_string( $method ) ? strtoupper( sanitize_text_field( $method ) ) : '';
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : '';
 		if ( 'GET' !== $method ) {
 			return;
 		}
@@ -727,22 +726,20 @@ class GG_Data_Interaction {
 			return;
 		}
 
-		$post_id = filter_input( INPUT_GET, 'post', FILTER_VALIDATE_INT );
-		$post_id = is_int( $post_id ) ? $post_id : 0;
+		$post_id = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0;
 		if ( $post_id <= 0 ) {
 			return;
 		}
 
-		$requested_action = filter_input( INPUT_GET, 'action', FILTER_UNSAFE_RAW );
-		$requested_action = is_string( $requested_action ) && '' !== $requested_action ? sanitize_key( $requested_action ) : 'edit';
+		$requested_action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+		$requested_action = '' !== $requested_action ? $requested_action : 'edit';
 		if ( 'edit' !== $requested_action ) {
 			return;
 		}
 
 		// Validate nonce when present but allow legacy edit links that do not include one.
-		$nonce = filter_input( INPUT_GET, '_wpnonce', FILTER_UNSAFE_RAW );
-		if ( is_string( $nonce ) && '' !== $nonce ) {
-			$nonce          = sanitize_text_field( $nonce );
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( '' !== $nonce ) {
 			$is_valid_nonce = wp_verify_nonce( $nonce, 'update-post_' . $post_id ) || wp_verify_nonce( $nonce, 'edit-post_' . $post_id );
 			if ( ! $is_valid_nonce ) {
 				return;
@@ -763,8 +760,7 @@ class GG_Data_Interaction {
 			return;
 		}
 
-		$requested_site_id = filter_input( INPUT_GET, 'site_id', FILTER_VALIDATE_INT );
-		$requested_site_id = is_int( $requested_site_id ) ? $requested_site_id : 0;
+		$requested_site_id = isset( $_GET['site_id'] ) ? absint( $_GET['site_id'] ) : 0;
 		if ( $requested_site_id <= 0 ) {
 			return;
 		}

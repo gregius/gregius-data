@@ -1,10 +1,4 @@
 <?php
-// Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
-
-
 /**
  * Taxonomy Synchronization Class
  *
@@ -16,6 +10,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @package Gregius_Data
  * @since 1.0.0
  */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 
@@ -735,7 +734,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					$bulk_result = $this->provider->bulk_upsert_terms( $terms_to_sync, 1, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
-						throw new Exception( 'Bulk term upsert failed: ' . $error_msg );
+						throw new Exception( 'Bulk term upsert failed: ' . esc_html( $error_msg ) );
 					}
 
 					$expected_count  = count( $terms_to_sync );
@@ -767,7 +766,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 						$tax_bulk_result = $this->provider->bulk_upsert_term_taxonomies( $term_taxonomies, 1, $this->connection_name );
 						if ( empty( $tax_bulk_result['success'] ) ) {
 							$error_msg = isset( $tax_bulk_result['error'] ) ? $tax_bulk_result['error'] : 'Unknown error';
-							throw new Exception( 'Bulk term taxonomy upsert failed: ' . $error_msg );
+							throw new Exception( 'Bulk term taxonomy upsert failed: ' . esc_html( $error_msg ) );
 						}
 
 						$expected_tax_count  = count( $term_taxonomies );
@@ -861,7 +860,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					$bulk_result = $this->provider->bulk_upsert_term_taxonomies( $taxonomies_to_sync, 1, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
-						throw new Exception( 'Bulk term taxonomy upsert failed: ' . $error_msg );
+						throw new Exception( 'Bulk term taxonomy upsert failed: ' . esc_html( $error_msg ) );
 					}
 
 					$expected_count  = count( $taxonomies_to_sync );
@@ -979,7 +978,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					$bulk_result = $this->provider->bulk_upsert_term_relationships( $relationships_to_sync, 1, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
-						throw new Exception( 'Bulk term relationship upsert failed: ' . $error_msg );
+						throw new Exception( 'Bulk term relationship upsert failed: ' . esc_html( $error_msg ) );
 					}
 
 					$expected_count  = count( $relationships_to_sync );

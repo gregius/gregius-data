@@ -188,12 +188,12 @@ This plugin connects to services you configure:
 
 2. AI provider APIs (optional):
 - OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and Voyage AI are used only if you configure them.
-- Requests to generation/embedding/rerank workflows send request data to the provider you selected.
+- Requests to generation/embedding/rerank workflows send request data to the provider you selected. Data is sent only when a workflow runs (a query, sync, embedding, or rerank operation) and only after you have configured that provider.
 - OpenAI Terms: https://openai.com/policies/terms-of-use/ | Privacy: https://openai.com/policies/privacy-policy/
 - Anthropic Terms: https://www.anthropic.com/legal/consumer-terms | Privacy: https://www.anthropic.com/privacy
 - Google Gemini Terms: https://policies.google.com/terms | Privacy: https://policies.google.com/privacy
 - DeepSeek Terms: https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html | Privacy: https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html
 - Cohere Terms: https://cohere.com/terms-of-use | Privacy: https://cohere.com/privacy
-- Voyage AI Terms: https://www.voyageai.com/terms-of-service | Privacy: https://www.voyageai.com/privacy
+- Voyage AI Terms: https://www.voyageai.com/tos | Privacy: https://www.voyageai.com/privacy
 
 You are responsible for each configured provider's terms and privacy policy.

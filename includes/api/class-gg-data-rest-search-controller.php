@@ -293,22 +293,22 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'update_typo_tolerance_settings' ),
 					'permission_callback' => array( $this, 'update_health_permissions_check' ),
 					'args'                => array(
-						'connection'                    => array(
+						'connection'           => array(
 							'description' => 'Connection name',
 							'type'        => 'string',
 							'required'    => true,
 						),
-						'typo_tolerance'                => array(
+						'typo_tolerance'       => array(
 							'description' => 'Enable typo tolerance',
 							'type'        => 'boolean',
 							'required'    => false,
 						),
-						'similarity_threshold'          => array(
+						'similarity_threshold' => array(
 							'description' => 'Similarity threshold (0.2-0.5)',
 							'type'        => 'number',
 							'required'    => false,
 						),
-						'retrieval_mode'                => array(
+						'retrieval_mode'       => array(
 							'description' => 'Search retrieval mode',
 							'type'        => 'string',
 							'enum'        => array( 'hybrid_default', 'postgresql_only' ),
@@ -503,7 +503,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 			// Require the language helper.
 			$language_helper_path = GG_DATA_PLUGIN_DIR . 'includes/search/class-gg-data-search-language.php';
 			if ( ! file_exists( $language_helper_path ) ) {
-				throw new Exception( 'Language helper file not found at: ' . $language_helper_path );
+				throw new Exception( 'Language helper file not found at: ' . esc_html( $language_helper_path ) );
 			}
 			require_once $language_helper_path;
 
@@ -563,7 +563,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 			$db         = $this->get_db();
 			$connection = $db->get_connection( $connection_name );
 			if ( ! $connection ) {
-				throw new Exception( 'Database connection not found: ' . $connection_name );
+				throw new Exception( 'Database connection not found: ' . esc_html( $connection_name ) );
 			}
 
 			// Recreate the search functions (drops + CREATE OR REPLACE) via the schema helper.
@@ -867,9 +867,9 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 		$settings_scope = $this->get_search_settings_scope();
 
 		try {
-			$typo_tolerance                = $this->settings->get_with_category( 'search', $settings_scope, 'typo_tolerance', false );
-			$similarity_threshold          = $this->settings->get_with_category( 'search', $settings_scope, 'similarity_threshold', 0.5 );
-			$retrieval_mode                = $this->settings->get_with_category( 'search', $settings_scope, 'retrieval_mode', 'hybrid_default' );
+			$typo_tolerance       = $this->settings->get_with_category( 'search', $settings_scope, 'typo_tolerance', false );
+			$similarity_threshold = $this->settings->get_with_category( 'search', $settings_scope, 'similarity_threshold', 0.5 );
+			$retrieval_mode       = $this->settings->get_with_category( 'search', $settings_scope, 'retrieval_mode', 'hybrid_default' );
 
 			if ( ! in_array( $retrieval_mode, array( 'hybrid_default', 'postgresql_only' ), true ) ) {
 				$retrieval_mode = 'hybrid_default';
@@ -884,10 +884,10 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 
 			return new WP_REST_Response(
 				array(
-					'success'                       => true,
-					'typo_tolerance'                => (bool) $typo_tolerance,
-					'similarity_threshold'          => (float) $similarity_threshold,
-					'retrieval_mode'                => $retrieval_mode,
+					'success'              => true,
+					'typo_tolerance'       => (bool) $typo_tolerance,
+					'similarity_threshold' => (float) $similarity_threshold,
+					'retrieval_mode'       => $retrieval_mode,
 				),
 				200
 			);
@@ -912,7 +912,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response Response with update status.
 	 */
 	public function update_typo_tolerance_settings( $request ) {
-		$settings_scope                = $this->get_search_settings_scope();
+		$settings_scope       = $this->get_search_settings_scope();
 		$typo_tolerance       = $request->get_param( 'typo_tolerance' );
 		$similarity_threshold = $request->get_param( 'similarity_threshold' );
 		$retrieval_mode       = $request->get_param( 'retrieval_mode' );

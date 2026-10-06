@@ -176,7 +176,7 @@ class GG_Data_SSE_Handler {
 			'route'  => 'gg-data/rag/stream',
 			'params' => $_POST,
 		);
-		$allowed = apply_filters( 'gg_data_rag_endpoint_permission', false, $permission_context );
+		$allowed            = apply_filters( 'gg_data_rag_endpoint_permission', false, $permission_context );
 		if ( is_wp_error( $allowed ) ) {
 			$this->send_error( $allowed->get_error_message() );
 			exit;
@@ -280,16 +280,19 @@ class GG_Data_SSE_Handler {
 		if ( ! is_array( $metadata_filter ) ) {
 			$metadata_filter = array();
 		}
+		$metadata_filter = $this->sanitize_rag_payload( $metadata_filter );
 
 		$metadata_manifest = json_decode( (string) $metadata_manifest_json, true );
 		if ( ! is_array( $metadata_manifest ) ) {
 			$metadata_manifest = array();
 		}
+		$metadata_manifest = $this->sanitize_rag_payload( $metadata_manifest );
 
 		$manifest = json_decode( (string) $manifest_json, true );
 		if ( ! is_array( $manifest ) ) {
 			$manifest = array();
 		}
+		$manifest = $this->sanitize_rag_payload( $manifest );
 
 		// Validate required parameters.
 		if ( empty( $query ) ) {
@@ -591,6 +594,30 @@ class GG_Data_SSE_Handler {
 		}
 
 		return $sanitized;
+	}
+
+	/**
+	 * Recursively sanitize a decoded RAG payload (metadata filter / manifest).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $value Decoded JSON value.
+	 * @return mixed Sanitized value.
+	 */
+	private function sanitize_rag_payload( $value ) {
+		if ( is_array( $value ) ) {
+			return array_map( array( $this, 'sanitize_rag_payload' ), $value );
+		}
+		if ( is_string( $value ) ) {
+			return sanitize_text_field( $value );
+		}
+		if ( is_int( $value ) ) {
+			return absint( $value );
+		}
+		if ( is_float( $value ) ) {
+			return (float) $value;
+		}
+		return $value;
 	}
 
 	/**

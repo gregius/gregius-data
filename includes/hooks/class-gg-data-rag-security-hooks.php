@@ -74,7 +74,7 @@ class GG_Data_RAG_Security_Hooks {
 	 * unchanged by the guest path.
 	 *
 	 * @since 1.0.0
-	 * @param bool                      $allowed Whether access is currently allowed.
+	 * @param bool                        $allowed Whether access is currently allowed.
 	 * @param WP_REST_Request|object|null $request Request, or a lightweight context object with
 	 *                                             public `route` + `params` (AJAX/SSE).
 	 * @return bool|WP_Error True if allowed, false or WP_Error to deny.
@@ -193,7 +193,7 @@ class GG_Data_RAG_Security_Hooks {
 		}
 
 		$params   = $context['params'];
-		$nonce    = isset( $params['guest_access_nonce'] ) ? (string) $params['guest_access_nonce'] : '';
+		$nonce    = isset( $params['guest_access_nonce'] ) ? sanitize_text_field( (string) $params['guest_access_nonce'] ) : '';
 		$block_id = isset( $params['guest_access_block_id'] ) ? sanitize_text_field( (string) $params['guest_access_block_id'] ) : '';
 		$post_id  = isset( $params['guest_access_post_id'] ) ? absint( $params['guest_access_post_id'] ) : 0;
 

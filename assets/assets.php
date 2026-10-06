@@ -136,11 +136,13 @@ function gg_data_dashboard_scripts_support() {
                 apiUrl: "' . esc_js( rest_url( 'gg-data/v1/' ) ) . '",
                 restUrl: "' . esc_js( rest_url() ) . '",
                 nonce: "' . esc_js( wp_create_nonce( 'wp_rest' ) ) . '",
-                currentUser: ' . wp_json_encode( array(
-	'id'           => get_current_user_id(),
-	'display_name' => wp_get_current_user()->display_name,
-	'email'        => wp_get_current_user()->user_email,
-) ) . ',
+                currentUser: ' . wp_json_encode(
+					array(
+						'id'           => get_current_user_id(),
+						'display_name' => wp_get_current_user()->display_name,
+						'email'        => wp_get_current_user()->user_email,
+					)
+				) . ',
                 pluginUrl: "' . esc_js( plugin_dir_url( __DIR__ ) ) . '"
             };
         ',
@@ -154,27 +156,32 @@ add_action( 'admin_enqueue_scripts', 'gg_data_dashboard_scripts_support' );
  * Clear localStorage when plugin is deactivated
  */
 function gg_data_clear_localstorage_script() {
-	if ( get_transient( 'gg_data_clear_localstorage' ) ) {
-		delete_transient( 'gg_data_clear_localstorage' );
-		?>
-		<script>
-			// Clear Gregius Data localStorage on deactivation.
-			if (typeof localStorage !== 'undefined') {
-				const keysToRemove = [];
-				for (let i = 0; i < localStorage.length; i++) {
-					const key = localStorage.key(i);
-					if (key && key.startsWith('gg_data_')) {
-						keysToRemove.push(key);
-					}
-				}
-				keysToRemove.forEach(key => localStorage.removeItem(key));
-				console.log('Gregius Data: Cleared ' + keysToRemove.length + ' localStorage items after deactivation');
-			}
-		</script>
-		<?php
+	if ( ! get_transient( 'gg_data_clear_localstorage' ) ) {
+		return;
 	}
+
+	delete_transient( 'gg_data_clear_localstorage' );
+
+	$script = <<<'JS'
+// Clear Gregius Data localStorage on deactivation.
+if (typeof localStorage !== 'undefined') {
+	const keysToRemove = [];
+	for (let i = 0; i < localStorage.length; i++) {
+		const key = localStorage.key(i);
+		if (key && key.startsWith('gg_data_')) {
+			keysToRemove.push(key);
+		}
+	}
+	keysToRemove.forEach(key => localStorage.removeItem(key));
+	console.log('Gregius Data: Cleared ' + keysToRemove.length + ' localStorage items after deactivation');
 }
-add_action( 'admin_head', 'gg_data_clear_localstorage_script' );
+JS;
+
+	wp_register_script( 'gg-data-clear-localstorage', '', array(), GG_DATA_VERSION, true );
+	wp_add_inline_script( 'gg-data-clear-localstorage', $script );
+	wp_enqueue_script( 'gg-data-clear-localstorage' );
+}
+add_action( 'admin_enqueue_scripts', 'gg_data_clear_localstorage_script' );
 
 /**
  * Enqueue the deactivation modal on the plugins screen.

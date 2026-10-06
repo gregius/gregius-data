@@ -552,8 +552,8 @@ class GG_Data_RAG_Service {
 		$similarity_threshold = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
 
 		// Build RPC request payload.
-		$rpc_url           = $base_url . '/rest/v1/rpc/search_rag_orchestrate';
-		$payload           = array(
+		$rpc_url = $base_url . '/rest/v1/rpc/search_rag_orchestrate';
+		$payload = array(
 			'search_text'          => $query,
 			'post_types'           => $options['post_types'],
 			'limit_count'          => $options['num_results'],
@@ -722,8 +722,8 @@ class GG_Data_RAG_Service {
 			$enable_vector = false;
 		}
 
-		$rag_pdo_fn        = 'search_rag_orchestrate';
-		$sql               = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb, :rrf_k::integer, :precomputed_query_vector::text)";
+		$rag_pdo_fn = 'search_rag_orchestrate';
+		$sql        = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb, :rrf_k::integer, :precomputed_query_vector::text)";
 
 		try {
 			$stmt = $connection->prepare( $sql );
@@ -4498,13 +4498,13 @@ class GG_Data_RAG_Service {
 		$subqueries = array_slice( $subqueries, 0, $max_subqueries );
 
 		return array(
-			'active'          => $agentic_active,
-			'intent'          => $intent,
-			'entities'        => $entities,
-			'aspects'         => $aspects,
-			'subqueries'      => $subqueries,
-			'max_subqueries'  => $max_subqueries,
-			'planner_source'  => count( $subqueries ) > 1 ? 'deterministic' : 'single_query',
+			'active'         => $agentic_active,
+			'intent'         => $intent,
+			'entities'       => $entities,
+			'aspects'        => $aspects,
+			'subqueries'     => $subqueries,
+			'max_subqueries' => $max_subqueries,
+			'planner_source' => count( $subqueries ) > 1 ? 'deterministic' : 'single_query',
 		);
 	}
 
