@@ -219,6 +219,30 @@ class GG_Data_Uninstaller {
 		}
 
 		self::remove_prompt_data();
+		self::remove_interaction_data();
+	}
+
+	/**
+	 * Remove plugin-owned interaction data (posts and their metadata).
+	 *
+	 * Uses direct bulk SQL (high volume — one post per query) rather than the
+	 * per-post WordPress-core path used for prompts (few rows plus a taxonomy).
+	 * The `gg_interaction` post type carries no revisions or taxonomy.
+	 *
+	 * @return void
+	 */
+	private static function remove_interaction_data() {
+		global $wpdb;
+
+		// Delete interaction meta first (covers _gg_interaction_* and filter-added keys), then the posts.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall-time bulk cleanup; no cache invalidation needed (plugin removed).
+		$wpdb->query(
+			"DELETE FROM {$wpdb->postmeta}
+			 WHERE post_id IN ( SELECT ID FROM {$wpdb->posts} WHERE post_type = 'gg_interaction' )"
+		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall-time bulk cleanup; no cache invalidation needed (plugin removed).
+		$wpdb->query( "DELETE FROM {$wpdb->posts} WHERE post_type = 'gg_interaction'" );
 	}
 
 	/**
