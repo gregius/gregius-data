@@ -624,6 +624,76 @@ Keep reason concise. Do not add extra keys or text.',
 		}
 
 		/**
+		 * Re-apply the search function to install the `precomputed_query_vector`
+		 * overload of `search_rag_orchestrate` on existing installs.
+		 *
+		 * Runs once, guarded by a site option. PostgreSQL (PDO) only; Supabase
+		 * is manual (re-apply postgrest-schema.sql).
+		 *
+		 * @since 1.0.0
+		 */
+		public static function migrate_search_rag_precomputed_query_vector() {
+			if ( get_option( 'gg_data_search_rag_precomputed_migrated' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_search_rag_precomputed_query_vector_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_search_rag_precomputed_query_vector_for_current_site();
+		}
+
+		/**
+		 * Re-apply the search function for the current site.
+		 *
+		 * @return void
+		 */
+		private static function migrate_search_rag_precomputed_query_vector_for_current_site() {
+			$settings_manager = new GG_Data_Settings_Manager();
+			$connections      = method_exists( $settings_manager, 'get_all_connections' ) ? $settings_manager->get_all_connections() : array();
+
+			$db = new GG_Data_DB();
+
+			foreach ( array_keys( (array) $connections ) as $connection_name ) {
+				try {
+					$conn = $db->get_connection( $connection_name );
+
+					if ( ! $conn ) {
+						continue; // PDO-only; PostgREST/Supabase is manual.
+					}
+
+					if ( class_exists( 'GG_Data_Search_Schema' ) ) {
+						$search_schema = new GG_Data_Search_Schema();
+						$search_schema->create_search_function( $conn, $connection_name );
+					}
+				} catch ( Exception $e ) {
+					$logger = new GG_Data_Logger();
+					$logger->log(
+						sprintf(
+							'Search function re-apply (precomputed query vector) failed for connection "%s": %s',
+							$connection_name,
+							$e->getMessage()
+						),
+						'warning',
+						'search',
+						$connection_name
+					);
+				}
+			}
+
+			update_option( 'gg_data_search_rag_precomputed_migrated', true );
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -646,6 +716,7 @@ Keep reason concise. Do not add extra keys or text.',
 
 			self::migrate_hashingtf();
 			self::migrate_search_vector_language();
+			self::migrate_search_rag_precomputed_query_vector();
 		}
 
 		/**

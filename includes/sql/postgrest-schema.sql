@@ -976,7 +976,10 @@ $$;
 DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer);
 DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer, jsonb);
 DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, jsonb, integer);
+DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, integer);
+DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, integer, jsonb);
 DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, jsonb, integer);
+DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, jsonb, integer, text);
 
 CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     search_text text,
@@ -989,7 +992,8 @@ CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     metadata_filter jsonb DEFAULT '{}'::jsonb,
-    rrf_k integer DEFAULT 60
+    rrf_k integer DEFAULT 60,
+    precomputed_query_vector text DEFAULT NULL
 )
 RETURNS TABLE (
     post_id bigint,
@@ -1154,7 +1158,7 @@ BEGIN
     vector_results AS (
         SELECT vc.*
         FROM search_core_vector_candidates(
-            search_text, post_types, limit_count, search_language, vector_table, vector_column
+            search_text, post_types, limit_count, search_language, vector_table, vector_column, precomputed_query_vector
         ) vc
         INNER JOIN wp_posts_clean pc ON pc.post_id = vc.post_id
         WHERE

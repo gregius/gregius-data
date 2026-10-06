@@ -39,6 +39,18 @@ class GG_Data_RAG_Service {
 	private $embedding_model_key;
 
 	/**
+	 * Source of the query vector for the current request.
+	 *
+	 * 'direct' (directly hashed/embedded), 'fts_anchored' (FTS-anchored
+	 * averaging), or 'none' (no query vector computed). Reflects how the query
+	 * vector was sourced, not whether it was used in the final result.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
+	private $query_vector_source = 'none';
+
+	/**
 	 * Search integration instance.
 	 *
 	 * @since 1.0.0
@@ -392,6 +404,73 @@ class GG_Data_RAG_Service {
 	}
 
 	/**
+	 * Build a PostgreSQL vector literal for a query, without FTS-anchored averaging.
+	 *
+	 * For the internal hashingtf model the query is hashed directly (mirrors the
+	 * frontend). For API embedding models the query is embedded via the provider.
+	 * Returns null when the active model cannot produce a direct query vector, in
+	 * which case callers fall back to the FTS-anchored path.
+	 *
+	 * @param string $query Query text.
+	 * @return string|null PostgreSQL vector literal, or null when unsupported.
+	 */
+	private function generate_query_vector_literal( $query ) {
+		if ( empty( $query ) || ! is_string( $query ) ) {
+			$this->query_vector_source = 'none';
+			return null;
+		}
+
+		$this->query_vector_source = 'fts_anchored';
+
+		$model_key = strtolower( (string) $this->embedding_model_key );
+
+		// Internal hashingtf: hash the query directly (mirrors the frontend).
+		if ( false !== strpos( $model_key, 'hashingtf' ) ) {
+			if ( ! class_exists( 'GG_Data_HashingTF_Embeddings' ) ) {
+				require_once dirname( __DIR__ ) . '/vectors/class-gg-data-hashingtf-embeddings.php';
+			}
+
+			$embeddings = new GG_Data_HashingTF_Embeddings();
+
+			$this->query_vector_source = 'direct';
+
+			return $embeddings->generate_query_vector_literal( $query );
+		}
+
+		// API embedding model: resolve the provider and embed the query.
+		$model = $this->model_registry->get_model( $this->connection_name, $this->embedding_model_key );
+		if ( ! $model ) {
+			$model = $this->model_registry->get_model( 'gregius-data', $this->embedding_model_key );
+		}
+
+		if ( empty( $model ) || empty( $model['provider'] ) || 'internal' === $model['provider'] ) {
+			return null;
+		}
+
+		$provider = GG_Data_LLM_Registry::get_provider( $model['provider'] );
+		if ( is_wp_error( $provider ) || ! method_exists( $provider, 'generate_embedding' ) ) {
+			return null;
+		}
+
+		$api_key = ! empty( $model['config']['api_key'] ) ? $model['config']['api_key'] : ( $model['api_key'] ?? '' );
+		$vector  = $provider->generate_embedding(
+			$query,
+			array(
+				'api_key' => $api_key,
+				'model'   => $model['provider_model_id'] ?? '',
+			)
+		);
+
+		if ( is_wp_error( $vector ) || ! is_array( $vector ) ) {
+			return null;
+		}
+
+		$this->query_vector_source = 'direct';
+
+		return '[' . implode( ',', $vector ) . ']';
+	}
+
+	/**
 	 * Retrieve relevant content chunks for a query using Supabase vector search.
 	 *
 	 * Uses the new row-per-embedding schema with wp_posts_chunks for actual chunk text.
@@ -486,6 +565,12 @@ class GG_Data_RAG_Service {
 			'vector_column'        => $vector_config['embedding_column'],
 			'metadata_filter'      => ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass(),
 		);
+
+		// Pass a directly-hashed/embedded query vector when the active model supports it.
+		$precomputed_query_vector = $this->generate_query_vector_literal( $query );
+		if ( null !== $precomputed_query_vector ) {
+			$payload['precomputed_query_vector'] = $precomputed_query_vector;
+		}
 
 		// Execute Supabase RPC request.
 		$args = array(
@@ -638,21 +723,23 @@ class GG_Data_RAG_Service {
 		}
 
 		$rag_pdo_fn        = 'search_rag_orchestrate';
-		$sql               = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb)";
+		$sql               = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb, :rrf_k::integer, :precomputed_query_vector::text)";
 
 		try {
 			$stmt = $connection->prepare( $sql );
 			$stmt->execute(
 				array(
-					':search_term'          => $query,
-					':limit_count'          => (int) $options['num_results'],
-					':language'             => $language,
-					':enable_trigram'       => 'true',
-					':similarity_threshold' => (float) $similarity_threshold,
-					':enable_vector'        => $enable_vector ? 'true' : 'false',
-					':vector_table'         => $vector_config['table_name'] ?? '',
-					':vector_column'        => $vector_config['embedding_column'] ?? 'embedding',
-					':metadata_filter'      => wp_json_encode( ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass() ),
+					':search_term'              => $query,
+					':limit_count'              => (int) $options['num_results'],
+					':language'                 => $language,
+					':enable_trigram'           => 'true',
+					':similarity_threshold'     => (float) $similarity_threshold,
+					':enable_vector'            => $enable_vector ? 'true' : 'false',
+					':vector_table'             => $vector_config['table_name'] ?? '',
+					':vector_column'            => $vector_config['embedding_column'] ?? 'embedding',
+					':metadata_filter'          => wp_json_encode( ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass() ),
+					':rrf_k'                    => 60,
+					':precomputed_query_vector' => $this->generate_query_vector_literal( $query ),
 				)
 			);
 
@@ -800,50 +887,56 @@ class GG_Data_RAG_Service {
 			return array();
 		}
 
-		// First, generate query vector using gg_generate_search_vector.
-		$vector_rpc_url = $base_url . '/rest/v1/rpc/gg_generate_search_vector';
-		$language       = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
+		// Compute the query vector directly when the active model supports it;
+		// otherwise fall back to the FTS-anchored gg_generate_search_vector RPC.
+		$query_vector = $this->generate_query_vector_literal( $query );
 
-		$vector_payload = array(
-			'search_text'        => $query,
-			'search_language'    => $language,
-			'vector_table_name'  => $vector_config['table_name'],
-			'vector_column_name' => $vector_config['embedding_column'],
-		);
+		if ( null === $query_vector ) {
+			// First, generate query vector using gg_generate_search_vector.
+			$vector_rpc_url = $base_url . '/rest/v1/rpc/gg_generate_search_vector';
+			$language       = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
 
-		$vector_args = array(
-			'method'  => 'POST',
-			'headers' => GG_Data_PostgREST_Provider::build_supabase_headers( $config['publishable_key'] ),
-			'body'    => wp_json_encode( $vector_payload ),
-			'timeout' => 30,
-		);
-
-		$vector_response = wp_remote_request( $vector_rpc_url, $vector_args );
-
-		if ( is_wp_error( $vector_response ) ) {
-			$this->logger->log(
-				'RAG Service: Failed to generate query vector: ' . $vector_response->get_error_message(),
-				'error',
-				'rag',
-				$this->connection_name
+			$vector_payload = array(
+				'search_text'        => $query,
+				'search_language'    => $language,
+				'vector_table_name'  => $vector_config['table_name'],
+				'vector_column_name' => $vector_config['embedding_column'],
 			);
-			return array();
-		}
 
-		$vector_body   = wp_remote_retrieve_body( $vector_response );
-		$vector_result = json_decode( $vector_body, true );
-
-		if ( empty( $vector_result ) || ! isset( $vector_result[0]['vector'] ) ) {
-			$this->logger->log(
-				'RAG Service: No vector returned from query vectorization',
-				'warning',
-				'rag',
-				$this->connection_name
+			$vector_args = array(
+				'method'  => 'POST',
+				'headers' => GG_Data_PostgREST_Provider::build_supabase_headers( $config['publishable_key'] ),
+				'body'    => wp_json_encode( $vector_payload ),
+				'timeout' => 30,
 			);
-			return array();
-		}
 
-		$query_vector = $vector_result[0]['vector'];
+			$vector_response = wp_remote_request( $vector_rpc_url, $vector_args );
+
+			if ( is_wp_error( $vector_response ) ) {
+				$this->logger->log(
+					'RAG Service: Failed to generate query vector: ' . $vector_response->get_error_message(),
+					'error',
+					'rag',
+					$this->connection_name
+				);
+				return array();
+			}
+
+			$vector_body   = wp_remote_retrieve_body( $vector_response );
+			$vector_result = json_decode( $vector_body, true );
+
+			if ( empty( $vector_result ) || ! isset( $vector_result[0]['vector'] ) ) {
+				$this->logger->log(
+					'RAG Service: No vector returned from query vectorization',
+					'warning',
+					'rag',
+					$this->connection_name
+				);
+				return array();
+			}
+
+			$query_vector = $vector_result[0]['vector'];
+		}
 
 		// Retrieve chunks through the model-resolved vector store.
 		$rag_rpc_url = $base_url . '/rest/v1/rpc/search_rag_get_context';
@@ -1634,6 +1727,7 @@ class GG_Data_RAG_Service {
 			'planner_duplicate_candidates_total' => (int) ( $planned_retrieval['metrics']['duplicate_candidates_total'] ?? 0 ),
 			'retrieval_policy'                   => $retrieval_policy,
 			'mode_contribution'                  => $this->build_retrieval_mode_contribution( $post_candidates ),
+			'query_vector_source'                => $this->query_vector_source,
 		);
 
 		if ( ! empty( $chunks_by_post ) ) {
@@ -4590,13 +4684,16 @@ class GG_Data_RAG_Service {
 		$contribution = array(
 			'lexical'  => 0,
 			'semantic' => 0,
+			'blended'  => 0,
 			'unknown'  => 0,
 			'total'    => 0,
 		);
 
 		foreach ( $candidates as $candidate ) {
 			$match_type = strtolower( (string) ( $candidate['match_type'] ?? '' ) );
-			if ( false !== strpos( $match_type, 'vec' ) || false !== strpos( $match_type, 'semantic' ) ) {
+			if ( false !== strpos( $match_type, 'blend' ) ) {
+				++$contribution['blended'];
+			} elseif ( false !== strpos( $match_type, 'vec' ) || false !== strpos( $match_type, 'semantic' ) ) {
 				++$contribution['semantic'];
 			} elseif ( false !== strpos( $match_type, 'fts' ) || false !== strpos( $match_type, 'trigram' ) || false !== strpos( $match_type, 'tg' ) || false !== strpos( $match_type, 'fallback' ) || false !== strpos( $match_type, 'lex' ) ) {
 				++$contribution['lexical'];
