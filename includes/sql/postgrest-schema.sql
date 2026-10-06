@@ -1233,40 +1233,23 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-    -- Use pre-computed search_vector_weighted (GIN-indexed) when language
-    -- matches the indexed column, avoiding per-row to_tsvector recomputation.
-    IF search_language = 'english' THEN
-        RETURN QUERY EXECUTE format('
-            SELECT AVG(v.embedding)::vector
-            FROM (
-                SELECT v.embedding, v.field_type
-                FROM %I v
-                INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
-                WHERE 
-                    v.embedding IS NOT NULL
-                    AND pc.search_vector_weighted @@ plainto_tsquery(%L::regconfig, %L)
-                ORDER BY 
-                    ts_rank_cd(pc.search_vector_weighted, plainto_tsquery(%L::regconfig, %L)) DESC,
-                    CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
-                LIMIT 10
-            ) v
-        ', vector_table_name, search_language, search_text, search_language, search_text);
-    ELSE
-        RETURN QUERY EXECUTE format('
-            SELECT AVG(v.embedding)::vector
-            FROM (
-                SELECT v.embedding, v.field_type
-                FROM %I v
-                INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
-                WHERE 
-                    v.embedding IS NOT NULL
-                    AND to_tsvector(%L::regconfig, pc.post_title_clean || '' '' || pc.post_content_clean) @@ plainto_tsquery(%L::regconfig, %L)
-                ORDER BY 
-                    CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
-                LIMIT 10
-            ) v
-        ', vector_table_name, search_language, search_language, search_text);
-    END IF;
+    -- Use the pre-computed search_vector_weighted column (GIN-indexed) for all
+    -- languages; the trigger builds the column in the configured search language.
+    RETURN QUERY EXECUTE format('
+        SELECT AVG(v.embedding)::vector
+        FROM (
+            SELECT v.embedding, v.field_type
+            FROM %I v
+            INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
+            WHERE 
+                v.embedding IS NOT NULL
+                AND pc.search_vector_weighted @@ plainto_tsquery(%L::regconfig, %L)
+            ORDER BY 
+                ts_rank_cd(pc.search_vector_weighted, plainto_tsquery(%L::regconfig, %L)) DESC,
+                CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
+            LIMIT 10
+        ) v
+    ', vector_table_name, search_language, search_text, search_language, search_text);
 END;
 $$;
 
@@ -1291,10 +1274,6 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_content_gist 
 ON wp_posts_clean USING GIST (post_content_clean gist_trgm_ops);
 
--- FTS Index (for fast full-text lookups)
-CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_fts 
-ON wp_posts_clean 
-USING GIN (to_tsvector('english', post_title_clean || ' ' || post_content_clean));
 
 -- Note: Requires pg_trgm extension for typo tolerance and pgvector extension for vector search
 

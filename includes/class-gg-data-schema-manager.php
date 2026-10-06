@@ -827,8 +827,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_posts_clean_table( $conn, $connection_name = 'default' ) {
-			$prefix      = $this->get_table_prefix();
-			$table_name  = $prefix . 'posts_clean';
+			$prefix     = $this->get_table_prefix();
+			$table_name = $prefix . 'posts_clean';
 			$posts_table = $prefix . 'posts';
 
 			// Detect WordPress language for search index optimization.
@@ -914,50 +914,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				);
 			}
 
-			// Apply filter hooks for customizable search field weights.
-			// Title weight: 'A' (1.0), 'B' (0.4), 'C' (0.2), 'D' (0.1).
-			// Content weight: 'A' (1.0), 'B' (0.4), 'C' (0.2), 'D' (0.1).
-			$title_weight   = apply_filters( 'gg_data_search_title_weight', 'A', $connection_name );
-			$content_weight = apply_filters( 'gg_data_search_content_weight', 'B', $connection_name );
-
-			// Validate weights (must be A, B, C, or D).
-			$valid_weights = array( 'A', 'B', 'C', 'D' );
-			if ( ! in_array( $title_weight, $valid_weights, true ) ) {
-				$title_weight = 'A';
-			}
-			if ( ! in_array( $content_weight, $valid_weights, true ) ) {
-				$content_weight = 'B';
-			}
-
-			// Create trigger to auto-update search_vector_weighted on INSERT/UPDATE.
-			$conn->exec(
-				"
-				CREATE OR REPLACE FUNCTION {$prefix}posts_clean_search_vector_update() 
-				RETURNS trigger AS \$trigger\$
-				BEGIN
-					NEW.search_vector_weighted := 
-						setweight(to_tsvector('$detected_language', COALESCE(NEW.post_title_clean, '')), '$title_weight') ||
-						setweight(to_tsvector('$detected_language', COALESCE(NEW.post_content_clean, '')), '$content_weight');
-					RETURN NEW;
-					END;
-				\$trigger\$ LANGUAGE plpgsql
-				SET search_path = public, pg_temp;
-
-				DROP TRIGGER IF EXISTS {$prefix}tsvector_update ON $table_name;
-				CREATE TRIGGER {$prefix}tsvector_update 
-				BEFORE INSERT OR UPDATE ON $table_name
-				FOR EACH ROW EXECUTE FUNCTION {$prefix}posts_clean_search_vector_update();
-			"
-			);            // Populate search_vector_weighted for existing rows (uses filtered weights).
-			$conn->exec(
-				"
-				UPDATE $table_name 
-				SET search_vector_weighted = 
-					setweight(to_tsvector('$detected_language', COALESCE(post_title_clean, '')), '$title_weight') ||
-					setweight(to_tsvector('$detected_language', COALESCE(post_content_clean, '')), '$content_weight')
-				WHERE search_vector_weighted IS NULL;
-			"
-			);
+			// Create trigger and populate the precomputed search vector column.
+			$this->rebuild_search_vector( $conn, $connection_name, $detected_language );
 
 			// Create full-text search indexes on cleaned content.
 			$indexes = array(
@@ -1019,13 +977,68 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		}
 
 		/**
+		 * Recreate the search-vector trigger and backfill the precomputed column.
+		 *
+		 * Rebuilds `search_vector_weighted` for the given language; used both at
+		 * schema creation and when the search language is changed at runtime.
+		 *
+		 * @param PDO    $conn            Database connection.
+		 * @param string $connection_name Connection name.
+		 * @param string $language        PostgreSQL text search configuration.
+		 * @return void
+		 */
+		public function rebuild_search_vector( $conn, $connection_name, $language ) {
+			$prefix     = $this->get_table_prefix();
+			$table_name = $prefix . 'posts_clean';
+			$language   = GG_Data_Search_Language::is_language_supported( $language ) ? $language : 'simple';
+
+			$title_weight   = apply_filters( 'gg_data_search_title_weight', 'A', $connection_name );
+			$content_weight = apply_filters( 'gg_data_search_content_weight', 'B', $connection_name );
+
+			$valid_weights = array( 'A', 'B', 'C', 'D' );
+			if ( ! in_array( $title_weight, $valid_weights, true ) ) {
+				$title_weight = 'A';
+			}
+			if ( ! in_array( $content_weight, $valid_weights, true ) ) {
+				$content_weight = 'B';
+			}
+
+			$conn->exec(
+				"CREATE OR REPLACE FUNCTION {$prefix}posts_clean_search_vector_update()
+				RETURNS trigger AS \$trigger\$
+				BEGIN
+					NEW.search_vector_weighted :=
+						setweight(to_tsvector('$language', COALESCE(NEW.post_title_clean, '')), '$title_weight') ||
+						setweight(to_tsvector('$language', COALESCE(NEW.post_content_clean, '')), '$content_weight');
+					RETURN NEW;
+					END;
+				\$trigger\$ LANGUAGE plpgsql
+				SET search_path = public, pg_temp;
+
+				DROP TRIGGER IF EXISTS {$prefix}tsvector_update ON {$table_name};
+				CREATE TRIGGER {$prefix}tsvector_update
+				BEFORE INSERT OR UPDATE ON {$table_name}
+				FOR EACH ROW EXECUTE FUNCTION {$prefix}posts_clean_search_vector_update();
+				"
+			);
+
+			$conn->exec(
+				"UPDATE {$table_name}
+				SET search_vector_weighted =
+					setweight(to_tsvector('$language', COALESCE(post_title_clean, '')), '$title_weight') ||
+					setweight(to_tsvector('$language', COALESCE(post_content_clean, '')), '$content_weight')
+				"
+			);
+		}
+
+		/**
 		 * Create postmeta table
 		 *
 		 * @param PDO $conn Database connection.
 		 * @return bool Success or failure.
 		 */
 		protected function create_postmeta_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$table_name  = $prefix . 'postmeta';
 			$posts_table = $prefix . 'posts';
 
@@ -1209,7 +1222,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				 * @return bool Success or failure.
 				 */
 		protected function create_terms_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$table_name  = $prefix . 'terms';
 					$sql = "
 		CREATE TABLE IF NOT EXISTS $table_name (
@@ -1241,7 +1254,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_term_taxonomy_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$table_name  = $prefix . 'term_taxonomy';
 			$terms_table = $prefix . 'terms';
 					$sql = "
@@ -1309,7 +1322,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_comments_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$table_name  = $prefix . 'comments';
 			$posts_table = $prefix . 'posts';
 
@@ -1429,7 +1442,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_usermeta_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$table_name  = $prefix . 'usermeta';
 			$users_table = $prefix . 'users';
 
@@ -1719,7 +1732,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_chunks_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$posts_table = $prefix . 'posts';
 			$table_name  = $prefix . 'posts_chunks';
 
@@ -1776,7 +1789,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool Success or failure.
 		 */
 		protected function create_openai_embedding_tables( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$posts_table = $prefix . 'posts';
 
 			// Create connection-model association table first.
@@ -1890,7 +1903,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool True on success.
 		 */
 		protected function create_hashingtf_embedding_table( $conn ) {
-			$prefix      = $this->get_table_prefix();
+			$prefix     = $this->get_table_prefix();
 			$posts_table = $prefix . 'posts';
 			$table_name  = $prefix . 'posts_hashingtf_murmur3_1024';
 

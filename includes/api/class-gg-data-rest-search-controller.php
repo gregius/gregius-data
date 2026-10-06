@@ -566,13 +566,13 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 				throw new Exception( 'Database connection not found: ' . $connection_name );
 			}
 
-			// Drop existing function (if it exists).
-			$drop_sql = 'DROP FUNCTION IF EXISTS search_native_orchestrate(text, text[], integer, text)';
-			$connection->exec( $drop_sql );
-
-			// Recreate function with new language (constructor takes no parameters).
+			// Recreate the search functions (drops + CREATE OR REPLACE) via the schema helper.
 			$schema = new GG_Data_Search_Schema();
 			$schema->create_search_function( $connection, $connection_name );
+
+			// Rebuild the precomputed search-vector column in the new language.
+			$schema_manager = new GG_Data_Schema_Manager();
+			$schema_manager->rebuild_search_vector( $connection, $connection_name, $new_language );
 
 			return new WP_REST_Response(
 				array(
