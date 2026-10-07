@@ -171,12 +171,17 @@ class GG_Data_SSE_Handler {
 		// Apply permission filter (same as REST endpoint).
 		// Can return: true (allow), false (deny), or WP_Error (deny with message).
 		// A route+params context is passed so the policy can evaluate guest access.
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Endpoint nonce verified above; the policy sanitizes each field it reads.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Endpoint nonce verified above; the policy sanitizes each field it reads.
 		$permission_context = (object) array(
 			'route'  => 'gg-data/rag/stream',
-			'params' => $_POST,
+			'params' => array(
+				'guest_access_nonce'    => isset( $_POST['guest_access_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['guest_access_nonce'] ) ) : '',
+				'guest_access_block_id' => isset( $_POST['guest_access_block_id'] ) ? sanitize_text_field( wp_unslash( $_POST['guest_access_block_id'] ) ) : '',
+				'guest_access_post_id'  => isset( $_POST['guest_access_post_id'] ) ? absint( wp_unslash( $_POST['guest_access_post_id'] ) ) : 0,
+			),
 		);
-		$allowed            = apply_filters( 'gg_data_rag_endpoint_permission', false, $permission_context );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+		$allowed = apply_filters( 'gg_data_rag_endpoint_permission', false, $permission_context );
 		if ( is_wp_error( $allowed ) ) {
 			$this->send_error( $allowed->get_error_message() );
 			exit;
