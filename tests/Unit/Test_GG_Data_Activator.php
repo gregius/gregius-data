@@ -44,7 +44,8 @@ class Test_GG_Data_Activator extends PHPUnit\Framework\TestCase {
             ->once()
             ->with( 'admin_notices', \Mockery::type( 'Closure' ) );
 
-        Functions\when( 'taxonomy_exists' )->justReturn( false );
+        Functions\when( 'post_type_exists' )->justReturn( true );
+        Functions\when( 'taxonomy_exists' )->justReturn( true );
 
         GG_Data_Activator::check_version();
         $this->assertTrue( true );
