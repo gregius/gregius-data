@@ -465,6 +465,15 @@ class GG_Data_RAG_Service {
 			return null;
 		}
 
+		// Providers return a structured envelope; extract the raw vector.
+		if ( isset( $vector['vector'] ) && is_array( $vector['vector'] ) ) {
+			$vector = $vector['vector'];
+		}
+
+		if ( empty( $vector ) ) {
+			return null;
+		}
+
 		$this->query_vector_source = 'direct';
 
 		return '[' . implode( ',', $vector ) . ']';

@@ -367,14 +367,16 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	 */
 	public function generate_embedding( string $text, array $options = array() ): array|WP_Error {
 		$connection = isset( $options['connection'] ) ? $options['connection'] : 'default';
-		$api_key    = '';
+		$api_key    = isset( $options['api_key'] ) ? $options['api_key'] : '';
 		$model      = isset( $options['model'] ) ? $options['model'] : 'gemini-embedding-2';
 
-		// Get API key from model registry.
-		$model_registry = new GG_Data_Model_Registry();
-		$model_data     = $model_registry->get_model( 'gregius-data', $model );
-		if ( $model_data && ! is_wp_error( $model_data ) ) {
-			$api_key = $model_data['api_key'] ?? '';
+		// Fall back to the model registry when no key was passed by the caller.
+		if ( empty( $api_key ) ) {
+			$model_registry = new GG_Data_Model_Registry();
+			$model_data     = $model_registry->get_model( 'gregius-data', $model );
+			if ( $model_data && ! is_wp_error( $model_data ) ) {
+				$api_key = $model_data['api_key'] ?? '';
+			}
 		}
 
 		if ( empty( $api_key ) ) {
@@ -432,7 +434,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 		}
 
 		return array(
-			'embedding'  => $data['embedding']['values'],
+			'vector'     => $data['embedding']['values'],
 			'dimensions' => count( $data['embedding']['values'] ),
 			'model'      => $model,
 		);
