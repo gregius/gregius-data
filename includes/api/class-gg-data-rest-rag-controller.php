@@ -316,7 +316,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 
 		// Build server-side references from citation_sources and content.
 		// This makes citations portable across all consumers and aligns with frontend resolution logic.
-		$citation_sources = isset( $result['citation_sources'] ) ? $result['citation_sources'] : array();
+		$citation_sources = isset( $result['metadata']['citation_sources'] ) ? $result['metadata']['citation_sources'] : array();
 		$sources          = isset( $result['sources'] ) ? $result['sources'] : array();
 		$answer_content   = isset( $result['answer'] ) ? $result['answer'] : '';
 

@@ -2496,10 +2496,10 @@ class GG_Data_RAG_Service {
 		 * Reranker scores (Cohere/Voyage) range from 0.0 to 1.0.
 		 *
 		 * @since 1.0.0
-		 * @param float $threshold Minimum relevance score (0.0 to 1.0). Default 0.5.
+		 * @param float $threshold Minimum relevance score (0.0 to 1.0). Default 0.0.
 		 * @param array $chunks    The chunks being filtered.
 		 */
-		$min_relevance = apply_filters( 'gg_data_rag_source_min_relevance', 0.5, $chunks );
+		$min_relevance = apply_filters( 'gg_data_rag_source_min_relevance', 0.0, $chunks );
 
 		// Deduplicate by post_id, keeping the highest-scoring entry per post.
 		// Passage retrieval may produce multiple chunks from the same post; sources
@@ -3021,8 +3021,9 @@ class GG_Data_RAG_Service {
 		$sections['legacy'] = $legacy;
 
 		// Merge enterprise sections additively onto the original result.
-		// Top-level contract fields (answer, sources, metadata, citation_sources, interaction_id)
-		// remain intact for internal hooks, guards, logging, and SSE consumers downstream.
+		// Top-level contract fields (answer, sources, metadata, interaction_id) remain
+		// intact for internal hooks, guards, logging, and SSE consumers downstream
+		// (citation_sources lives nested inside metadata, not at the top level).
 		// The REST boundary applies strict external schema before the API response.
 		foreach ( $sections as $section_key => $section_value ) {
 			$result[ $section_key ] = $section_value;
@@ -5242,7 +5243,7 @@ class GG_Data_RAG_Service {
 		$qualified = 0;
 
 		foreach ( $chunks as $chunk ) {
-			$score = isset( $chunk['score'] ) ? (float) $chunk['score'] : 1.0;
+			$score = isset( $chunk['score'] ) ? (float) $chunk['score'] : 0.0;
 			if ( $score >= $threshold ) {
 				++$qualified;
 			}

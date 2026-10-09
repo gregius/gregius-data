@@ -129,7 +129,6 @@ BEGIN
          INNER JOIN wp_posts p         ON v.post_id = p.id
          WHERE
              v.embedding IS NOT NULL
-             AND (1.0 - (v.embedding <=> $1)) > 0.5
              AND p.post_type   = ANY($2)
               AND p.post_status = ''publish''
           ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
