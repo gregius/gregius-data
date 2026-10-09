@@ -158,8 +158,9 @@ class GG_Data_HashingTF_Embeddings {
 			$table        = $this->get_vector_table_name();
 			$table_prefix = $this->get_table_prefix();
 			$posts_query  = "
-				SELECT DISTINCT p.post_id, p.post_title_clean, p.post_excerpt_clean, p.post_content_clean
+				SELECT DISTINCT p.post_id, po.post_type, p.post_title_clean, p.post_excerpt_clean, p.post_content_clean
 				FROM public.{$table_prefix}posts_clean p
+				JOIN public.{$table_prefix}posts po ON p.post_id = po.id
 				LEFT JOIN public.{$table} v ON p.post_id = v.post_id
 				WHERE v.post_id IS NULL
 				ORDER BY p.post_id
@@ -260,10 +261,11 @@ class GG_Data_HashingTF_Embeddings {
 		try {
 			$connection->beginTransaction();
 
-			$post_id = $post['post_id'];
-			$title   = $post['post_title_clean'] ?? '';
-			$excerpt = $post['post_excerpt_clean'] ?? '';
-			$tokens  = 0;
+			$post_id   = $post['post_id'];
+			$post_type = $post['post_type'] ?? '';
+			$title     = $post['post_title_clean'] ?? '';
+			$excerpt   = $post['post_excerpt_clean'] ?? '';
+			$tokens    = 0;
 
 			// Delete any existing embeddings for this post.
 			$table       = $this->get_vector_table_name();
@@ -275,14 +277,14 @@ class GG_Data_HashingTF_Embeddings {
 			// Generate and store title embedding.
 			if ( ! empty( $title ) ) {
 				$title_vector = $this->generate_hashingtf_vector( $title, 'title' );
-				$this->insert_embedding_pdo( $connection, $post_id, 'title', null, $title_vector, $title );
+				$this->insert_embedding_pdo( $connection, $post_id, $post_type, 'title', null, $title_vector, $title );
 				$tokens += count( $this->extract_terms( $title ) );
 			}
 
 			// Generate and store excerpt embedding.
 			if ( ! empty( $excerpt ) ) {
 				$excerpt_vector = $this->generate_hashingtf_vector( $excerpt, 'excerpt' );
-				$this->insert_embedding_pdo( $connection, $post_id, 'excerpt', null, $excerpt_vector, $excerpt );
+				$this->insert_embedding_pdo( $connection, $post_id, $post_type, 'excerpt', null, $excerpt_vector, $excerpt );
 				$tokens += count( $this->extract_terms( $excerpt ) );
 			}
 
@@ -294,7 +296,7 @@ class GG_Data_HashingTF_Embeddings {
 
 					if ( ! empty( $chunk_text ) ) {
 						$chunk_vector = $this->generate_hashingtf_vector( $chunk_text, 'chunk' );
-						$this->insert_embedding_pdo( $connection, $post_id, 'chunk', $chunk_index, $chunk_vector, $chunk_text );
+						$this->insert_embedding_pdo( $connection, $post_id, $post_type, 'chunk', $chunk_index, $chunk_vector, $chunk_text );
 						$tokens += count( $this->extract_terms( $chunk_text ) );
 					}
 				}
@@ -328,13 +330,14 @@ class GG_Data_HashingTF_Embeddings {
 	 *
 	 * @param PDO      $connection        Database connection.
 	 * @param int      $post_id           Post ID.
+	 * @param string   $post_type         Post type (immutable, denormalized for filtered-HNSW).
 	 * @param string   $field_type        Field type: 'title', 'excerpt', 'chunk'.
 	 * @param int|null $chunk_index       Chunk index (NULL for title/excerpt).
 	 * @param array    $vector            Embedding vector.
 	 * @param string   $source_text       Original text (for content_hash and token_count).
 	 * @param int      $tokenizer_version Tokenizer version.
 	 */
-	private function insert_embedding_pdo( $connection, $post_id, $field_type, $chunk_index, $vector, $source_text, $tokenizer_version = self::TOKENIZER_VERSION ) {
+	private function insert_embedding_pdo( $connection, $post_id, $post_type, $field_type, $chunk_index, $vector, $source_text, $tokenizer_version = self::TOKENIZER_VERSION ) {
 		$content_hash = md5( $source_text );
 		$token_count  = count( $this->extract_terms( $source_text ) );
 		$vector_str   = '[' . implode( ',', $vector ) . ']';
@@ -343,6 +346,7 @@ class GG_Data_HashingTF_Embeddings {
 		$insert_sql = "
 			INSERT INTO public.{$table} (
 				post_id,
+				post_type,
 				field_type,
 				chunk_index,
 				embedding,
@@ -353,6 +357,7 @@ class GG_Data_HashingTF_Embeddings {
 				tokenizer_version
 			) VALUES (
 				:post_id,
+				:post_type,
 				:field_type,
 				:chunk_index,
 				:embedding::vector,
@@ -363,6 +368,7 @@ class GG_Data_HashingTF_Embeddings {
 				:tokenizer_version
 			)
 			ON CONFLICT (post_id, field_type, chunk_index) DO UPDATE SET
+				post_type         = EXCLUDED.post_type,
 				embedding         = EXCLUDED.embedding,
 				content_hash      = EXCLUDED.content_hash,
 				token_count       = EXCLUDED.token_count,
@@ -374,6 +380,8 @@ class GG_Data_HashingTF_Embeddings {
 		$stmt = $connection->prepare( $insert_sql );
 		// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections
 		$stmt->bindValue( ':post_id', $post_id, PDO::PARAM_INT );
+		// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections
+		$stmt->bindValue( ':post_type', $post_type, PDO::PARAM_STR );
 		// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections
 		$stmt->bindValue( ':field_type', $field_type, PDO::PARAM_STR );
 		// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections
@@ -448,8 +456,30 @@ class GG_Data_HashingTF_Embeddings {
 				);
 			}
 
-			$body  = wp_remote_retrieve_body( $response );
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$body        = wp_remote_retrieve_body( $response );
+
+			if ( $status_code >= 400 ) {
+				return array(
+					'success'      => false,
+					'processed'    => 0,
+					'failed'       => 0,
+					'total_tokens' => 0,
+					'message'      => 'RPC failed (HTTP ' . $status_code . '): ' . $body,
+				);
+			}
+
 			$posts = json_decode( $body, true );
+
+			if ( ! is_array( $posts ) ) {
+				return array(
+					'success'      => false,
+					'processed'    => 0,
+					'failed'       => 0,
+					'total_tokens' => 0,
+					'message'      => 'Invalid RPC response: expected array, got ' . gettype( $posts ),
+				);
+			}
 
 			if ( empty( $posts ) ) {
 				return array(
@@ -500,15 +530,17 @@ class GG_Data_HashingTF_Embeddings {
 			$total_tokens   = 0;
 
 			foreach ( $posts as $post ) {
-				$post_id = $post['post_id'];
-				$title   = $post['post_title_clean'] ?? '';
-				$excerpt = $post['post_excerpt_clean'] ?? '';
+				$post_id   = $post['post_id'];
+				$post_type = $post['post_type'] ?? '';
+				$title     = $post['post_title_clean'] ?? '';
+				$excerpt   = $post['post_excerpt_clean'] ?? '';
 
 				if ( ! empty( $title ) ) {
 					$title_terms      = $this->extract_terms( $title );
 					$title_vector     = $this->generate_hashingtf_vector( $title, 'title' );
 					$all_embeddings[] = array(
 						'post_id'           => $post_id,
+						'post_type'         => $post_type,
 						'field_type'        => 'title',
 						'chunk_index'       => null,
 						'embedding'         => '[' . implode( ',', $title_vector ) . ']',
@@ -526,6 +558,7 @@ class GG_Data_HashingTF_Embeddings {
 					$excerpt_vector   = $this->generate_hashingtf_vector( $excerpt, 'excerpt' );
 					$all_embeddings[] = array(
 						'post_id'           => $post_id,
+						'post_type'         => $post_type,
 						'field_type'        => 'excerpt',
 						'chunk_index'       => null,
 						'embedding'         => '[' . implode( ',', $excerpt_vector ) . ']',
@@ -549,6 +582,7 @@ class GG_Data_HashingTF_Embeddings {
 							$chunk_vector     = $this->generate_hashingtf_vector( $chunk_text, 'chunk' );
 							$all_embeddings[] = array(
 								'post_id'           => $post_id,
+								'post_type'         => $post_type,
 								'field_type'        => 'chunk',
 								'chunk_index'       => $chunk_index,
 								'embedding'         => '[' . implode( ',', $chunk_vector ) . ']',

@@ -264,9 +264,11 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				continue;
 			}
 
-			$title   = $post['post_title_clean'] ?? '';
-			$excerpt = $post['post_excerpt_clean'] ?? '';
-			$content = $post['post_content_clean'] ?? '';
+			$post_id   = $post['post_id'];
+			$post_type = $post['post_type'] ?? '';
+			$title     = $post['post_title_clean'] ?? '';
+			$excerpt   = $post['post_excerpt_clean'] ?? '';
+			$content   = $post['post_content_clean'] ?? '';
 
 			// Title.
 			if ( ! empty( $title ) ) {
@@ -274,6 +276,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				$texts[]          = $title;
 				$metadata[ $idx ] = array(
 					'post_id'     => $post_id,
+					'post_type'   => $post_type,
 					'field_type'  => 'title',
 					'chunk_index' => null,
 					'source_text' => $title,
@@ -286,6 +289,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				$texts[]          = $excerpt;
 				$metadata[ $idx ] = array(
 					'post_id'     => $post_id,
+					'post_type'   => $post_type,
 					'field_type'  => 'excerpt',
 					'chunk_index' => null,
 					'source_text' => $excerpt,
@@ -308,6 +312,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 					$texts[]          = $chunk_text;
 					$metadata[ $idx ] = array(
 						'post_id'     => $post_id,
+						'post_type'   => $post_type,
 						'field_type'  => 'chunk',
 						'chunk_index' => $chunk_index,
 						'source_text' => $chunk_text,
@@ -371,9 +376,9 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 		try {
 			$insert_sql  = "
 				INSERT INTO {$table_name} (
-					post_id, field_type, chunk_index, embedding, content_hash, status, generated_at
+					post_id, post_type, field_type, chunk_index, embedding, content_hash, status, generated_at
 				) VALUES (
-					:post_id, :field_type, :chunk_index, :embedding::vector, :content_hash, 'completed', NOW()
+					:post_id, :post_type, :field_type, :chunk_index, :embedding::vector, :content_hash, 'completed', NOW()
 				)
 			";
 			$insert_stmt = $conn->prepare( $insert_sql );
@@ -384,6 +389,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 
 				// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO
 				$insert_stmt->bindValue( ':post_id', $meta['post_id'], \PDO::PARAM_INT );
+				$insert_stmt->bindValue( ':post_type', $meta['post_type'], \PDO::PARAM_STR );
 				$insert_stmt->bindValue( ':field_type', $meta['field_type'], \PDO::PARAM_STR );
 				$insert_stmt->bindValue( ':chunk_index', $meta['chunk_index'], null === $meta['chunk_index'] ? \PDO::PARAM_NULL : \PDO::PARAM_INT );
 				$insert_stmt->bindValue( ':embedding', $vector_str, \PDO::PARAM_STR );
@@ -502,10 +508,12 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 		$sql = "
 			SELECT DISTINCT
 				pc.post_id,
+				p.post_type,
 				pc.post_title_clean,
 				pc.post_excerpt_clean,
 				pc.post_content_clean
 			FROM wp_posts_clean pc
+			JOIN wp_posts p ON pc.post_id = p.id
 			LEFT JOIN {$table_name} v ON pc.post_id = v.post_id
 			WHERE v.post_id IS NULL
 			ORDER BY pc.post_id
@@ -533,10 +541,11 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 	 * @return array Result with success and tokens.
 	 */
 	private function generate_embeddings_for_post_pdo( $conn, array $post, $provider, array $model, string $connection_name ): array {
-		$post_id = $post['post_id'];
-		$title   = $post['post_title_clean'] ?? '';
-		$excerpt = $post['post_excerpt_clean'] ?? '';
-		$content = $post['post_content_clean'] ?? '';
+		$post_id   = $post['post_id'];
+		$post_type = $post['post_type'] ?? '';
+		$title     = $post['post_title_clean'] ?? '';
+		$excerpt   = $post['post_excerpt_clean'] ?? '';
+		$content   = $post['post_content_clean'] ?? '';
 
 		$table_name  = $model['vector_table_name'];
 		$api_options = array(
@@ -557,7 +566,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 			if ( ! empty( $title ) ) {
 				$result = $provider->generate_embedding( $title, $api_options );
 				if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
-					$this->insert_embedding_pdo( $conn, $table_name, $post_id, 'title', null, $result['vector'], $title );
+					$this->insert_embedding_pdo( $conn, $table_name, $post_id, $post_type, 'title', null, $result['vector'], $title );
 					$total_tokens += $result['tokens'] ?? 0;
 				}
 			}
@@ -566,7 +575,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 			if ( ! empty( $excerpt ) ) {
 				$result = $provider->generate_embedding( $excerpt, $api_options );
 				if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
-					$this->insert_embedding_pdo( $conn, $table_name, $post_id, 'excerpt', null, $result['vector'], $excerpt );
+					$this->insert_embedding_pdo( $conn, $table_name, $post_id, $post_type, 'excerpt', null, $result['vector'], $excerpt );
 					$total_tokens += $result['tokens'] ?? 0;
 				}
 			}
@@ -586,7 +595,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 					$chunk_text = is_array( $chunk_data ) ? $chunk_data['text'] : $chunk_data;
 					$result     = $provider->generate_embedding( $chunk_text, $api_options );
 					if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
-						$this->insert_embedding_pdo( $conn, $table_name, $post_id, 'chunk', $index, $result['vector'], $chunk_text );
+						$this->insert_embedding_pdo( $conn, $table_name, $post_id, $post_type, 'chunk', $index, $result['vector'], $chunk_text );
 						$total_tokens += $result['tokens'] ?? 0;
 					}
 				}
@@ -629,18 +638,20 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 	 * @param PDO      $conn        Database connection.
 	 * @param string   $table_name  Vector table name.
 	 * @param int      $post_id     Post ID.
+	 * @param string   $post_type   Post type (immutable, denormalized for filtered-HNSW).
 	 * @param string   $field_type  Field type: 'title', 'excerpt', 'chunk'.
 	 * @param int|null $chunk_index Chunk index (NULL for title/excerpt).
 	 * @param array    $vector      Embedding vector.
 	 * @param string   $source_text Original text (for content_hash).
 	 */
-	private function insert_embedding_pdo( $conn, string $table_name, int $post_id, string $field_type, $chunk_index, array $vector, string $source_text ): void {
+	private function insert_embedding_pdo( $conn, string $table_name, int $post_id, string $post_type, string $field_type, $chunk_index, array $vector, string $source_text ): void {
 		$content_hash = md5( $source_text );
 		$vector_str   = '[' . implode( ',', $vector ) . ']';
 
 		$sql = "
 			INSERT INTO {$table_name} (
 				post_id,
+				post_type,
 				field_type,
 				chunk_index,
 				embedding,
@@ -649,6 +660,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				generated_at
 			) VALUES (
 				:post_id,
+				:post_type,
 				:field_type,
 				:chunk_index,
 				:embedding::vector,
@@ -657,6 +669,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				NOW()
 			)
 			ON CONFLICT (post_id, field_type, chunk_index) DO UPDATE SET
+				post_type = EXCLUDED.post_type,
 				embedding = EXCLUDED.embedding,
 				content_hash = EXCLUDED.content_hash,
 				status = 'completed',
@@ -666,6 +679,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 		$stmt = $conn->prepare( $sql );
 		// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO required for PostgreSQL
 		$stmt->bindValue( ':post_id', $post_id, \PDO::PARAM_INT );
+		$stmt->bindValue( ':post_type', $post_type, \PDO::PARAM_STR );
 		$stmt->bindValue( ':field_type', $field_type, \PDO::PARAM_STR );
 		$stmt->bindValue( ':chunk_index', $chunk_index, null === $chunk_index ? \PDO::PARAM_NULL : \PDO::PARAM_INT );
 		$stmt->bindValue( ':embedding', $vector_str, \PDO::PARAM_STR );
@@ -795,16 +809,18 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				continue;
 			}
 
-			$post_id = $post['post_id'];
-			$title   = $post['post_title_clean'] ?? '';
-			$excerpt = $post['post_excerpt_clean'] ?? '';
-			$content = $post['post_content_clean'] ?? '';
+			$post_id   = $post['post_id'];
+			$post_type = $post['post_type'] ?? '';
+			$title     = $post['post_title_clean'] ?? '';
+			$excerpt   = $post['post_excerpt_clean'] ?? '';
+			$content   = $post['post_content_clean'] ?? '';
 
 			if ( ! empty( $title ) ) {
 				$idx              = count( $texts );
 				$texts[]          = $title;
 				$metadata[ $idx ] = array(
 					'post_id'     => $post_id,
+					'post_type'   => $post_type,
 					'field_type'  => 'title',
 					'chunk_index' => null,
 					'source_text' => $title,
@@ -816,6 +832,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				$texts[]          = $excerpt;
 				$metadata[ $idx ] = array(
 					'post_id'     => $post_id,
+					'post_type'   => $post_type,
 					'field_type'  => 'excerpt',
 					'chunk_index' => null,
 					'source_text' => $excerpt,
@@ -837,6 +854,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 					$texts[]          = $chunk_text;
 					$metadata[ $idx ] = array(
 						'post_id'     => $post_id,
+						'post_type'   => $post_type,
 						'field_type'  => 'chunk',
 						'chunk_index' => $chunk_index,
 						'source_text' => $chunk_text,
@@ -898,6 +916,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 			$meta         = $metadata[ $idx ];
 			$embeddings[] = array(
 				'post_id'      => $meta['post_id'],
+				'post_type'    => $meta['post_type'],
 				'field_type'   => $meta['field_type'],
 				'chunk_index'  => $meta['chunk_index'],
 				'embedding'    => $vector,
@@ -1035,10 +1054,11 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 	 * @return array Result.
 	 */
 	private function generate_embeddings_for_post_supabase( string $project_url, array $runtime_config, array $post, $provider, array $model, string $connection_name ): array {
-		$post_id = $post['post_id'];
-		$title   = $post['post_title_clean'] ?? '';
-		$excerpt = $post['post_excerpt_clean'] ?? '';
-		$content = $post['post_content_clean'] ?? '';
+		$post_id   = $post['post_id'];
+		$post_type = $post['post_type'] ?? '';
+		$title     = $post['post_title_clean'] ?? '';
+		$excerpt   = $post['post_excerpt_clean'] ?? '';
+		$content   = $post['post_content_clean'] ?? '';
 
 		$table_name  = $model['vector_table_name'];
 		$api_options = array(
@@ -1067,6 +1087,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
 					$embeddings[]  = array(
 						'post_id'      => $post_id,
+						'post_type'    => $post_type,
 						'field_type'   => 'title',
 						'chunk_index'  => null,
 						'embedding'    => $result['vector'],
@@ -1084,6 +1105,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 				if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
 					$embeddings[]  = array(
 						'post_id'      => $post_id,
+						'post_type'    => $post_type,
 						'field_type'   => 'excerpt',
 						'chunk_index'  => null,
 						'embedding'    => $result['vector'],
@@ -1112,6 +1134,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 					if ( ! is_wp_error( $result ) && ! empty( $result['vector'] ) ) {
 						$embeddings[]  = array(
 							'post_id'      => $post_id,
+							'post_type'    => $post_type,
 							'field_type'   => 'chunk',
 							'chunk_index'  => $index,
 							'embedding'    => $result['vector'],

@@ -106,33 +106,47 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Retrieve candidates from the registered table using dynamic SQL.
+    -- Enable filtered-HNSW iterative scans so the post_type filter below uses the
+    -- HNSW index instead of a full scan.
+    EXECUTE 'SET hnsw.iterative_scan = relaxed_order';
+
+    -- Retrieve candidates: filtered-HNSW scan on the vector table (post_type is
+    -- denormalized onto it), then a cheap post-scan join for fresh post_status + text.
     RETURN QUERY EXECUTE format(
-        'SELECT
-             v.post_id::bigint,
-             (1.0 - (v.embedding <=> $1) *
-                 CASE v.field_type
-                     WHEN ''title''   THEN 1.5
-                     WHEN ''excerpt'' THEN 1.2
-                     ELSE 1.0
-                 END
-             )::real                                                    AS source_score,
+        'WITH ranked AS (
+             SELECT
+                 v.post_id::bigint,
+                 (1.0 - (v.embedding <=> $1) *
+                     CASE v.field_type
+                         WHEN ''title''   THEN 1.5
+                         WHEN ''excerpt'' THEN 1.2
+                         ELSE 1.0
+                     END
+                 )::real                                                    AS source_score,
+                 row_number() OVER (ORDER BY v.embedding <=> $1, v.post_id ASC)::bigint AS rank_position
+             FROM %I v
+             WHERE
+                 v.embedding IS NOT NULL
+                 AND v.post_type = ANY($2)
+             ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
+             LIMIT ($3 * 3)
+         )
+         SELECT
+             r.post_id,
+             r.source_score,
              pc.post_title_clean                                        AS post_title,
              COALESCE(pc.post_excerpt_clean,
                       LEFT(pc.post_content_clean, 200) || ''...'')     AS post_excerpt,
              p.post_type,
              p.post_status,
              ''vector''::text                                           AS source,
-             row_number() OVER (ORDER BY v.embedding <=> $1, v.post_id ASC)::bigint AS rank_position
-         FROM %I v
-         INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
-         INNER JOIN wp_posts p         ON v.post_id = p.id
-         WHERE
-             v.embedding IS NOT NULL
-             AND p.post_type   = ANY($2)
-              AND p.post_status = ''publish''
-          ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
-          LIMIT $3',
+             r.rank_position
+         FROM ranked r
+         INNER JOIN wp_posts_clean pc ON pc.post_id = r.post_id
+         INNER JOIN wp_posts p         ON p.id = r.post_id
+         WHERE p.post_status = ''publish''
+         ORDER BY r.rank_position
+         LIMIT $3',
          vector_table
      )
     USING v_query_vector, post_types, GREATEST(limit_count, 20);

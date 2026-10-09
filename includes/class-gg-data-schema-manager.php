@@ -1811,6 +1811,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				-- Primary identification
 				id SERIAL PRIMARY KEY,
 				post_id BIGINT NOT NULL,
+				post_type VARCHAR(20),
 				
 				-- Field discriminator
 				field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
@@ -1856,6 +1857,10 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					$conn->exec( $index_sql );
 				}
 
+				// Denormalized post_type for filtered-HNSW retrieval (immutable; enables index-driven filtering).
+				$conn->exec( "ALTER TABLE {$table_name} ADD COLUMN IF NOT EXISTS post_type VARCHAR(20)" );
+				$conn->exec( "UPDATE {$table_name} v SET post_type = p.post_type FROM {$posts_table} p WHERE v.post_id = p.id AND v.post_type IS NULL" );
+
 				$this->logger->log( "Created $table_name with row-per-embedding schema and single HNSW index ({$vector_type}, {$dimensions}d)", 'info', 'system' );
 			}
 
@@ -1881,6 +1886,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		CREATE TABLE IF NOT EXISTS $table_name (
 			id SERIAL PRIMARY KEY,
 			post_id BIGINT NOT NULL,
+			post_type VARCHAR(20),
 			field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
 			chunk_index INTEGER,
 			embedding vector(1024),
@@ -1910,6 +1916,10 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			foreach ( $indexes as $index_sql ) {
 				$conn->exec( $index_sql );
 			}
+
+			// Denormalized post_type for filtered-HNSW retrieval (immutable; enables index-driven filtering).
+			$conn->exec( "ALTER TABLE {$table_name} ADD COLUMN IF NOT EXISTS post_type VARCHAR(20)" );
+			$conn->exec( "UPDATE {$table_name} v SET post_type = p.post_type FROM {$posts_table} p WHERE v.post_id = p.id AND v.post_type IS NULL" );
 
 			$this->logger->log( "Created $table_name with row-per-embedding schema and HNSW index (vector, 1024d, stateless)", 'info', 'system' );
 

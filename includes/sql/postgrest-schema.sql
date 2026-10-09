@@ -236,6 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_source_hash ON wp_posts_chunks(source_hash
 CREATE TABLE IF NOT EXISTS wp_posts_openai_text_embedding_3_small_1536 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1536),
@@ -268,6 +269,7 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_openai_3_small_hash ON wp_posts_openai_t
 CREATE TABLE IF NOT EXISTS wp_posts_openai_text_embedding_3_large_3072 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding halfvec(3072),
@@ -300,6 +302,7 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_openai_3_large_hash ON wp_posts_openai_t
 CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_2_3072 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding halfvec(3072),
@@ -331,6 +334,7 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_hash ON wp_posts_gemini_gemini_
 CREATE TABLE IF NOT EXISTS wp_posts_voyage_voyage_4_1024 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1024),
@@ -362,6 +366,7 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_hash ON wp_posts_voyage_voyage_
 CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v40_1536 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1536),
@@ -396,6 +401,7 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_hash ON wp_posts_cohere_embed
 CREATE TABLE IF NOT EXISTS wp_posts_hashingtf_murmur3_1024 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
+    post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1024),
@@ -420,6 +426,24 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_field_type ON wp_posts_ha
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_status ON wp_posts_hashingtf_murmur3_1024(status);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_tokenizer_version ON wp_posts_hashingtf_murmur3_1024(tokenizer_version);
 
+-- Denormalized post_type for filtered-HNSW retrieval. post_type is immutable in
+-- WordPress, so it is safe to co-locate on the vector tables and drive the HNSW
+-- index directly (post_status remains a live post-filter on wp_posts).
+ALTER TABLE wp_posts_openai_text_embedding_3_small_1536 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+ALTER TABLE wp_posts_openai_text_embedding_3_large_3072 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+ALTER TABLE wp_posts_gemini_gemini_embedding_2_3072 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+ALTER TABLE wp_posts_voyage_voyage_4_1024 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+ALTER TABLE wp_posts_cohere_embed_v40_1536 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+ALTER TABLE wp_posts_hashingtf_murmur3_1024 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
+
+-- Backfill post_type from wp_posts (idempotent; only fills NULL rows).
+UPDATE wp_posts_openai_text_embedding_3_small_1536 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+UPDATE wp_posts_openai_text_embedding_3_large_3072 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+UPDATE wp_posts_gemini_gemini_embedding_2_3072 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+UPDATE wp_posts_voyage_voyage_4_1024 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+UPDATE wp_posts_cohere_embed_v40_1536 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+UPDATE wp_posts_hashingtf_murmur3_1024 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+
 -- ================================================
 -- RPC FUNCTIONS
 -- ================================================
@@ -438,6 +462,7 @@ CREATE OR REPLACE FUNCTION get_posts_needing_vectors(
 )
 RETURNS TABLE (
     post_id BIGINT,
+    post_type VARCHAR(20),
     post_title_clean TEXT,
     post_excerpt_clean TEXT,
     post_content_clean TEXT
@@ -451,10 +476,12 @@ BEGIN
     RETURN QUERY EXECUTE format('
         SELECT 
             c.post_id, 
+            p.post_type,
             c.post_title_clean, 
             c.post_excerpt_clean,
             c.post_content_clean
         FROM wp_posts_clean c
+        JOIN wp_posts p ON c.post_id = p.id
         WHERE NOT EXISTS (
             SELECT 1 FROM wp_posts_%I v 
             WHERE v.post_id = c.post_id 
@@ -491,27 +518,38 @@ DECLARE
     v_post_type_filter text := '';
 BEGIN
     IF post_types IS NOT NULL AND array_length( post_types, 1 ) > 0 THEN
-        v_post_type_filter := ' AND p_filter.post_type = ANY($4) ';
+        v_post_type_filter := ' AND v.post_type = ANY($4) ';
     END IF;
 
+    -- Enable filtered-HNSW iterative scans so the field_type/post_type filters use
+    -- the HNSW index instead of a full scan.
+    EXECUTE 'SET hnsw.iterative_scan = relaxed_order';
+
     RETURN QUERY EXECUTE format(
-        'WITH ranked_chunks AS (
+        'WITH vector_ranked AS (
             SELECT
                 v.post_id,
                 v.chunk_index,
-                ch.chunk_text,
-                ch.token_count,
                 1 - ( v.embedding <=> $1 ) as similarity
             FROM %I v
-            JOIN wp_posts_chunks ch ON v.post_id = ch.post_id AND v.chunk_index = ch.chunk_index
-            JOIN wp_posts p_filter ON v.post_id = p_filter.id
             WHERE
                 v.field_type = ''chunk''
                 AND v.embedding IS NOT NULL
-                AND p_filter.post_status = ''publish''
                 %s
             ORDER BY v.embedding <=> $1
-            LIMIT $2 * 2
+            LIMIT ($2 * 2 * 3)
+        ),
+        ranked_chunks AS (
+            SELECT
+                vr.post_id,
+                vr.chunk_index,
+                ch.chunk_text,
+                ch.token_count,
+                vr.similarity
+            FROM vector_ranked vr
+            JOIN wp_posts_chunks ch ON ch.post_id = vr.post_id AND ch.chunk_index = vr.chunk_index
+            JOIN wp_posts p_filter ON p_filter.id = vr.post_id
+            WHERE p_filter.post_status = ''publish''
         ),
         with_running_total AS (
             SELECT
@@ -767,33 +805,47 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Retrieve candidates from the registered table using dynamic SQL.
+    -- Enable filtered-HNSW iterative scans so the post_type filter below uses the
+    -- HNSW index instead of a full scan.
+    EXECUTE 'SET hnsw.iterative_scan = relaxed_order';
+
+    -- Retrieve candidates: filtered-HNSW scan on the vector table (post_type is
+    -- denormalized onto it), then a cheap post-scan join for fresh post_status + text.
     RETURN QUERY EXECUTE format(
-        'SELECT
-             v.post_id::bigint,
-             (1.0 - (v.embedding <=> $1) *
-                 CASE v.field_type
-                     WHEN ''title''   THEN 1.5
-                     WHEN ''excerpt'' THEN 1.2
-                     ELSE 1.0
-                 END
-             )::real                                                    AS source_score,
+        'WITH ranked AS (
+             SELECT
+                 v.post_id::bigint,
+                 (1.0 - (v.embedding <=> $1) *
+                     CASE v.field_type
+                         WHEN ''title''   THEN 1.5
+                         WHEN ''excerpt'' THEN 1.2
+                         ELSE 1.0
+                     END
+                 )::real                                                    AS source_score,
+                 row_number() OVER (ORDER BY v.embedding <=> $1, v.post_id ASC)::bigint AS rank_position
+             FROM %I v
+             WHERE
+                 v.embedding IS NOT NULL
+                 AND v.post_type = ANY($2)
+             ORDER BY v.embedding <=> $1 ASC, v.post_id ASC
+             LIMIT ($3 * 3)
+         )
+         SELECT
+             r.post_id,
+             r.source_score,
              pc.post_title_clean                                        AS post_title,
              COALESCE(pc.post_excerpt_clean,
                       LEFT(pc.post_content_clean, 200) || ''...'')     AS post_excerpt,
              p.post_type,
              p.post_status,
              ''vector''::text                                           AS source,
-             row_number() OVER (ORDER BY v.embedding <=> $1)::bigint   AS rank_position
-         FROM %I v
-         INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
-         INNER JOIN wp_posts p         ON v.post_id = p.id
-         WHERE
-             v.embedding IS NOT NULL
-             AND p.post_type   = ANY($2)
-              AND p.post_status = ''publish''
-          ORDER BY v.embedding <=> $1 ASC
-          LIMIT $3',
+             r.rank_position
+         FROM ranked r
+         INNER JOIN wp_posts_clean pc ON pc.post_id = r.post_id
+         INNER JOIN wp_posts p         ON p.id = r.post_id
+         WHERE p.post_status = ''publish''
+         ORDER BY r.rank_position
+         LIMIT $3',
          vector_table
      )
     USING v_query_vector, post_types, GREATEST(limit_count, 20);
