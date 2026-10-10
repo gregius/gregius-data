@@ -161,7 +161,16 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 			if ( is_wp_error( $response ) ) {
 				$message          = 'Supabase connection error: ' . $response->get_error_message();
 				$this->last_error = $message;
-				$this->logger->log( $message, 'error', 'connection', $this->connection_name, array( 'error' => $response->get_error_message() ) );
+				$this->logger->log(
+					$message,
+					'error',
+					'connection',
+					$this->connection_name,
+					array(
+						'error'       => $response->get_error_message(),
+						'project_url' => $this->project_url ?? '',
+					)
+				);
 				return array(
 					'success' => false,
 					'message' => $message,
@@ -204,7 +213,16 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 		} catch ( Exception $e ) {
 			$message          = 'Supabase connection error: ' . $e->getMessage();
 			$this->last_error = $message;
-			$this->logger->log( $message, 'error', 'connection', $this->connection_name, array( 'exception' => $e->getMessage() ) );
+			$this->logger->log(
+				$message,
+				'error',
+				'connection',
+				$this->connection_name,
+				array(
+					'exception'   => $e->getMessage(),
+					'project_url' => $this->project_url ?? ( isset( $connection_config['project_url'] ) ? $connection_config['project_url'] : '' ),
+				)
+			);
 			return array(
 				'success' => false,
 				'message' => $message,

@@ -206,7 +206,7 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 
 				if ( ! $result['success'] ) {
 					$this->last_error = $result['message'];
-					$this->logger->log( "Provider connection failed: {$result['message']}", 'error', 'connection', $connection_name );
+					$this->logger->log( "Provider connection failed: {$result['message']}", 'error', 'connection', $connection_name, array( 'project_url' => $connection['project_url'] ?? '' ) );
 					return false;
 				}
 
