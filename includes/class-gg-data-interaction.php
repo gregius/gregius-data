@@ -1055,6 +1055,33 @@ class GG_Data_Interaction {
 	}
 
 	/**
+	 * Get the source context for a conversation.
+	 *
+	 * Returns the interaction payload's top-level `source` array (`{ type, post_id }`),
+	 * the content post the block was rendered on, or an empty array when the
+	 * conversation has not been tracked or has no source.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Client-provided conversation UUID.
+	 * @return array Source context (`{ type, post_id }`), or empty array.
+	 */
+	public static function get_conversation_source( $conversation_id ) {
+		$post_id = self::resolve_conversation_post_id( $conversation_id );
+		if ( 0 === $post_id ) {
+			return array();
+		}
+
+		$data_json = get_post_meta( $post_id, self::META_PREFIX . 'data', true );
+		$data      = json_decode( (string) $data_json, true );
+
+		if ( ! is_array( $data ) || ! isset( $data['source'] ) || ! is_array( $data['source'] ) ) {
+			return array();
+		}
+
+		return $data['source'];
+	}
+
+	/**
 	 * Get the conversation history as normalized chat messages.
 	 *
 	 * Maps each turn to `{ role, content }` (original user query as `user`,
