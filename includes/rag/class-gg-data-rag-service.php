@@ -1255,6 +1255,20 @@ class GG_Data_RAG_Service {
 		$options                      = wp_parse_args( $options, $defaults );
 		$options['source_turn_index'] = absint( $options['source_turn_index'] ?? 0 );
 
+		// Populate conversation history from the server transcript when available,
+		// so the answer model and tool routing share one authoritative history.
+		if ( ! empty( $options['conversation_id'] ) ) {
+			$buffer = $this->build_conversation_buffer( (string) $options['conversation_id'], $options );
+			if ( ! empty( $buffer['has_transcript'] ) ) {
+				$options['messages']            = $buffer['messages'];
+				$options['conversation_memory'] = array(
+					'fold_index'        => $buffer['fold_index'],
+					'buffer_turn_count' => count( $buffer['messages'] ),
+					'token_estimate'    => $buffer['token_estimate'],
+				);
+			}
+		}
+
 		// Extract progress callback for SSE streaming.
 		$progress_callback = $options['progress_callback'];
 
@@ -2085,15 +2099,15 @@ class GG_Data_RAG_Service {
 		// Call AI Client with proper model name, connection, and max_tokens.
 		// LLM models are stored under 'gregius-data' connection where the API key is configured.
 		// Provider is determined from the model config (openai, deepseek, etc.).
-		// Note: We intentionally do NOT pass conversation history to the answer LLM.
-		// Conversation history is used for query rewriting (pronoun resolution) only.
-		// The RAG context from retrieved documents should be the sole source for answers.
+		// Pass the server-side conversation buffer (prior turns) as chat history;
+		// retrieved context remains the primary grounding source.
 		$ai_request = GG_Data_Ai_Client::prompt( $prompt )
 			->setSystemMessage( $system_prompt )
 			->usingProvider( $provider_id ) // Provider from model config (openai, deepseek, etc.).
 			->usingModel( $model_name ) // Actual model name (e.g., "gpt-4o-mini", "deepseek-chat").
 			->usingConnection( 'gregius-data' ) // Connection name where API key is stored.
-			->withMaxTokens( $max_tokens ); // User-configured output token limit.
+			->withMaxTokens( $max_tokens ) // User-configured output token limit.
+			->withMessages( $options['messages'] ?? array() ); // Prior turns for multi-turn grounding.
 
 		// Check if streaming is available and progress callback is set.
 		$use_streaming = $progress_callback && $ai_request->supportsStreaming();
@@ -2208,42 +2222,43 @@ class GG_Data_RAG_Service {
 
 		$metadata = array(
 			// Existing fields.
-			'chunks_used'       => count( $chunks ),
-			'embedding_model'   => $this->embedding_model_key,
-			'llm_model'         => $llm_model_id,
-			'connection'        => $this->connection_name,
-			'execution_time'    => round( $execution_time ),
-			'reasoning_content' => $reasoning_content, // For thinking models like DeepSeek R1.
+			'chunks_used'         => count( $chunks ),
+			'embedding_model'     => $this->embedding_model_key,
+			'llm_model'           => $llm_model_id,
+			'connection'          => $this->connection_name,
+			'execution_time'      => round( $execution_time ),
+			'reasoning_content'   => $reasoning_content, // For thinking models like DeepSeek R1.
 
 			// LLM response metadata (for turn recording).
-			'usage'             => $llm_usage, // Token usage from LLM response.
-			'provider'          => $llm_provider, // Provider name from LLM response.
-			'model_used'        => $llm_model_returned, // Model name from LLM response.
-			'raw_response'      => is_array( $response ) ? ( $response['raw_response'] ?? array() ) : array(), // Complete API response.
+			'usage'               => $llm_usage, // Token usage from LLM response.
+			'provider'            => $llm_provider, // Provider name from LLM response.
+			'model_used'          => $llm_model_returned, // Model name from LLM response.
+			'raw_response'        => is_array( $response ) ? ( $response['raw_response'] ?? array() ) : array(), // Complete API response.
 
 			// New fields for interaction tracking.
-			'conversation_id'   => $options['conversation_id'] ?? null,
-			'source'            => $options['source'] ?? array( 'type' => 'rest' ),
-			'original_query'    => $query,
-			'search_query'      => $search_query ?? $query,
-			'post_types'        => $options['post_types'] ?? array(),
-			'metadata_filter'   => $options['metadata_filter'] ?? array(),
-			'rewrite_model'     => $options['rewrite_model'] ?? null,
-			'rerank_model'      => $options['rerank_model_id'] ?? null,
-			'citation_sources'  => $citation_sources,
-			'tool_selected'     => 'search_content', // Tool used for this flow.
-			'prompt'            => $prompt_resolution['metadata'] ?? array(),
-			'security_check'    => $security_check,
-			'query_plan'        => $query_plan,
+			'conversation_id'     => $options['conversation_id'] ?? null,
+			'conversation_memory' => $options['conversation_memory'] ?? array(),
+			'source'              => $options['source'] ?? array( 'type' => 'rest' ),
+			'original_query'      => $query,
+			'search_query'        => $search_query ?? $query,
+			'post_types'          => $options['post_types'] ?? array(),
+			'metadata_filter'     => $options['metadata_filter'] ?? array(),
+			'rewrite_model'       => $options['rewrite_model'] ?? null,
+			'rerank_model'        => $options['rerank_model_id'] ?? null,
+			'citation_sources'    => $citation_sources,
+			'tool_selected'       => 'search_content', // Tool used for this flow.
+			'prompt'              => $prompt_resolution['metadata'] ?? array(),
+			'security_check'      => $security_check,
+			'query_plan'          => $query_plan,
 
 			// Retrieval funnel for eval/observability.
-			'retrieval'         => $this->build_retrieval_parity(
+			'retrieval'           => $this->build_retrieval_parity(
 				$single_raw_count,
 				$single_qualified_count,
 				$single_selected_count,
 				$retrieval_stats
 			),
-			'policy'            => $this->build_policy_parity(
+			'policy'              => $this->build_policy_parity(
 				'single',
 				$single_decision,
 				$single_reason_code,
@@ -2322,6 +2337,102 @@ class GG_Data_RAG_Service {
 		do_action( 'gg_data_rag_tool_executed', 'search_content', $result, $search_tool_context );
 
 		return $result;
+	}
+
+	/**
+	 * Build the conversation-history message buffer from the server transcript.
+	 *
+	 * Returns a contiguous suffix of the transcript starting at the
+	 * consumer-confirmed summary head (`fold_index`), normalized to chat
+	 * messages. When the buffer exceeds the token budget, fires
+	 * `gg_data_rag_memory_fold` to request summary advancement rather than
+	 * silently dropping unsummarized turns.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Conversation UUID.
+	 * @param array  $options         RAG options.
+	 * @return array { messages, fold_index, turn_count, token_estimate, has_transcript }.
+	 */
+	private function build_conversation_buffer( $conversation_id, $options ) {
+		$turns      = GG_Data_Interaction::get_conversation_transcript( $conversation_id );
+		$turn_count = count( $turns );
+
+		if ( 0 === $turn_count ) {
+			return array(
+				'messages'       => array(),
+				'fold_index'     => 0,
+				'turn_count'     => 0,
+				'token_estimate' => 0,
+				'has_transcript' => false,
+			);
+		}
+
+		$fold_index = (int) apply_filters( 'gg_data_rag_conversation_fold_index', 0, $conversation_id, $turns );
+		$fold_index = max( 0, min( $fold_index, $turn_count ) );
+
+		$messages       = array();
+		$token_estimate = 0;
+
+		foreach ( array_slice( $turns, $fold_index ) as $turn ) {
+			if ( ! is_array( $turn ) ) {
+				continue;
+			}
+
+			$user_content = isset( $turn['query']['original'] ) ? (string) $turn['query']['original'] : '';
+			if ( '' === $user_content && isset( $turn['query']['rewritten'] ) ) {
+				$user_content = (string) $turn['query']['rewritten'];
+			}
+
+			if ( '' !== $user_content ) {
+				$messages[]      = array(
+					'role'    => 'user',
+					'content' => $user_content,
+				);
+				$token_estimate += $this->token_counter->estimate_tokens( $user_content );
+			}
+
+			$assistant_content = isset( $turn['response'] ) ? (string) $turn['response'] : '';
+			if ( '' !== $assistant_content ) {
+				$messages[]      = array(
+					'role'    => 'assistant',
+					'content' => $assistant_content,
+				);
+				$token_estimate += $this->token_counter->estimate_tokens( $assistant_content );
+			}
+		}
+
+		$token_budget = (int) apply_filters( 'gg_data_rag_conversation_token_budget', 2000, $conversation_id );
+		if ( $token_budget > 0 && $token_estimate > $token_budget ) {
+			/**
+			 * Fires when the conversation buffer exceeds the token budget,
+			 * requesting the summary head to advance.
+			 *
+			 * @since 1.0.0
+			 * @param int    $fold_index      Current fold index.
+			 * @param array  $turns           Full transcript turns.
+			 * @param string $conversation_id Conversation UUID.
+			 */
+			do_action( 'gg_data_rag_memory_fold', $fold_index, $turns, $conversation_id );
+		}
+
+		/**
+		 * Filter the normalized conversation messages before they reach the answer model.
+		 *
+		 * @since 1.0.0
+		 * @param array  $messages        Normalized chat messages.
+		 * @param array  $turns           Full transcript turns.
+		 * @param string $conversation_id Conversation UUID.
+		 * @param array  $options         RAG options.
+		 */
+		$messages = apply_filters( 'gg_data_rag_conversation_messages', $messages, $turns, $conversation_id, $options );
+
+		return array(
+			'messages'       => $messages,
+			'fold_index'     => $fold_index,
+			'turn_count'     => $turn_count,
+			'token_estimate' => $token_estimate,
+			'has_transcript' => true,
+		);
 	}
 
 	/**
@@ -2733,7 +2844,8 @@ class GG_Data_RAG_Service {
 			->usingProvider( $provider_id )
 			->usingModel( $model_name )
 			->usingConnection( 'gregius-data' )
-			->withMaxTokens( $max_tokens );
+			->withMaxTokens( $max_tokens )
+			->withMessages( $options['messages'] ?? array() );
 
 		// Check if streaming is available and callback is provided.
 		$use_streaming = $progress_callback && $ai_request->supportsStreaming();
@@ -2801,8 +2913,9 @@ class GG_Data_RAG_Service {
 	 * @return array Response data.
 	 */
 	private function handle_summarize_conversation( $query, $llm_model_id, $options ) {
-		$start_time = microtime( true );
-		$messages   = $options['messages'] ?? array();
+		$start_time      = microtime( true );
+		$conversation_id = isset( $options['conversation_id'] ) ? (string) $options['conversation_id'] : '';
+		$messages        = '' !== $conversation_id ? GG_Data_Interaction::get_conversation_turns( $conversation_id ) : array();
 
 		// Build conversation for summarization.
 		$conversation_text = '';
@@ -3811,8 +3924,9 @@ class GG_Data_RAG_Service {
 	 * @return array Response data.
 	 */
 	private function handle_clarify_previous( $query, $llm_model_id, $options, $clarification_type = 'rephrase' ) {
-		$start_time = microtime( true );
-		$messages   = $options['messages'] ?? array();
+		$start_time      = microtime( true );
+		$conversation_id = isset( $options['conversation_id'] ) ? (string) $options['conversation_id'] : '';
+		$messages        = '' !== $conversation_id ? GG_Data_Interaction::get_conversation_turns( $conversation_id ) : array();
 
 		// Get the last assistant message from conversation history.
 		$last_assistant_message = $this->get_last_assistant_message( $messages );

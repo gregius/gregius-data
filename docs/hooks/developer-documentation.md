@@ -185,6 +185,19 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Emitted in: `includes/api/class-gg-data-rest-interactions-controller.php`
 - Use case: collect RLHF signals, trigger analytics/reranking pipelines, send feedback to external evaluation systems.
 
+#### `gg_data_interaction_feedback_schema`
+- Type: Filter
+- Signature: `(array $schema, string $conversation_id, int $turn_index): array`
+- Default: `array( 'relevance', 'source', 'user_id', 'suggestion_ids', 'recorded_at' )`
+- Emitted in: `includes/class-gg-data-interaction.php` (`record_turn_feedback`)
+- Use case: allow or deny additional keys stored under a turn's `feedback` payload.
+
+#### `gg_data_interaction_turn_feedback_recorded`
+- Type: Action
+- Signature: `(int $post_id, int $turn_index, array $feedback): void`
+- Emitted in: `includes/class-gg-data-interaction.php` (`record_turn_feedback`)
+- Use case: observe per-turn feedback persistence (e.g. telemetry, external evaluation) after the interaction record is written.
+
 ### 2.6 RAG Tool Hooks
 
 #### `gg_data_rag_tools`
@@ -277,6 +290,32 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Signature: `(string $response_text, array $raw_response, string $model, string $query): string`
 - Emitted in: `includes/rag/class-gg-data-rag-service.php`
 - Use case: post-process raw LLM response text (rephrasing, safety checks, format transforms, redaction) before citation marker normalization.
+
+#### `gg_data_rag_conversation_fold_index`
+- Type: Filter
+- Signature: `(int $fold_index, string $conversation_id, array $turns): int`
+- Default: `0`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php` (`build_conversation_buffer`)
+- Use case: supply the consumer-confirmed summary head. The answer buffer is the contiguous suffix `turns[fold_index..]`; the summary covers `turns[0..fold_index)`.
+
+#### `gg_data_rag_conversation_token_budget`
+- Type: Filter
+- Signature: `(int $budget, string $conversation_id): int`
+- Default: `2000`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php` (`build_conversation_buffer`)
+- Use case: cap the history buffer size. When exceeded, `gg_data_rag_memory_fold` fires to request summary advancement (unsummarized turns are not silently dropped).
+
+#### `gg_data_rag_conversation_messages`
+- Type: Filter
+- Signature: `(array $messages, array $turns, string $conversation_id, array $options): array`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php` (`build_conversation_buffer`)
+- Use case: transform the normalized `{role, content}` messages before they reach the answer model.
+
+#### `gg_data_rag_memory_fold`
+- Type: Action
+- Signature: `(int $fold_index, array $turns, string $conversation_id): void`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php` (`build_conversation_buffer`)
+- Use case: observe that the history buffer exceeded the token budget; a summarizer should advance the summary head.
 
 ### 2.9 Log Retention Hooks
 

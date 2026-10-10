@@ -137,6 +137,12 @@ Behavior notes:
 - `generate_answer()` orchestrates tool routing, retrieval, governance, and answer generation.
 - Both methods depend on configured connection and model registry data.
 
+Conversation memory buffer:
+- When `generate_answer()` receives a `conversation_id`, it populates `$options['messages']` from the server transcript (`GG_Data_Interaction::get_conversation_transcript`) via `build_conversation_buffer()`, so routing and the answer share one authoritative history.
+- The buffer is a contiguous suffix starting at the consumer-confirmed `fold_index` (`gg_data_rag_conversation_fold_index` filter; default `0`). The summary covers `turns[0..fold_index)`, the buffer `turns[fold_index..]` — XOR by construction.
+- Token budget (`gg_data_rag_conversation_token_budget`, default `2000`): when exceeded, `gg_data_rag_memory_fold` fires to request summary advancement instead of dropping unsummarized turns.
+- With no `conversation_id`, client-supplied `messages` are used as-is (stateless callers: abilities, CLI, MCP).
+
 Use this class when you need plugin-internal access to the full RAG pipeline without going through REST. [SRS: RAG-FR-05 to RAG-FR-17]
 
 ### 4.2 Coverage Gate

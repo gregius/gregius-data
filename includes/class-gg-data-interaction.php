@@ -986,6 +986,221 @@ class GG_Data_Interaction {
 	}
 
 	/**
+	 * Resolve the interaction post ID for a conversation.
+	 *
+	 * Returns the oldest published `gg_interaction` post matching the
+	 * conversation UUID and RAG type, or 0 when none exists.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Client-provided conversation UUID.
+	 * @return int Interaction post ID, or 0 when not found.
+	 */
+	private static function resolve_conversation_post_id( $conversation_id ) {
+		$validated_id = self::validate_conversation_id( $conversation_id );
+		if ( is_wp_error( $validated_id ) ) {
+			return 0;
+		}
+
+		$existing_ids = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find conversation by client-provided UUID.
+				'meta_query'     => array(
+					array(
+						'key'   => self::META_PREFIX . 'conversation_id',
+						'value' => $validated_id,
+					),
+					array(
+						'key'   => self::META_PREFIX . 'type',
+						'value' => 'rag',
+					),
+				),
+			)
+		);
+
+		return empty( $existing_ids ) ? 0 : (int) $existing_ids[0];
+	}
+
+	/**
+	 * Get the full turn records for a conversation.
+	 *
+	 * Returns the `turns` array from `_gg_interaction_data` (query/response/
+	 * sources/tool/usage/feedback/...), or an empty array when the conversation
+	 * has not been tracked or has no turns.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Client-provided conversation UUID.
+	 * @return array Turn records (0-indexed), or empty array.
+	 */
+	public static function get_conversation_transcript( $conversation_id ) {
+		$post_id = self::resolve_conversation_post_id( $conversation_id );
+		if ( 0 === $post_id ) {
+			return array();
+		}
+
+		$data_json = get_post_meta( $post_id, self::META_PREFIX . 'data', true );
+		$data      = json_decode( (string) $data_json, true );
+
+		if ( ! is_array( $data ) || ! isset( $data['turns'] ) || ! is_array( $data['turns'] ) ) {
+			return array();
+		}
+
+		return $data['turns'];
+	}
+
+	/**
+	 * Get the conversation history as normalized chat messages.
+	 *
+	 * Maps each turn to `{ role, content }` (original user query as `user`,
+	 * response as `assistant`), suitable for the answer model's message buffer.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Client-provided conversation UUID.
+	 * @return array Normalized `{ role: 'user'|'assistant', content: string }` messages.
+	 */
+	public static function get_conversation_turns( $conversation_id ) {
+		$turns    = self::get_conversation_transcript( $conversation_id );
+		$messages = array();
+
+		foreach ( $turns as $turn ) {
+			if ( ! is_array( $turn ) ) {
+				continue;
+			}
+
+			$user_content = isset( $turn['query']['original'] ) ? (string) $turn['query']['original'] : '';
+			if ( '' === $user_content && isset( $turn['query']['rewritten'] ) ) {
+				$user_content = (string) $turn['query']['rewritten'];
+			}
+
+			if ( '' !== $user_content ) {
+				$messages[] = array(
+					'role'    => 'user',
+					'content' => $user_content,
+				);
+			}
+
+			$assistant_content = isset( $turn['response'] ) ? (string) $turn['response'] : '';
+			if ( '' !== $assistant_content ) {
+				$messages[] = array(
+					'role'    => 'assistant',
+					'content' => $assistant_content,
+				);
+			}
+		}
+
+		return $messages;
+	}
+
+	/**
+	 * Record feedback for a single turn of a conversation.
+	 *
+	 * Single writer for `turns[$turn_index]['feedback']`. Serializes with turn
+	 * appends via the same conversation lock, validates the turn index, and
+	 * fires `gg_data_interaction_turn_feedback_recorded` after persisting.
+	 *
+	 * @since 1.0.0
+	 * @param string $conversation_id Client-provided conversation UUID.
+	 * @param int    $turn_index      0-indexed turn offset.
+	 * @param array  $feedback        Feedback payload; keys are whitelisted via
+	 *                                the `gg_data_interaction_feedback_schema` filter.
+	 * @return true|WP_Error
+	 */
+	public static function record_turn_feedback( $conversation_id, $turn_index, array $feedback ) {
+		$validated_id = self::validate_conversation_id( $conversation_id );
+		if ( is_wp_error( $validated_id ) ) {
+			return $validated_id;
+		}
+
+		$turn_index = (int) $turn_index;
+		if ( $turn_index < 0 ) {
+			return new WP_Error(
+				'gg_data_interaction_invalid_turn_index',
+				__( 'Invalid turn index.', 'gregius-data' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/**
+		 * Filter the allowed feedback keys.
+		 *
+		 * @since 1.0.0
+		 * @param array  $schema          Allowed feedback keys.
+		 * @param string $conversation_id Conversation UUID.
+		 * @param int    $turn_index      0-indexed turn offset.
+		 */
+		$schema   = (array) apply_filters(
+			'gg_data_interaction_feedback_schema',
+			array( 'relevance', 'source', 'user_id', 'suggestion_ids', 'recorded_at' ),
+			$conversation_id,
+			$turn_index
+		);
+		$feedback = array_intersect_key( $feedback, array_flip( $schema ) );
+
+		$lock_key = self::META_PREFIX . 'lock_' . md5( $validated_id );
+		if ( ! self::acquire_conversation_lock( $lock_key ) ) {
+			return new WP_Error(
+				'gg_data_interaction_lock_timeout',
+				__( 'Could not acquire conversation lock for feedback recording.', 'gregius-data' )
+			);
+		}
+
+		try {
+			$post_id = self::resolve_conversation_post_id( $validated_id );
+			if ( 0 === $post_id ) {
+				return new WP_Error(
+					'gg_data_interaction_not_found',
+					__( 'Conversation not found.', 'gregius-data' ),
+					array( 'status' => 404 )
+				);
+			}
+
+			$data_json = get_post_meta( $post_id, self::META_PREFIX . 'data', true );
+			$data      = json_decode( (string) $data_json, true );
+
+			if ( ! is_array( $data ) || ! isset( $data['turns'] ) || ! is_array( $data['turns'] ) ) {
+				return new WP_Error(
+					'gg_data_interaction_no_turns',
+					__( 'Conversation has no recorded turns.', 'gregius-data' )
+				);
+			}
+
+			if ( ! isset( $data['turns'][ $turn_index ] ) || ! is_array( $data['turns'][ $turn_index ] ) ) {
+				return new WP_Error(
+					'gg_data_interaction_invalid_turn_index',
+					__( 'The requested turn does not exist.', 'gregius-data' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$data['turns'][ $turn_index ]['feedback'] = $feedback;
+
+			$save_result = self::save_interaction_data_meta( $post_id, $data );
+			if ( is_wp_error( $save_result ) ) {
+				return $save_result;
+			}
+
+			/**
+			 * Fires after a turn's feedback is persisted.
+			 *
+			 * @since 1.0.0
+			 * @param int   $post_id         Interaction post ID.
+			 * @param int   $turn_index      0-indexed turn offset.
+			 * @param array $feedback        Persisted feedback payload.
+			 */
+			do_action( 'gg_data_interaction_turn_feedback_recorded', $post_id, $turn_index, $feedback );
+
+			return true;
+		} finally {
+			self::release_conversation_lock( $lock_key );
+		}
+	}
+
+	/**
 	 * Acquire a short-lived conversation lock to prevent concurrent write clobbering.
 	 *
 	 * @since 1.0.0

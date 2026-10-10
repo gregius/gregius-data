@@ -323,12 +323,45 @@ curl -X GET https://example.com/wp-json/gg-data/v1/interactions \
   -H "Authorization: Bearer <token>"
 ```
 
+### 8.4 Read a Conversation Transcript
+
+```php
+$turns = GG_Data_Interaction::get_conversation_transcript( $conversation_id );
+// array of full turn records (query/response/sources/tool/usage/feedback/...), or [].
+```
+
+### 8.5 Read Normalized Chat Messages
+
+```php
+$messages = GG_Data_Interaction::get_conversation_turns( $conversation_id );
+// [ [ 'role' => 'user', 'content' => ... ], [ 'role' => 'assistant', 'content' => ... ], ... ]
+```
+
+### 8.6 Record Per-Turn Feedback
+
+```php
+$result = GG_Data_Interaction::record_turn_feedback(
+	$conversation_id,
+	0, // 0-indexed turn offset.
+	array(
+		'relevance'      => 'helpful',
+		'source'         => 'turn_tools',
+		'user_id'        => get_current_user_id(),
+		'suggestion_ids' => array(),
+		'recorded_at'    => gmdate( 'c' ),
+	)
+);
+// true|WP_Error. Serialized with turn appends via the conversation lock;
+// keys whitelisted via the gg_data_interaction_feedback_schema filter.
+```
+
 ## 9. Parity Coverage Snapshot
 
 Coverage verified from code:
 - Event ingress hooks documented: 2 (`gg_data_rag_complete`, `gg_data_search_completed`)
-- Interaction extension hooks documented: 3 (`gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`)
+- Interaction extension hooks documented: 5 (`gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_schema`, `gg_data_interaction_turn_feedback_recorded`)
 - Integration filter documented: 1 (`gg_data_should_sync_post`)
+- Public conversation access methods: 3 (`get_conversation_transcript`, `get_conversation_turns`, `record_turn_feedback`)
 - Interaction meta fields documented: 6
 - REST endpoint family documented: list/get/create/update/delete (+ governance constraints)
 
