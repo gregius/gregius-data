@@ -230,6 +230,7 @@ class GG_Data_Interaction {
 			'manifest_hash'       => $meta['manifest_hash'] ?? '',
 			'manifest_size_bytes' => $meta['manifest_size_bytes'] ?? 0,
 			'manifest_version'    => $meta['manifest_version'] ?? '',
+			'conversation_memory' => $meta['conversation_memory'] ?? array(),
 		);
 
 		$post_id = 0;
@@ -1710,6 +1711,10 @@ class GG_Data_Interaction {
 
 		if ( ! empty( $args['manifest_version'] ) ) {
 			$turn_data['manifest_version'] = $args['manifest_version'];
+		}
+
+		if ( ! empty( $args['conversation_memory'] ) && is_array( $args['conversation_memory'] ) ) {
+			$turn_data['conversation_memory'] = $args['conversation_memory'];
 		}
 
 		return $turn_data;
