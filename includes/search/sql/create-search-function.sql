@@ -637,10 +637,14 @@ $$;
 -- Index Creation (run after table creation)
 -- ============================================
 
--- GIN Trigram Indexes (for typo tolerance)
-CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_content 
-ON wp_posts_clean USING GIN (post_content_clean gin_trgm_ops);
+-- Trigram on post_content_clean is removed: a GIST trigram index over long
+-- documents exceeds PostgreSQL's 8191-byte index-row limit (clean writes fail
+-- with SQLSTATE 54000), and content trigrams do not scale. Trigram is kept on
+-- the bounded post_title_clean column only.
+DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content;
+DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content_gist;
 
+-- GIN Trigram Indexes (for typo tolerance)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title 
 ON wp_posts_clean USING GIN (post_title_clean gin_trgm_ops);
 
@@ -650,9 +654,6 @@ ON wp_posts_clean USING GIN (post_excerpt_clean gin_trgm_ops);
 -- GiST Trigram Indexes (for efficient ORDER BY similarity with LIMIT pushdown)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title_gist 
 ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_content_gist 
-ON wp_posts_clean USING GIST (post_content_clean gist_trgm_ops);
 
 
 -- Note: Requires pg_trgm extension for typo tolerance and pgvector extension for vector search
