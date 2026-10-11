@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS wp_posts_clean (
     cleaning_version VARCHAR(10) DEFAULT '1.0',
     word_count INT DEFAULT 0,
     reading_time_minutes INT DEFAULT 0,
-    search_vector_weighted tsvector -- Precomputed weighted tsvector for fast FTS
+    search_vector_weighted tsvector, -- Precomputed weighted tsvector for fast FTS
+    visibility VARCHAR(20) DEFAULT 'public'
 );
 
 -- Add search_vector_weighted column if it doesn't exist (for schema updates)
@@ -103,6 +104,25 @@ BEGIN
         ALTER TABLE wp_posts_clean ADD COLUMN metadata_manifest JSONB DEFAULT '{}'::jsonb;
     END IF;
 END $$;
+
+-- Add visibility column if it doesn't exist (for schema updates)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'wp_posts_clean'
+        AND column_name = 'visibility'
+    ) THEN
+        ALTER TABLE wp_posts_clean ADD COLUMN visibility VARCHAR(20) DEFAULT 'public';
+    END IF;
+END $$;
+
+-- Backfill visibility from post_status (publish + inherit are searchable).
+UPDATE wp_posts_clean pc
+SET visibility = CASE WHEN p.post_status IN ('publish', 'inherit') THEN 'public' ELSE 'private' END
+FROM wp_posts p
+WHERE p.id = pc.post_id;
 
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_hash ON wp_posts_clean(content_hash);
 
@@ -549,7 +569,9 @@ BEGIN
             FROM vector_ranked vr
             JOIN wp_posts_chunks ch ON ch.post_id = vr.post_id AND ch.chunk_index = vr.chunk_index
             JOIN wp_posts p_filter ON p_filter.id = vr.post_id
-            WHERE p_filter.post_status = ''publish''
+            JOIN wp_posts_clean pc_filter ON pc_filter.post_id = p_filter.id
+            WHERE p_filter.post_status IN (''publish'', ''inherit'')
+              AND pc_filter.visibility = ''public''
         ),
         with_running_total AS (
             SELECT
@@ -843,7 +865,7 @@ BEGIN
          FROM ranked r
          INNER JOIN wp_posts_clean pc ON pc.post_id = r.post_id
          INNER JOIN wp_posts p         ON p.id = r.post_id
-         WHERE p.post_status = ''publish''
+          WHERE p.post_status IN (''publish'', ''inherit'') AND pc.visibility = ''public''
          ORDER BY r.rank_position
          LIMIT $3',
          vector_table
@@ -931,7 +953,7 @@ BEGIN
         WHERE
             pc.search_vector_weighted @@ plainto_tsquery(search_language::regconfig, search_text)
             AND p.post_type = ANY(post_types)
-            AND p.post_status = 'publish'
+            AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
         LIMIT GREATEST(limit_count, 20)
     ),
     trigram_results AS (
@@ -960,7 +982,7 @@ BEGIN
             WHERE
                 enable_trigram = true
                 AND p.post_type = ANY(post_types)
-                AND p.post_status = 'publish'
+                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
             ORDER BY search_text <<-> pc.post_title_clean ASC
             LIMIT GREATEST(limit_count, 20))
 
@@ -981,7 +1003,7 @@ BEGIN
             WHERE
                 enable_trigram = true
                 AND p.post_type = ANY(post_types)
-                AND p.post_status = 'publish'
+                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
             ORDER BY search_text <<-> pc.post_content_clean ASC
             LIMIT GREATEST(limit_count, 20))
         ) tr
@@ -1128,7 +1150,7 @@ BEGIN
         WHERE
             pc.search_vector_weighted @@ plainto_tsquery(search_language::regconfig, search_text)
             AND p.post_type = ANY(post_types)
-            AND p.post_status = 'publish'
+            AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
             AND (
                 metadata_filter = '{}'::jsonb
                 OR (
@@ -1172,7 +1194,7 @@ BEGIN
             WHERE
                 enable_trigram = true
                 AND p.post_type = ANY(post_types)
-                AND p.post_status = 'publish'
+                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
                 AND (
                     metadata_filter = '{}'::jsonb
                     OR (
@@ -1208,7 +1230,7 @@ BEGIN
             WHERE
                 enable_trigram = true
                 AND p.post_type = ANY(post_types)
-                AND p.post_status = 'publish'
+                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
                 AND (
                     metadata_filter = '{}'::jsonb
                     OR (

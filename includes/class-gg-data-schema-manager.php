@@ -857,7 +857,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			cleaning_version VARCHAR(10) DEFAULT '1.0',  -- Track cleaning algorithm version
 			word_count INTEGER DEFAULT 0,    -- Accurate word count from clean content
 			reading_time_minutes INTEGER DEFAULT 0,  -- Calculated reading time
-			search_vector_weighted tsvector  -- Precomputed weighted tsvector for fast FTS (139x faster!)
+			search_vector_weighted tsvector,  -- Precomputed weighted tsvector for fast FTS (139x faster!)
+			visibility VARCHAR(20) DEFAULT 'public'
 		)";
 
 			$conn->exec( $sql );
@@ -908,6 +909,32 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			} catch ( PDOException $e ) {
 				$this->logger->log(
 					'Warning: Could not add metadata_manifest column (may already exist): ' . $e->getMessage(),
+					'warning',
+					'system',
+					$connection_name
+				);
+			}
+
+			// Add visibility column if it doesn't exist (for existing installations).
+			try {
+				$conn->exec(
+					"
+					DO \$\$
+					BEGIN
+						IF NOT EXISTS (
+							SELECT 1
+							FROM information_schema.columns
+							WHERE table_name = '$table_name'
+							AND column_name = 'visibility'
+						) THEN
+							ALTER TABLE $table_name ADD COLUMN visibility VARCHAR(20) DEFAULT 'public';
+						END IF;
+					END \$\$;
+				"
+				);
+			} catch ( PDOException $e ) {
+				$this->logger->log(
+					'Warning: Could not add visibility column (may already exist): ' . $e->getMessage(),
 					'warning',
 					'system',
 					$connection_name
