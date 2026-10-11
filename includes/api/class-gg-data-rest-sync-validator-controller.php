@@ -578,12 +578,39 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 					// Don't use metadata counts because they reflect statuses at time of last sync,
 					// not current user selection.
 					$status_placeholders = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
-					$query               = $wpdb->prepare(
-						"SELECT COUNT(*) FROM {$wpdb->posts} 
-						WHERE post_type = %s 
-						AND post_status IN ($status_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $status_placeholders is a safe string of comma-separated '%s' placeholders
-						array_merge( array( $post_type ), $enabled_statuses )
-					);
+
+					if ( 'attachment' === $post_type ) {
+						// Count only ELIGIBLE attachments (mirrors GG_Data_Content_Source::is_eligible_attachment):
+						// inherit + parent (non-attachment) of an enabled type/status + application/pdf + not featured.
+						$type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
+
+						// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are generated dynamically from the enabled type/status arrays.
+						$query = $wpdb->prepare(
+							"SELECT COUNT(*) FROM {$wpdb->posts} a
+							 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
+							 WHERE a.post_type = 'attachment'
+							   AND a.post_status = 'inherit'
+							   AND p.post_type <> 'attachment'
+							   AND p.post_type IN ($type_placeholders)
+							   AND p.post_status IN ($status_placeholders)
+							   AND a.post_mime_type = 'application/pdf'
+							   AND a.ID <> COALESCE((
+							       SELECT CAST(pm.meta_value AS UNSIGNED)
+							       FROM {$wpdb->postmeta} pm
+							       WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
+							       LIMIT 1
+							   ), 0)",
+							array_merge( $enabled_post_types, $enabled_statuses )
+						);
+						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+					} else {
+						$query = $wpdb->prepare(
+							"SELECT COUNT(*) FROM {$wpdb->posts} 
+							WHERE post_type = %s 
+							AND post_status IN ($status_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $status_placeholders is a safe string of comma-separated '%s' placeholders
+							array_merge( array( $post_type ), $enabled_statuses )
+						);
+					}
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Required to count posts by type/status from WordPress core table for validation, query is prepared above
 					$pt_mysql_total = (int) $wpdb->get_var( $query );                  // Get synced/pending from metadata if available.
 					if ( ! empty( $pt_summary ) ) {

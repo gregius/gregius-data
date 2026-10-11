@@ -607,6 +607,11 @@ const ModelsPage = () => {
                   <Heading level={3} style={{ margin: 0 }}>
                     {model.id || model.model_key}
                   </Heading>
+                  {model.vision_capable && (
+                    <span className="components-badge is-info">
+                      {__("Vision", "gregius-data")}
+                    </span>
+                  )}
                 </div>
                 <DropdownMenu
                   icon={moreVertical}

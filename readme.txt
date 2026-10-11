@@ -128,6 +128,18 @@ Yes. The plugin syncs final post content regardless of how it's created (Gutenbe
 
 Supabase provides a free tier for evaluation. Paid costs depend on your usage and provider plan.
 
+= Can I sync PDF attachments for retrieval? =
+
+Yes. Enable the "attachment" post type in the Sync tab. A vision-capable model must be active first (the dashboard will guide you). Text is extracted from each eligible PDF and flows through the same search and vector pipeline as regular posts.
+
+= Which models can extract text from documents? =
+
+Google Gemini (native PDF input — recommended), OpenAI GPT-4o / GPT-4o-mini, and Anthropic Claude models. DeepSeek does not support document or vision input.
+
+= Does document extraction cost money? =
+
+Yes. Each eligible PDF is sent to your configured vision model once; unchanged files are not re-extracted. Cost depends on the model and file size — Gemini's native PDF text extraction is typically the most cost-effective.
+
 == Contributors & Developers ==
 
 Gregius Data is open source software. The following people have contributed to this plugin.

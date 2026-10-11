@@ -14,6 +14,7 @@ import {
     Button, 
     Spinner,
     ToggleControl,
+    SelectControl,
     DropdownMenu,
     MenuItem,
     Modal,
@@ -29,6 +30,9 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
     const [error, setError] = useState(null);
     const [postTypeLabels, setPostTypeLabels] = useState({});
     const [config, setConfig] = useState(null);
+    const [visionModels, setVisionModels] = useState([]);
+    const [documentModel, setDocumentModel] = useState('');
+    const [showModelModal, setShowModelModal] = useState(false);
     
     // Operation states
     const [modalState, setModalState] = useState(null); // { type: 'sync'|'clean'|'remove', postType, label }
@@ -55,11 +59,12 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch all post types, configuration, and validation data in parallel
-            const [postTypesRes, configRes, validationRes] = await Promise.all([
+            // Fetch all post types, configuration, validation, and models in parallel
+            const [postTypesRes, configRes, validationRes, modelsRes] = await Promise.all([
                 apiFetch({ path: `/gg-data/v1/sync/post-types?connection=${selectedConnectionId}` }),
                 apiFetch({ path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}` }),
-                apiFetch({ path: `/gg-data/v1/sync/validation/fast?connection=${selectedConnectionId}` })
+                apiFetch({ path: `/gg-data/v1/sync/validation/fast?connection=${selectedConnectionId}` }),
+                apiFetch({ path: '/gg-data/v1/models' })
             ]);
 
             const allPostTypes = postTypesRes.post_types || [];
@@ -67,6 +72,19 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
             const validationData = validationRes.data?.posts || {};
 
             setConfig(configRes.configuration);
+            setDocumentModel(configRes.configuration?.document_model || '');
+
+            const modelsArray = Array.isArray(modelsRes.data)
+                ? modelsRes.data
+                : Object.values(modelsRes.data || {});
+            setVisionModels(
+                modelsArray
+                    .filter((model) => model.vision_capable)
+                    .map((model) => ({
+                        value: model.provider_model_id || model.model_key,
+                        label: `${model.provider}/${model.provider_model_id || model.model_key}`
+                    }))
+            );
 
             // Store labels for use in modal/display
             const labels = {};
@@ -118,6 +136,49 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
             console.error('Failed to refresh validation data:', err);
         }
     };
+
+    const handleDocumentModelChange = async (value) => {
+        try {
+            const latestConfigRes = await apiFetch({
+                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`
+            });
+
+            const response = await apiFetch({
+                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`,
+                method: 'POST',
+                data: {
+                    ...latestConfigRes.configuration,
+                    document_model: value
+                }
+            });
+
+            if (response.success) {
+                setDocumentModel(value);
+                setConfig(response.configuration || latestConfigRes.configuration);
+                if (onPostTypeChange) onPostTypeChange();
+            }
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const handleRegenerateAttachments = async () => {
+        try {
+            await apiFetch({
+                path: '/gg-data/v1/sync/regenerate-attachments',
+                method: 'POST',
+                data: { connection_name: selectedConnectionId }
+            });
+            refreshValidationData();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const currentModel = visionModels.find((model) => model.value === documentModel);
+    const modelMenuLabel = currentModel
+        ? sprintf(__('Model (%s)', 'gregius-data'), currentModel.label)
+        : __('Set model', 'gregius-data');
 
     const handleToggleSync = async (postType, checked) => {
         // Optimistic update
@@ -364,6 +425,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                                                 <ToggleControl
                                                     checked={row.enabled}
                                                     onChange={(checked) => handleToggleSync(row.name, checked)}
+                                                    disabled={row.name === 'attachment' && !config?.document_model_available && !row.enabled}
                                                     __nextHasNoMarginBottom
                                                 />
                                             </td>
@@ -391,6 +453,27 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                                                 >
                                                     { ( { onClose } ) => (
                                                         <>
+                                                            { row.name === 'attachment' && (
+                                                                <MenuItem
+                                                                    onClick={ () => {
+                                                                        setShowModelModal(true);
+                                                                        onClose();
+                                                                    } }
+                                                                >
+                                                                    { modelMenuLabel }
+                                                                </MenuItem>
+                                                            ) }
+                                                            { row.name === 'attachment' && (
+                                                                <MenuItem
+                                                                    onClick={ () => {
+                                                                        onClose();
+                                                                        handleRegenerateAttachments();
+                                                                    } }
+                                                                    disabled={ !row.enabled || !documentModel }
+                                                                >
+                                                                    { __('Regenerate', 'gregius-data') }
+                                                                </MenuItem>
+                                                            ) }
                                                             <MenuItem
                                                                 onClick={ () => {
                                                                     setModalState({ 
@@ -443,6 +526,37 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                     )}
                 </CardBody>
             </Card>
+
+            {showModelModal && (
+                <Modal
+                    title={__('Document model (attachments)', 'gregius-data')}
+                    onRequestClose={() => setShowModelModal(false)}
+                >
+                    {visionModels.length === 0 ? (
+                        <p>
+                            {__('No vision-capable model is active. Add one in the Models tab, then set it here to extract text from PDF attachments.', 'gregius-data')}
+                        </p>
+                    ) : (
+                        <SelectControl
+                            label={__('Model', 'gregius-data')}
+                            value={documentModel}
+                            options={[
+                                { label: __('Select a model…', 'gregius-data'), value: '' },
+                                ...visionModels
+                            ]}
+                            onChange={handleDocumentModelChange}
+                            help={__('Model used to extract text from PDF attachments.', 'gregius-data')}
+                            __next40pxDefaultSize
+                            __nextHasNoMarginBottom
+                        />
+                    )}
+                    <div style={{ marginTop: '1.5rem' }}>
+                        <Button variant="tertiary" onClick={() => setShowModelModal(false)}>
+                            {__('Close', 'gregius-data')}
+                        </Button>
+                    </div>
+                </Modal>
+            )}
 
             {modalState && (
                 <Modal

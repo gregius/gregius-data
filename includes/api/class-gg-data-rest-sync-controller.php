@@ -145,6 +145,11 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'description' => __( 'Whether to sync taxonomy terms', 'gregius-data' ),
 							'required'    => false,
 						),
+						'document_model'     => array(
+							'description' => __( 'Document model for attachment extraction (empty string = auto)', 'gregius-data' ),
+							'type'        => 'string',
+							'required'    => false,
+						),
 					),
 				),
 			)
@@ -630,6 +635,27 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			)
 		);
 
+		// POST /gg-data/v1/sync/regenerate-attachments (clear extraction cache + re-sync).
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/regenerate-attachments',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'regenerate_attachments' ),
+					'permission_callback' => array( $this, 'permissions_check' ),
+					'args'                => array(
+						'connection_name' => array(
+							'description' => __( 'Connection name', 'gregius-data' ),
+							'type'        => 'string',
+							'default'     => 'default',
+							'required'    => false,
+						),
+					),
+				),
+			)
+		);
+
 		// POST /gg-data/v1/sync/batch-sync-terms (Vector-style batch processing).
 		register_rest_route(
 			$this->namespace,
@@ -790,7 +816,7 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 
 				$formatted_types[] = array(
 					'name'          => $type,
-					'label'         => $object->labels->name,
+					'label'         => 'attachment' === $type ? __( 'Attachment', 'gregius-data' ) : $object->labels->name,
 					'description'   => $object->description,
 					'public'        => $object->public,
 					'count'         => $status_counts['publish'] ?? 0,  // Default published count for display.
@@ -847,13 +873,17 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			$default_statuses   = get_option( 'gg_data_sync_enabled_statuses', array() );
 			$default_realtime   = get_option( 'gg_data_sync_real_time_sync', false );
 
+			$document_model = ( new GG_Data_Model_Registry() )->get_document_model( $connection_name );
+
 			$config = array(
-				'enabled_post_types' => $this->get_sync_setting_for_connection( $connection_name, 'enabled_post_types', $default_post_types ),
-				'enabled_statuses'   => $this->get_sync_setting_for_connection( $connection_name, 'enabled_statuses', $default_statuses ),
-				'real_time_sync'     => $this->get_sync_setting_for_connection( $connection_name, 'real_time_sync', $default_realtime ),
-				'sync_meta'          => $this->get_sync_setting_for_connection( $connection_name, 'sync_meta', true ),
-				'sync_terms'         => $this->get_sync_setting_for_connection( $connection_name, 'sync_terms', true ),
-				'last_updated'       => $this->get_sync_setting_for_connection( $connection_name, 'last_updated', null ),
+				'enabled_post_types'       => $this->get_sync_setting_for_connection( $connection_name, 'enabled_post_types', $default_post_types ),
+				'enabled_statuses'         => $this->get_sync_setting_for_connection( $connection_name, 'enabled_statuses', $default_statuses ),
+				'real_time_sync'           => $this->get_sync_setting_for_connection( $connection_name, 'real_time_sync', $default_realtime ),
+				'sync_meta'                => $this->get_sync_setting_for_connection( $connection_name, 'sync_meta', true ),
+				'sync_terms'               => $this->get_sync_setting_for_connection( $connection_name, 'sync_terms', true ),
+				'last_updated'             => $this->get_sync_setting_for_connection( $connection_name, 'last_updated', null ),
+				'document_model'           => $document_model ? $document_model['provider_model_id'] : null,
+				'document_model_available' => ! empty( $document_model ),
 			);          return new WP_REST_Response(
 				array(
 					'success'       => true,
@@ -899,7 +929,70 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 
 			// Validate and sanitize post statuses.
 			$available_statuses = get_post_stati();
-			$enabled_statuses   = is_array( $enabled_statuses ) ? array_values( array_intersect( $enabled_statuses, $available_statuses ) ) : array();          // Save configuration for specific connection.
+			$enabled_statuses   = is_array( $enabled_statuses ) ? array_values( array_intersect( $enabled_statuses, $available_statuses ) ) : array();
+
+			// Auto-manage 'inherit': attachments are post_status='inherit', so enable it
+			// whenever the 'attachment' post type is enabled (and drop it otherwise).
+			if ( in_array( 'attachment', $enabled_post_types, true ) ) {
+				if ( ! in_array( 'inherit', $enabled_statuses, true ) ) {
+					$enabled_statuses[] = 'inherit';
+				}
+			} else {
+				$enabled_statuses = array_values( array_diff( $enabled_statuses, array( 'inherit' ) ) );
+			}
+
+			// Resolve the effective document model for this request. The incoming
+			// document_model param wins over the stored setting so the enable-gate
+			// validates the state the client is actually trying to save (selecting a
+			// model and enabling attachments in one request must succeed).
+			$document_model_param = $request->get_param( 'document_model' );
+			$registry             = new GG_Data_Model_Registry();
+			$valid_vision_ids     = array_map(
+				function ( $model ) {
+					return $model['provider_model_id'];
+				},
+				$registry->get_active_vision_models( $connection_name )
+			);
+
+			if ( null !== $document_model_param && '' !== $document_model_param
+				&& ! in_array( $document_model_param, $valid_vision_ids, true ) ) {
+				return new WP_Error(
+					'invalid_document_model',
+					__( 'The selected document model is not an active vision-capable model.', 'gregius-data' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$effective_document_model = null !== $document_model_param
+				? ( '' === $document_model_param ? null : $document_model_param )
+				: $registry->get_document_model( $connection_name );
+
+			// Gate: enabling 'attachment' requires an active vision-capable document model.
+			if ( in_array( 'attachment', $enabled_post_types, true ) && empty( $effective_document_model ) ) {
+				return new WP_Error(
+					'attachment_sync_requires_vision_model',
+					__( 'Enable a vision-capable model before syncing attachments.', 'gregius-data' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			// Persist the explicit document-model selection (validated above).
+			if ( null !== $document_model_param ) {
+				$this->get_settings_manager()->set_with_category( 'document', $connection_name, 'document_model', $document_model_param );
+			}
+
+			// Capture the prior enabled types to detect changes (for attachment reconciliation).
+			$old_post_types = $this->get_sync_setting_for_connection( $connection_name, 'enabled_post_types', array() );
+
+			if ( is_string( $old_post_types ) ) {
+				$old_post_types = maybe_unserialize( $old_post_types );
+			}
+
+			if ( ! is_array( $old_post_types ) ) {
+				$old_post_types = array();
+			}
+
+			// Save configuration for specific connection.
 			$this->set_sync_setting_for_connection( $connection_name, 'enabled_post_types', $enabled_post_types );
 			$this->set_sync_setting_for_connection( $connection_name, 'enabled_statuses', $enabled_statuses );
 			$this->set_sync_setting_for_connection( $connection_name, 'real_time_sync', $real_time_sync );
@@ -915,16 +1008,28 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			 */
 			do_action( 'gg_data_sync_post_types_updated', $connection_name, $enabled_post_types );
 
+			// Fire a diff action so the attachment reconciler can react to type changes.
+			$added_types   = array_values( array_diff( $enabled_post_types, $old_post_types ) );
+			$removed_types = array_values( array_diff( $old_post_types, $enabled_post_types ) );
+
+			if ( ! empty( $added_types ) || ! empty( $removed_types ) ) {
+				do_action( 'gg_data_sync_post_types_changed', $connection_name, $added_types, $removed_types );
+			}
+
 			$this->set_sync_setting_for_connection( $connection_name, 'last_updated', current_time( 'mysql' ) );
 
 			// Build and return the saved configuration.
+			$saved_document_model = ( new GG_Data_Model_Registry() )->get_document_model( $connection_name );
+
 			$saved_config = array(
-				'enabled_post_types' => $enabled_post_types,
-				'enabled_statuses'   => $enabled_statuses,
-				'real_time_sync'     => $real_time_sync,
-				'sync_meta'          => $sync_meta,
-				'sync_terms'         => $sync_terms,
-				'last_updated'       => current_time( 'mysql' ),
+				'enabled_post_types'       => $enabled_post_types,
+				'enabled_statuses'         => $enabled_statuses,
+				'real_time_sync'           => $real_time_sync,
+				'sync_meta'                => $sync_meta,
+				'sync_terms'               => $sync_terms,
+				'last_updated'             => current_time( 'mysql' ),
+				'document_model'           => $saved_document_model ? $saved_document_model['provider_model_id'] : null,
+				'document_model_available' => ! empty( $saved_document_model ),
 			);
 
 			return new WP_REST_Response(
@@ -1742,6 +1847,41 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 				'post_type_clean_failed',
 				/* translators: %s: error message */
 				sprintf( __( 'Post type clean failed: %s', 'gregius-data' ), $e->getMessage() ),
+				array( 'status' => 500 )
+			);
+		}
+	}
+
+	/**
+	 * Clear cached attachment extractions and re-sync them.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response object or error.
+	 */
+	public function regenerate_attachments( $request ) {
+		try {
+			$connection_name = $request->get_param( 'connection_name' );
+			if ( empty( $connection_name ) ) {
+				$connection_name = 'default';
+			}
+
+			$cleared = GG_Data_Content_Source::reset_extraction_cache( $connection_name );
+
+			$service = new GG_Data_Sync_Service( $connection_name );
+			$result  = $service->batch_sync_post_type( 'attachment', 100, 0, 1 );
+
+			return rest_ensure_response(
+				array(
+					'success' => true,
+					'cleared' => $cleared,
+					'sync'    => $result,
+				)
+			);
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'regenerate_attachments_failed',
+				/* translators: %s: error message */
+				sprintf( __( 'Attachment regeneration failed: %s', 'gregius-data' ), $e->getMessage() ),
 				array( 'status' => 500 )
 			);
 		}

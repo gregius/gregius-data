@@ -90,8 +90,153 @@ class GG_Data_Lifecycle_Hooks {
 		add_action( 'delete_term', array( $this, 'handle_term_deleted' ), 10, 4 );
 		add_action( 'wp_after_insert_post', array( $this, 'handle_post_complete' ), 999, 4 );
 
+		// Attachment hooks — the file is attached AFTER save_post fires, so re-sync
+		// once the attachment is finalized.
+		add_action( 'add_attachment', array( $this, 'handle_attachment_added' ), 10, 1 );
+		add_filter( 'wp_generate_attachment_metadata', array( $this, 'handle_attachment_metadata_generated' ), 10, 2 );
+
+		// Attachment reconciliation when enabled post types change.
+		add_action( 'gg_data_sync_post_types_changed', array( $this, 'schedule_attachment_reconcile' ), 10, 3 );
+		add_action( 'gg_data_reconcile_attachment_children', array( $this, 'reconcile_attachment_children' ), 10, 3 );
+
 		// Orphan detection scheduled task (fallback).
 		add_action( 'gg_data_orphan_cleanup', array( $this, 'cleanup_orphaned_records' ) );
+	}
+
+	/**
+	 * Re-sync an attachment after its file has been attached.
+	 *
+	 * @since 1.0.0
+	 * @param int $attachment_id Attachment post ID.
+	 */
+	public function handle_attachment_added( $attachment_id ) {
+		$this->sync_attachment( $attachment_id );
+	}
+
+	/**
+	 * Re-sync an attachment after its metadata (sizes) are generated or changed.
+	 *
+	 * @since 1.0.0
+	 * @param array $metadata      Attachment metadata.
+	 * @param int   $attachment_id Attachment post ID.
+	 * @return array Unmodified metadata.
+	 */
+	public function handle_attachment_metadata_generated( $metadata, $attachment_id ) {
+		$this->sync_attachment( $attachment_id );
+
+		return $metadata;
+	}
+
+	/**
+	 * Sync a single attachment post if it is eligible for sync.
+	 *
+	 * @since 1.0.0
+	 * @param int $attachment_id Attachment post ID.
+	 */
+	private function sync_attachment( $attachment_id ) {
+		$connection_name = $this->get_active_connection();
+		if ( empty( $connection_name ) ) {
+			return;
+		}
+
+		$post = get_post( $attachment_id );
+		if ( ! $post || 'attachment' !== $post->post_type ) {
+			return;
+		}
+
+		if ( ! $this->is_post_type_synced( 'attachment', $connection_name ) ) {
+			return;
+		}
+
+		if ( ! GG_Data_Content_Source::is_eligible_attachment( $attachment_id, $connection_name ) ) {
+			return;
+		}
+
+		try {
+			$this->sync_to_postgresql( $post, $connection_name, true );
+		} catch ( Exception $sync_error ) {
+			$this->logger->log(
+				sprintf(
+					'Attachment sync failed for post %d: %s (WordPress upload unaffected)',
+					$attachment_id,
+					$sync_error->getMessage()
+				),
+				'error',
+				'sync',
+				$connection_name,
+				array( 'post_id' => $attachment_id )
+			);
+		}
+	}
+
+	/**
+	 * Schedule asynchronous reconciliation of attachment children after enabled
+	 * post types change (deferred to avoid blocking the config save).
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_name Connection name.
+	 * @param array  $added_types     Post types newly enabled.
+	 * @param array  $removed_types   Post types newly disabled.
+	 */
+	public function schedule_attachment_reconcile( $connection_name, $added_types, $removed_types ) {
+		if ( empty( $added_types ) && empty( $removed_types ) ) {
+			return;
+		}
+
+		wp_schedule_single_event(
+			time() + 5,
+			'gg_data_reconcile_attachment_children',
+			array( $connection_name, $added_types, $removed_types )
+		);
+	}
+
+	/**
+	 * Reconcile the child attachments of the affected post types against the
+	 * current eligibility rule: eligible attachments are (re)synced, ineligible
+	 * ones have their PostgreSQL records removed.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_name Connection name.
+	 * @param array  $added_types     Post types newly enabled.
+	 * @param array  $removed_types   Post types newly disabled.
+	 */
+	public function reconcile_attachment_children( $connection_name, $added_types, $removed_types ) {
+		$affected = array_values( array_unique( array_merge( $added_types, $removed_types ) ) );
+
+		if ( empty( $affected ) ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$placeholders = implode( ',', array_fill( 0, count( $affected ), '%s' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $placeholders is generated from the affected type count.
+		$child_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT a.ID FROM {$wpdb->posts} a
+				 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
+				 WHERE a.post_type = 'attachment'
+				   AND p.post_type IN ($placeholders)",
+				$affected
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		foreach ( $child_ids as $child_id ) {
+			$child_id = (int) $child_id;
+			$post     = get_post( $child_id );
+
+			if ( ! $post ) {
+				continue;
+			}
+
+			if ( GG_Data_Content_Source::is_eligible_attachment( $child_id, $connection_name ) ) {
+				$this->sync_to_postgresql( $post, $connection_name, true );
+			} else {
+				$this->delete_from_postgresql( $child_id, $connection_name );
+			}
+		}
 	}
 
 	/**
@@ -170,7 +315,14 @@ class GG_Data_Lifecycle_Hooks {
 		}
 
 		// Handle sync based on post status.
-		if ( $this->is_post_status_synced( $post->post_status, $connection_name ) ) {
+		$should_sync = $this->is_post_status_synced( $post->post_status, $connection_name );
+
+		// Attachments are gated by eligibility (parent type/status), not their own status.
+		if ( 'attachment' === $post->post_type ) {
+			$should_sync = GG_Data_Content_Source::is_eligible_attachment( $post->ID, $connection_name );
+		}
+
+		if ( $should_sync ) {
 			// Sync to PostgreSQL with error handling to prevent blocking WordPress saves.
 			$this->logger->log(
 				"Syncing post {$post_id} with status '{$post->post_status}' to PostgreSQL",
@@ -1160,7 +1312,7 @@ class GG_Data_Lifecycle_Hooks {
 			}
 
 			// Use the get_ids method to retrieve post IDs from PostgreSQL.
-			$result = $provider->get_ids( 'posts', 1000, 0, array(), 'id' );
+			$result = $provider->get_ids( GG_Data_Table_Prefix_Resolver::mirror_table( 'posts' ), 1000, 0, array(), 'id' );
 
 			if ( is_wp_error( $result ) ) {
 				$this->logger->log( 'Orphan cleanup: ' . $result->get_error_message(), 'error', 'sync', $connection_name, array( 'error' => $result->get_error_message() ) );
@@ -1181,7 +1333,15 @@ class GG_Data_Lifecycle_Hooks {
 				$wp_post = get_post( $post_id );
 
 				// Post doesn't exist in WordPress - orphaned record.
-				if ( ! $wp_post || 'trash' === $wp_post->post_status ) {
+				$is_orphan = ( ! $wp_post || 'trash' === $wp_post->post_status );
+
+				// Attachments that are no longer eligible are orphans too.
+				if ( ! $is_orphan && 'attachment' === $wp_post->post_type
+					&& ! GG_Data_Content_Source::is_eligible_attachment( (int) $post_id, $connection_name ) ) {
+					$is_orphan = true;
+				}
+
+				if ( $is_orphan ) {
 					$provider->delete_post( $post_id );
 					++$orphaned_count;
 				}

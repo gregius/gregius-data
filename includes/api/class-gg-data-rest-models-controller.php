@@ -257,6 +257,8 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 				if ( ! isset( $config['id'] ) && isset( $config['model_key'] ) ) {
 					$config['id'] = $config['model_key'];
 				}
+				// Mark vision/document-capable models.
+				$config['vision_capable'] = self::is_vision_capable( $config );
 			}
 
 			return new WP_REST_Response(
@@ -278,10 +280,31 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Get available providers
+	 * Determine whether a model is vision/document-capable.
+	 *
+	 * @since 1.0.0
+	 * @param array $model Model config array.
+	 * @return bool True when the model's provider lists it as vision-capable.
+	 */
+	private static function is_vision_capable( $model ) {
+		if ( empty( $model['provider'] ) || empty( $model['provider_model_id'] ) ) {
+			return false;
+		}
+
+		$provider = GG_Data_LLM_Registry::get_provider( $model['provider'] );
+
+		if ( is_wp_error( $provider ) ) {
+			return false;
+		}
+
+		return in_array( $model['provider_model_id'], $provider->get_vision_models(), true );
+	}
+
+	/**
+	 * Get available providers.
 	 *
 	 * @param WP_REST_Request $request Full data about the request.
-	 * @return WP_REST_Response|WP_Error Response object.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function get_providers( $request ) {
 		$providers = GG_Data_LLM_Registry::get_providers();

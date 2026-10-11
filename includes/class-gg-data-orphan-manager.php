@@ -146,7 +146,7 @@ class GG_Data_Orphan_Manager {
 		// Fetch batch of IDs from remote.
 		// Note: wp_posts uses lowercase id column in PostgreSQL.
 		$remote_ids = $this->provider->get_ids(
-			'posts',
+			GG_Data_Table_Prefix_Resolver::mirror_table( 'posts' ),
 			$batch_size,
 			$offset,
 			array( 'post_type' => 'eq.' . $post_type ),
@@ -229,6 +229,17 @@ class GG_Data_Orphan_Manager {
 
 				$orphan_ids = array_diff( $remote_ids, $existing_ids );
 
+				// For attachments, also treat ineligible-but-existing records as orphans
+				// (e.g. parent type disabled, non-PDF, or now the parent's featured image).
+				if ( 'attachment' === $post_type ) {
+					foreach ( $existing_ids as $existing_id ) {
+						if ( ! GG_Data_Content_Source::is_eligible_attachment( (int) $existing_id, $this->connection_name ) ) {
+							$orphan_ids[] = (int) $existing_id;
+						}
+					}
+					$orphan_ids = array_values( array_unique( $orphan_ids ) );
+				}
+
 				$this->logger->log(
 					sprintf( 'Sync enabled - found %d existing posts in WordPress, %d orphans in PostgreSQL', count( $existing_ids ), count( $orphan_ids ) ),
 					'debug',
@@ -267,7 +278,7 @@ class GG_Data_Orphan_Manager {
 				$this->connection_name
 			);
 
-			$result = $this->provider->delete_ids( 'posts', $orphan_ids, 'id' );
+			$result = $this->provider->delete_ids( GG_Data_Table_Prefix_Resolver::mirror_table( 'posts' ), $orphan_ids, 'id' );
 
 			$this->logger->log(
 				sprintf( 'Delete result - Success: %s, Count: %d', $result['success'] ? 'yes' : 'no', isset( $result['count'] ) ? $result['count'] : 0 ),
@@ -326,9 +337,11 @@ class GG_Data_Orphan_Manager {
 	protected function process_simple_orphans( $table, $id_column, $meta_type, $batch_size, $offset ) {
 		global $wpdb;
 
+		$remote_table = GG_Data_Table_Prefix_Resolver::mirror_table( $table );
+
 		// Fetch batch of IDs from remote.
 		$remote_ids = $this->provider->get_ids(
-			$table,
+			$remote_table,
 			$batch_size,
 			$offset,
 			array(),
@@ -370,7 +383,7 @@ class GG_Data_Orphan_Manager {
 		// Delete orphans.
 		$deleted = 0;
 		if ( ! empty( $orphan_ids ) ) {
-			$result = $this->provider->delete_ids( $table, $orphan_ids, $id_column );
+			$result = $this->provider->delete_ids( $remote_table, $orphan_ids, $id_column );
 			if ( $result['success'] ) {
 				$deleted = $result['count'];
 
@@ -406,7 +419,7 @@ class GG_Data_Orphan_Manager {
 
 		// Fetch batch of relationships from remote.
 		$remote_rels = $this->provider->get_ids(
-			'term_relationships',
+			GG_Data_Table_Prefix_Resolver::mirror_table( 'term_relationships' ),
 			$batch_size,
 			$offset,
 			array(),

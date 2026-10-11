@@ -355,6 +355,19 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 					$enabled_statuses = maybe_unserialize( $enabled_statuses );
 				}
 
+				$enabled_post_types = $settings_manager->get_with_category(
+					'sync',
+					$this->connection_name,
+					'sync_enabled_post_types',
+					array()
+				);
+				if ( is_string( $enabled_post_types ) ) {
+					$enabled_post_types = maybe_unserialize( $enabled_post_types );
+				}
+				if ( ! is_array( $enabled_post_types ) ) {
+					$enabled_post_types = array();
+				}
+
 				if ( empty( $enabled_statuses ) || ! is_array( $enabled_statuses ) ) {
 					$result['processed'] = 0;
 					$result['total']     = 0;
@@ -363,28 +376,76 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 
 				$status_placeholders = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
 
-				// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Required to count posts by type/status for batch sync progress tracking. Placeholders are dynamic.
-				$count_query = $wpdb->prepare(
-					"SELECT COUNT(*) FROM {$wpdb->posts}
-					WHERE post_type = %s
-					AND post_status IN ($status_placeholders)",
-					array_merge( array( $post_type ), $enabled_statuses )
-				);
-				$total_count = (int) $wpdb->get_var( $count_query );
-				// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-				$result['total'] = $total_count;
+				if ( 'attachment' === $post_type ) {
+					// Attachments are gated by the eligibility rule (mirrors
+					// GG_Data_Content_Source::is_eligible_attachment): inherit +
+					// parent (non-attachment) of an enabled type/status + pdf + not featured.
+					$type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
 
-				// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Required to fetch batch of posts by type/status for bulk sync operation. Placeholders are dynamic.
-				$query = $wpdb->prepare(
-					"SELECT * FROM {$wpdb->posts}
-					WHERE post_type = %s
-					AND post_status IN ($status_placeholders)
-					ORDER BY ID ASC
-					LIMIT %d OFFSET %d",
-					array_merge( array( $post_type ), $enabled_statuses, array( $batch_size, $offset ) )
-				);
-				$posts = $wpdb->get_results( $query );
-				// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Required to count/fetch eligible attachments by parent type/status. Placeholders are dynamic.
+					$count_query     = $wpdb->prepare(
+						"SELECT COUNT(*) FROM {$wpdb->posts} a
+						 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
+						 WHERE a.post_type = 'attachment'
+						   AND a.post_status = 'inherit'
+						   AND p.post_type <> 'attachment'
+						   AND p.post_type IN ($type_placeholders)
+						   AND p.post_status IN ($status_placeholders)
+						   AND a.post_mime_type = 'application/pdf'
+						   AND a.ID <> COALESCE((
+						       SELECT CAST(pm.meta_value AS UNSIGNED)
+						       FROM {$wpdb->postmeta} pm
+						       WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
+						       LIMIT 1
+						   ), 0)",
+						array_merge( $enabled_post_types, $enabled_statuses )
+					);
+					$total_count     = (int) $wpdb->get_var( $count_query );
+					$result['total'] = $total_count;
+
+					$query = $wpdb->prepare(
+						"SELECT a.* FROM {$wpdb->posts} a
+						 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
+						 WHERE a.post_type = 'attachment'
+						   AND a.post_status = 'inherit'
+						   AND p.post_type <> 'attachment'
+						   AND p.post_type IN ($type_placeholders)
+						   AND p.post_status IN ($status_placeholders)
+						   AND a.post_mime_type = 'application/pdf'
+						   AND a.ID <> COALESCE((
+						       SELECT CAST(pm.meta_value AS UNSIGNED)
+						       FROM {$wpdb->postmeta} pm
+						       WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
+						       LIMIT 1
+						   ), 0)
+						 ORDER BY a.ID ASC
+						 LIMIT %d OFFSET %d",
+						array_merge( $enabled_post_types, $enabled_statuses, array( $batch_size, $offset ) )
+					);
+					$posts = $wpdb->get_results( $query );
+					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+				} else {
+					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Required to count posts by type/status for batch sync progress tracking. Placeholders are dynamic.
+					$count_query     = $wpdb->prepare(
+						"SELECT COUNT(*) FROM {$wpdb->posts}
+						WHERE post_type = %s
+						AND post_status IN ($status_placeholders)",
+						array_merge( array( $post_type ), $enabled_statuses )
+					);
+					$total_count     = (int) $wpdb->get_var( $count_query );
+					$result['total'] = $total_count;
+
+					$query = $wpdb->prepare(
+						"SELECT * FROM {$wpdb->posts}
+						WHERE post_type = %s
+						AND post_status IN ($status_placeholders)
+						ORDER BY ID ASC
+						LIMIT %d OFFSET %d",
+						array_merge( array( $post_type ), $enabled_statuses, array( $batch_size, $offset ) )
+					);
+					$posts = $wpdb->get_results( $query );
+					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+				}
 
 				$this->ensure_provider_ready( 'batch post sync' );
 
@@ -480,9 +541,27 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 						}
 					}
 
-					$clean_result = $this->content_cleaner->bulk_clean_posts( $posts_to_sync, $this->connection_name );
-					if ( ! empty( $clean_result['errors'] ) ) {
-						throw new Exception( 'Bulk clean failed: ' . implode( '; ', $clean_result['errors'] ) );
+					if ( 'attachment' === $post_type ) {
+						// Attachments extract via clean_post (the content-source resolver).
+						// Wrap each in try/catch so one item's failure doesn't abort the batch.
+						foreach ( $posts_to_sync as $post ) {
+							try {
+								$this->content_cleaner->clean_post( $post->ID, $post->post_title, '', $post->post_excerpt, $this->connection_name );
+							} catch ( Exception $clean_error ) {
+								$this->logger->log(
+									sprintf( 'Attachment %d clean failed: %s', $post->ID, $clean_error->getMessage() ),
+									'warning',
+									'sync',
+									$this->connection_name,
+									array( 'post_id' => $post->ID )
+								);
+							}
+						}
+					} else {
+						$clean_result = $this->content_cleaner->bulk_clean_posts( $posts_to_sync, $this->connection_name );
+						if ( ! empty( $clean_result['errors'] ) ) {
+							throw new Exception( 'Bulk clean failed: ' . implode( '; ', $clean_result['errors'] ) );
+						}
 					}
 
 					foreach ( $posts_to_sync as $post ) {
