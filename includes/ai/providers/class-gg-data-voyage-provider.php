@@ -94,6 +94,18 @@ class GG_Data_Voyage_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * Voyage does not support vision input.
+	 *
+	 * @since 1.0.0
+	 * @return array Empty array.
+	 */
+	public function get_vision_models(): array {
+		return array();
+	}
+
+	/**
 	 * Generate an embedding vector for the given text.
 	 *
 	 * Uses Voyage AI's embeddings API which is OpenAI-compatible.

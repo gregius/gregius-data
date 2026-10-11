@@ -78,6 +78,18 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * Internal provider does not support vision input.
+	 *
+	 * @since 1.0.0
+	 * @return array Empty array.
+	 */
+	public function get_vision_models(): array {
+		return array();
+	}
+
+	/**
 	 * Generate embedding vector from text using HashingTF.
 	 *
 	 * Note: This method doesn't actually generate embeddings - that's handled by

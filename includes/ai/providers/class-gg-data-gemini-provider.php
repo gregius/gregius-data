@@ -334,6 +334,20 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * @since 1.0.0
+	 * @return array Array of model identifiers capable of vision input.
+	 */
+	public function get_vision_models(): array {
+		return array(
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+			'gemini-2.0-flash-lite',
+		);
+	}
+
+	/**
 	 * Get detailed model information including pricing and limits.
 	 *
 	 * Note: Free tier available for all Gemini models via Google AI Studio.

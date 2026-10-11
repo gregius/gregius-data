@@ -81,6 +81,17 @@ interface GG_Data_AI_Provider_Interface {
 	public function get_llm_models(): array;
 
 	/**
+	 * Get a list of vision/document-capable models for this provider.
+	 *
+	 * Used to determine whether document (PDF/image) extraction is available
+	 * for a provider. Providers without vision capability return an empty array.
+	 *
+	 * @since 1.0.0
+	 * @return array Array of model identifiers capable of vision/document input.
+	 */
+	public function get_vision_models(): array;
+
+	/**
 	 * Generate embedding vector from text (Embeddings capability).
 	 *
 	 * @since 1.0.0

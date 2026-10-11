@@ -308,6 +308,20 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * @since 1.0.0
+	 * @return array Array of model identifiers capable of vision input.
+	 */
+	public function get_vision_models(): array {
+		return array(
+			'claude-opus-4-20250514',
+			'claude-sonnet-4-20250514',
+			'claude-haiku-4-20250514',
+		);
+	}
+
+	/**
 	 * Get detailed model information and limits.
 	 *
 	 * @since 1.0.0

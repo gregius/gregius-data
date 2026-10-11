@@ -92,6 +92,7 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/hooks/class-gg-data-rag-security-hooks.php', // RAG security hooks.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-content-processor.php', // Content processing.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-chunker.php', // Content chunking for embeddings.
+	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-content-source.php', // Content source resolver (posts vs attachments).
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-content-cleaner.php', // Content cleaner service.
 	GG_DATA_PLUGIN_DIR . 'includes/trait-gg-data-format-json-output.php', // Shared JSON output formatter.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-benchmark-service.php', // Benchmark orchestration service.
@@ -143,6 +144,7 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-internal-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-ai-request.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-ai-client.php',
+	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-document-extractor.php',
 
 	// Tool Calling Strategies (for RAG tool selection).
 	GG_DATA_PLUGIN_DIR . 'includes/ai/strategies/interface-gg-data-tool-calling-strategy.php',

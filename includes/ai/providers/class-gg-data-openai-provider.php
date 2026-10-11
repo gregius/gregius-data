@@ -166,6 +166,19 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * @since 1.0.0
+	 * @return array Array of model identifiers capable of vision input.
+	 */
+	public function get_vision_models(): array {
+		return array(
+			'gpt-4o',
+			'gpt-4o-mini',
+		);
+	}
+
+	/**
 	 * Generate embedding vector from text.
 	 *
 	 * @since 1.0.0

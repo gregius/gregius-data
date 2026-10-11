@@ -92,6 +92,13 @@ class GG_Data_Content_Cleaner {
 	private $chunker;
 
 	/**
+	 * Content source resolver instance.
+	 *
+	 * @var GG_Data_Content_Source
+	 */
+	private $content_source;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -101,6 +108,7 @@ class GG_Data_Content_Cleaner {
 		$this->connection_manager = new GG_Data_Connection_Manager();
 		$this->settings_manager   = new GG_Data_Settings_Manager();
 		$this->chunker            = new GG_Data_Chunker();
+		$this->content_source     = new GG_Data_Content_Source();
 	}
 
 	/**
@@ -117,6 +125,11 @@ class GG_Data_Content_Cleaner {
 	 */
 	public function clean_post( $post_id, $title, $content, $excerpt, $connection_name = 'default', $force = false ) {
 		try {
+			// Resolve the content source (attachments extract text from their file).
+			$resolved = $this->content_source->resolve( $post_id, $title, $content, $connection_name );
+			$title    = $resolved['title'];
+			$content  = $resolved['content'];
+
 			// Clean the content using existing processor.
 			// Use clean_title() for titles (no min length) and clean_content() for content/excerpt.
 			$title_clean   = $this->content_processor->clean_title( $title );

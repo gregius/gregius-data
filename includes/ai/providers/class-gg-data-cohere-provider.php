@@ -141,6 +141,18 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * Cohere does not support vision input.
+	 *
+	 * @since 1.0.0
+	 * @return array Empty array.
+	 */
+	public function get_vision_models(): array {
+		return array();
+	}
+
+	/**
 	 * Generate embeddings for given text(s).
 	 *
 	 * Cohere provider does not support embeddings in this implementation.

@@ -483,4 +483,69 @@ class GG_Data_Model_Registry {
 			}
 		);
 	}
+
+	/**
+	 * Get active models capable of vision/document input.
+	 *
+	 * A model is vision-capable when its provider's get_vision_models() list
+	 * includes the model's provider_model_id. Providers without vision
+	 * capability return an empty list.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_name Connection name (ignored for model definitions).
+	 * @return array Array of active vision-capable models.
+	 */
+	public function get_active_vision_models( $connection_name ) {
+		$active_models = $this->get_active_models( $connection_name );
+
+		return array_values(
+			array_filter(
+				$active_models,
+				function ( $model ) {
+					if ( empty( $model['provider'] ) || empty( $model['provider_model_id'] ) ) {
+						return false;
+					}
+
+					$provider = GG_Data_LLM_Registry::get_provider( $model['provider'] );
+
+					if ( is_wp_error( $provider ) ) {
+						return false;
+					}
+
+					return in_array( $model['provider_model_id'], $provider->get_vision_models(), true );
+				}
+			)
+		);
+	}
+
+	/**
+	 * Resolve the document model for a connection.
+	 *
+	 * Returns the explicitly configured document model (per-connection setting)
+	 * when it matches an active vision-capable model; otherwise null. There is
+	 * no auto-default — the model must be selected.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_name Connection name.
+	 * @return array|null Model config array or null.
+	 */
+	public function get_document_model( $connection_name ) {
+		$configured = $this->settings_manager->get_with_category(
+			'document',
+			$connection_name,
+			'document_model'
+		);
+
+		if ( empty( $configured ) ) {
+			return null;
+		}
+
+		foreach ( $this->get_active_vision_models( $connection_name ) as $model ) {
+			if ( isset( $model['provider_model_id'] ) && $configured === $model['provider_model_id'] ) {
+				return $model;
+			}
+		}
+
+		return null;
+	}
 }

@@ -561,6 +561,18 @@ class GG_Data_DeepSeek_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
+	 * Get vision/document-capable models.
+	 *
+	 * DeepSeek does not support vision input.
+	 *
+	 * @since 1.0.0
+	 * @return array Empty array.
+	 */
+	public function get_vision_models(): array {
+		return array();
+	}
+
+	/**
 	 * Get detailed model information and limits.
 	 *
 	 * @since 1.0.0
