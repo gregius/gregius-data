@@ -579,6 +579,8 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 					// not current user selection.
 					$status_placeholders = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
 
+					$pt_failed_count = 0;
+
 					if ( 'attachment' === $post_type ) {
 						// Count only ELIGIBLE attachments (mirrors GG_Data_Content_Source::is_eligible_attachment):
 						// inherit + parent (non-attachment) of an enabled type/status + application/pdf + not featured.
@@ -603,6 +605,31 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 							array_merge( $enabled_post_types, $enabled_statuses )
 						);
 						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+						// Count eligible attachments whose extraction FAILED (post meta),
+						// so the UI can prompt a regenerate instead of silently skipping.
+						// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are generated dynamically from the enabled type/status arrays.
+						$failed_query = $wpdb->prepare(
+							"SELECT COUNT(*) FROM {$wpdb->posts} a
+							 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
+							 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = a.ID AND pm.meta_key = '_gg_asset_status' AND pm.meta_value = 'failed'
+							 WHERE a.post_type = 'attachment'
+							   AND a.post_status = 'inherit'
+							   AND p.post_type <> 'attachment'
+							   AND p.post_type IN ($type_placeholders)
+							   AND p.post_status IN ($status_placeholders)
+							   AND a.post_mime_type = 'application/pdf'
+							   AND a.ID <> COALESCE((
+							       SELECT CAST(pm2.meta_value AS UNSIGNED)
+							       FROM {$wpdb->postmeta} pm2
+							       WHERE pm2.post_id = p.ID AND pm2.meta_key = '_thumbnail_id'
+							       LIMIT 1
+							   ), 0)",
+							array_merge( $enabled_post_types, $enabled_statuses )
+						);
+						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Counting failed extractions by post meta for validation; query is prepared above.
+						$pt_failed_count = (int) $wpdb->get_var( $failed_query );
 					} else {
 						$query = $wpdb->prepare(
 							"SELECT COUNT(*) FROM {$wpdb->posts} 
@@ -710,6 +737,7 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 						'cleaning_needed'  => $pt_cleaning_needed,
 						'sync_disabled'    => ! $is_enabled,
 						'probe_error'      => $post_type_probe_failed,
+						'failed_count'     => $pt_failed_count,
 					);
 				}
 			}

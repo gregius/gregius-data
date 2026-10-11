@@ -566,7 +566,7 @@ class GG_Data_Document_Extractor {
 			$message = isset( $data['error']['message'] ) ? $data['error']['message'] : __( 'Unknown error', 'gregius-data' );
 
 			return new WP_Error(
-				'gg_data_document_api_error',
+				self::is_model_unavailable( $message ) ? 'gg_data_document_model_unavailable' : 'gg_data_document_api_error',
 				sprintf(
 					/* translators: 1: HTTP status, 2: error message */
 					__( 'Gemini document extraction failed (HTTP %1$d): %2$s', 'gregius-data' ),
@@ -613,7 +613,7 @@ class GG_Data_Document_Extractor {
 			$message = isset( $data['error']['message'] ) ? $data['error']['message'] : __( 'Unknown error', 'gregius-data' );
 
 			return new WP_Error(
-				'gg_data_document_api_error',
+				self::is_model_unavailable( $message ) ? 'gg_data_document_model_unavailable' : 'gg_data_document_api_error',
 				sprintf(
 					/* translators: 1: HTTP status, 2: error message */
 					__( 'OpenAI document extraction failed (HTTP %1$d): %2$s', 'gregius-data' ),
@@ -660,7 +660,7 @@ class GG_Data_Document_Extractor {
 			$message = isset( $data['error']['message'] ) ? $data['error']['message'] : __( 'Unknown error', 'gregius-data' );
 
 			return new WP_Error(
-				'gg_data_document_api_error',
+				self::is_model_unavailable( $message ) ? 'gg_data_document_model_unavailable' : 'gg_data_document_api_error',
 				sprintf(
 					/* translators: 1: HTTP status, 2: error message */
 					__( 'Anthropic document extraction failed (HTTP %1$d): %2$s', 'gregius-data' ),
@@ -678,5 +678,37 @@ class GG_Data_Document_Extractor {
 		}
 
 		return self::extracted_text_or_error( (string) $data['content'][0]['text'], $model );
+	}
+
+	/**
+	 * Whether a provider error message indicates the model is gone.
+	 *
+	 * @since 1.0.0
+	 * @param string $message Provider error message.
+	 * @return bool True when the model is unavailable / deprecated / retired.
+	 */
+	private static function is_model_unavailable( string $message ): bool {
+		$message = strtolower( $message );
+		$needles = array(
+			'no longer available',
+			'no longer supported',
+			'has been retired',
+			'has been deprecated',
+			'is deprecated',
+			'model not found',
+			'model_not_found',
+			'does not exist',
+			'not a valid model',
+			'invalid model',
+			'unknown model',
+		);
+
+		foreach ( $needles as $needle ) {
+			if ( false !== strpos( $message, $needle ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

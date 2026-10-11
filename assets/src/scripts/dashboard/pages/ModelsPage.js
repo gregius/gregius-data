@@ -139,10 +139,35 @@ const ModelsPage = () => {
 
       setModels(modelsArray);
       setProviders(providersData.data);
+
+      // Live-check model lifecycles in the background (non-blocking).
+      refreshLifecycles();
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshLifecycles = async () => {
+    try {
+      const res = await apiFetch({
+        path: "/gg-data/v1/models/refresh",
+        method: "POST",
+      });
+      const lifecycle = res && res.lifecycle;
+      if (lifecycle) {
+        setModels((prev) =>
+          prev.map((m) => {
+            const key = m.model_key || m.id;
+            return lifecycle[key]
+              ? { ...m, lifecycle_status: lifecycle[key] }
+              : m;
+          })
+        );
+      }
+    } catch (err) {
+      // Non-fatal: keep the last-known lifecycle on failure.
     }
   };
 
@@ -331,10 +356,9 @@ const ModelsPage = () => {
       setIsSaving(true);
       setError(null);
 
-      // Encode model ID for URL - explicitly encode dots to prevent web server
-      // from interpreting them as file extensions (e.g., gpt-3.5-turbo).
+      // Encode the model id for the URL path.
       const encodedId = editingId
-        ? encodeURIComponent(editingId).replace(/\./g, "%2E")
+        ? encodeURIComponent(editingId)
         : null;
       const path = encodedId
         ? `/gg-data/v1/models/${encodedId}`
@@ -401,8 +425,8 @@ const ModelsPage = () => {
 
     try {
       setIsLoading(true);
-      // Encode dots to prevent web server from treating them as file extensions.
-      const encodedId = encodeURIComponent(id).replace(/\./g, "%2E");
+      // Encode the model id for the URL path.
+      const encodedId = encodeURIComponent(id);
       await apiFetch({
         path: `/gg-data/v1/models/${encodedId}`,
         method: "DELETE",
@@ -506,8 +530,8 @@ const ModelsPage = () => {
 
     try {
       setIsLoading(true);
-      // Encode dots to prevent web server from treating them as file extensions.
-      const encodedId = encodeURIComponent(id).replace(/\./g, "%2E");
+      // Encode the model id for the URL path.
+      const encodedId = encodeURIComponent(id);
       await apiFetch({
         path: `/gg-data/v1/models/${encodedId}/reset-usage`,
         method: "POST",
@@ -610,6 +634,11 @@ const ModelsPage = () => {
                   {model.vision_capable && (
                     <span className="components-badge is-info">
                       {__("Vision", "gregius-data")}
+                    </span>
+                  )}
+                  {model.lifecycle_status === "retired" && (
+                    <span className="components-badge is-error">
+                      {__("Retired", "gregius-data")}
                     </span>
                   )}
                 </div>

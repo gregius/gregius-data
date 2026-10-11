@@ -354,14 +354,30 @@ const SearchSettingsCard = ({ connections = [] }) => {
 
 		try {
 			setLoadingModels(true);
-			// Get active_models from vectors category for the selected connection
-			const response = await apiFetch({
-				path: `/gg-data/v1/settings/vectors/active_models?connection=${searchConnection}`,
-			});
+			// Get active_models from vectors category for the selected connection,
+			// plus the global model list so retired models can be excluded.
+			const [ response, modelsResponse ] = await Promise.all( [
+				apiFetch( {
+					path: `/gg-data/v1/settings/vectors/active_models?connection=${ searchConnection }`,
+				} ),
+				apiFetch( { path: '/gg-data/v1/models?type=embeddings' } ),
+			] );
 
-			if (response && response.value && Array.isArray(response.value)) {
-				// Transform model keys into option format
-				const models = response.value.map(modelKey => {
+			const retiredKeys = new Set(
+				(
+					Array.isArray( modelsResponse.data )
+						? modelsResponse.data
+						: Object.values( modelsResponse.data || {} )
+				)
+					.filter( ( m ) => m.lifecycle_status === 'retired' )
+					.map( ( m ) => m.model_key || m.id )
+			);
+
+			if ( response && response.value && Array.isArray( response.value ) ) {
+				// Transform model keys into option format.
+				const models = response.value
+					.filter( ( modelKey ) => ! retiredKeys.has( modelKey ) )
+					.map( ( modelKey ) => {
 					// Convert model key to display name
 					const displayName = modelKey
 						.split('-')

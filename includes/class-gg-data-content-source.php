@@ -282,6 +282,12 @@ class GG_Data_Content_Source {
 		$result = GG_Data_Document_Extractor::extract( $file_path, $model_config );
 
 		if ( is_wp_error( $result ) ) {
+			// The selected model is gone: retire it so the UI surfaces it and
+			// extraction fails loud — never a silent substitution.
+			if ( 'gg_data_document_model_unavailable' === $result->get_error_code() && ! empty( $document_model['provider_model_id'] ) ) {
+				( new GG_Data_Model_Registry() )->set_model_lifecycle( $document_model['provider_model_id'], 'retired' );
+			}
+
 			$this->set_failed( $post_id, $result->get_error_message(), $file_hash );
 
 			return array(

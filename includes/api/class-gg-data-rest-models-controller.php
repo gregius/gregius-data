@@ -121,6 +121,19 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 			)
 		);
 
+		// POST /gg-data/v1/models/refresh - Refresh live model lifecycle.
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/refresh',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'refresh_models' ),
+					'permission_callback' => array( $this, 'check_admin_permission' ),
+				),
+			)
+		);
+
 		// POST /gg-data/v1/models/test - Test model configuration.
 		register_rest_route(
 			$this->namespace,
@@ -149,7 +162,7 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 		// Note: Use a more permissive regex to handle model IDs with dots (e.g., rerank-2.5).
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/(?P<id>[\w\.\-]+)/reset-usage',
+			'/' . $this->rest_base . '/(?P<id>[^/]+)/reset-usage',
 			array(
 				'args' => array(
 					'id' => array(
@@ -174,7 +187,7 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 		// Note: Use a more permissive regex to handle model IDs with dots (e.g., rerank-2.5).
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/(?P<id>[\w\.\-]+)',
+			'/' . $this->rest_base . '/(?P<id>[^/]+)',
 			array(
 				'args' => array(
 					'id' => array(
@@ -259,6 +272,8 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 				}
 				// Mark vision/document-capable models.
 				$config['vision_capable'] = self::is_vision_capable( $config );
+				// Ensure a lifecycle status is always present (legacy models default to active).
+				$config['lifecycle_status'] = isset( $config['lifecycle_status'] ) ? $config['lifecycle_status'] : 'active';
 			}
 
 			return new WP_REST_Response(
@@ -289,6 +304,11 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 	private static function is_vision_capable( $model ) {
 		if ( empty( $model['provider'] ) || empty( $model['provider_model_id'] ) ) {
 			return false;
+		}
+
+		// Stored capability wins; fall back to the catalog for legacy registrations.
+		if ( isset( $model['vision_capable'] ) ) {
+			return (bool) $model['vision_capable'];
 		}
 
 		$provider = GG_Data_LLM_Registry::get_provider( $model['provider'] );
@@ -345,6 +365,54 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 			array(
 				'success' => true,
 				'data'    => $data,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Refresh the live lifecycle status of every registered model.
+	 *
+	 * Runs the discovery service per provider (cached) and persists each
+	 * model's resolved lifecycle so the selection surfaces can reflect it.
+	 *
+	 * @since 1.0.0
+	 * @param WP_REST_Request $request Full data about the request.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function refresh_models( $request ) {
+		unset( $request );
+
+		$discovery = new GG_Data_Model_Discovery();
+		$lifecycle = array();
+
+		foreach ( $this->model_registry->get_models( $this->model_scope ) as $model ) {
+			$model_key = isset( $model['model_key'] ) ? $model['model_key'] : '';
+			$provider  = isset( $model['provider'] ) ? $model['provider'] : '';
+			$model_id  = isset( $model['provider_model_id'] ) ? $model['provider_model_id'] : '';
+			$api_key   = isset( $model['api_key'] ) ? $model['api_key'] : ( $model['config']['api_key'] ?? '' );
+
+			if ( empty( $model_key ) || empty( $provider ) || empty( $model_id ) || empty( $api_key ) ) {
+				continue;
+			}
+
+			$status = $discovery->resolve_lifecycle( (string) $provider, (string) $api_key, (string) $model_id );
+
+			if ( 'unknown' === $status ) {
+				continue;
+			}
+
+			if ( ( $model['lifecycle_status'] ?? null ) !== $status ) {
+				$this->model_registry->set_model_lifecycle( $model_key, $status );
+			}
+
+			$lifecycle[ $model_key ] = $status;
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success'   => true,
+				'lifecycle' => $lifecycle,
 			),
 			200
 		);
@@ -481,6 +549,11 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 		try {
 			// Add model_key to config as required by Model Registry.
 			$config['model_key'] = $id;
+
+			// Record capability + lifecycle at connection time so selection
+			// surfaces read them instead of re-deriving from the provider.
+			$config['vision_capable']   = self::is_vision_capable( $config );
+			$config['lifecycle_status'] = 'active';
 
 			$success = $this->model_registry->add_model( $this->model_scope, $config );
 

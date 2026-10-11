@@ -79,7 +79,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                 : Object.values(modelsRes.data || {});
             setVisionModels(
                 modelsArray
-                    .filter((model) => model.vision_capable)
+                    .filter((model) => model.vision_capable && model.lifecycle_status !== 'retired')
                     .map((model) => ({
                         value: model.provider_model_id || model.model_key,
                         label: `${model.provider}/${model.provider_model_id || model.model_key}`
@@ -445,6 +445,13 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                                                     ? getStatusBadge(row.validation.status, row.validation.drift_percentage)
                                                     : <span className="components-badge">Disabled</span>
                                                 }
+                                                {row.validation.failed_count > 0 && (
+                                                    <div style={{ marginTop: '4px' }}>
+                                                        <span className="components-badge is-warning">
+                                                            {sprintf(__('%d extraction failed — regenerate', 'gregius-data'), row.validation.failed_count)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td>
                                                 <DropdownMenu
@@ -537,18 +544,25 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                             {__('No vision-capable model is active. Add one in the Models tab, then set it here to extract text from PDF attachments.', 'gregius-data')}
                         </p>
                     ) : (
-                        <SelectControl
-                            label={__('Model', 'gregius-data')}
-                            value={documentModel}
-                            options={[
-                                { label: __('Select a model…', 'gregius-data'), value: '' },
-                                ...visionModels
-                            ]}
-                            onChange={handleDocumentModelChange}
-                            help={__('Model used to extract text from PDF attachments.', 'gregius-data')}
-                            __next40pxDefaultSize
-                            __nextHasNoMarginBottom
-                        />
+                        <>
+                            {documentModel && !visionModels.some((m) => m.value === documentModel) && (
+                                <Notice status="warning" isDismissible={false} style={{ marginBottom: '1rem' }}>
+                                    {__('Your selected document model is no longer available. Please select a replacement.', 'gregius-data')}
+                                </Notice>
+                            )}
+                            <SelectControl
+                                label={__('Model', 'gregius-data')}
+                                value={documentModel}
+                                options={[
+                                    { label: __('Select a model…', 'gregius-data'), value: '' },
+                                    ...visionModels
+                                ]}
+                                onChange={handleDocumentModelChange}
+                                help={__('Model used to extract text from PDF attachments.', 'gregius-data')}
+                                __next40pxDefaultSize
+                                __nextHasNoMarginBottom
+                            />
+                        </>
                     )}
                     <div style={{ marginTop: '1.5rem' }}>
                         <Button variant="tertiary" onClick={() => setShowModelModal(false)}>

@@ -304,7 +304,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			)
 		);
 
-
 		// POST /gg-data/v1/sync/post-type/{type}/clean.
 		register_rest_route(
 			$this->namespace,
@@ -945,8 +944,9 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			// document_model param wins over the stored setting so the enable-gate
 			// validates the state the client is actually trying to save (selecting a
 			// model and enabling attachments in one request must succeed).
-			$document_model_param = $request->get_param( 'document_model' );
-			$registry             = new GG_Data_Model_Registry();
+			$document_model_param    = $request->get_param( 'document_model' );
+			$previous_document_model = (string) $this->get_settings_manager()->get_with_category( 'document', $connection_name, 'document_model', '' );
+			$registry                = new GG_Data_Model_Registry();
 			$valid_vision_ids     = array_map(
 				function ( $model ) {
 					return $model['provider_model_id'];
@@ -979,6 +979,12 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			// Persist the explicit document-model selection (validated above).
 			if ( null !== $document_model_param ) {
 				$this->get_settings_manager()->set_with_category( 'document', $connection_name, 'document_model', $document_model_param );
+
+				// A model change invalidates every cached extraction (result or
+				// failure) so the next sync re-extracts with the new model.
+				if ( (string) $document_model_param !== $previous_document_model ) {
+					GG_Data_Content_Source::reset_extraction_cache( $connection_name );
+				}
 			}
 
 			// Capture the prior enabled types to detect changes (for attachment reconciliation).

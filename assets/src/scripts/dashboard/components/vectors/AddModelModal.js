@@ -48,7 +48,12 @@ const AddModelModal = ( { connection, existingModels, onAdd, onClose } ) => {
 			} );
 
 			if ( response.success && response.data ) {
-				setAvailableModels( response.data );
+				const models = (
+					Array.isArray( response.data )
+						? response.data
+						: Object.values( response.data )
+				).filter( ( model ) => model.lifecycle_status !== 'retired' );
+				setAvailableModels( models );
 			} else {
 				setError( __( 'Failed to fetch models', 'gregius-data' ) );
 			}
