@@ -99,63 +99,20 @@ class GG_Data_RAG_Service {
 	private $logger;
 
 	/**
-	 * Model context limits (in tokens).
+	 * Model context limits, in tokens (derived from the model catalog).
 	 *
 	 * @since 1.0.0
 	 * @var array
 	 */
-	private $model_context_limits = array(
-		// OpenAI..
-		'gpt-4o'                   => 128000,
-		'gpt-4o-mini'              => 128000,
-		// DeepSeek.
-		'deepseek-chat'            => 64000,
-		'deepseek-reasoner'        => 64000,
-		// Anthropic Claude 4.5.
-		'claude-opus-4-20250514'   => 200000,
-		'claude-sonnet-4-20250514' => 200000,
-		'claude-haiku-4-20250514'  => 200000,
-		// Google Gemini.
-		'gemini-2.5-flash'         => 1048576,
-		'gemini-2.5-pro'           => 1048576,
-		'gemini-2.0-flash-lite'    => 1048576,
-	);
+	private $model_context_limits = array();
 
 	/**
-	 * Native max output tokens per model (provider hard ceilings).
-	 * Used as the default when a model record has no max_tokens configured.
+	 * Native max output tokens per model (derived from the model catalog).
 	 *
 	 * @since 1.0.0
 	 * @var array
 	 */
-	private $model_max_tokens = array(
-		// OpenAI.
-		'gpt-3.5-turbo'              => 4096,
-		'gpt-4'                      => 8192,
-		'gpt-4-turbo'                => 4096,
-		'gpt-4o'                     => 16384,
-		'gpt-4o-mini'                => 16384,
-		// DeepSeek.
-		'deepseek-chat'              => 8192,
-		'deepseek-reasoner'          => 8192,
-		// Anthropic.
-		'claude-opus-4-20250514'     => 8192,
-		'claude-sonnet-4-20250514'   => 8192,
-		'claude-haiku-4-20250514'    => 8192,
-		'claude-3-5-sonnet-20241022' => 8192,
-		'claude-3-5-haiku-20241022'  => 8192,
-		'claude-3-opus-20240229'     => 4096,
-		'claude-3-sonnet-20240229'   => 4096,
-		'claude-3-haiku-20240307'    => 4096,
-		// Google Gemini.
-		'gemini-2.5-flash'           => 8192,
-		'gemini-2.5-pro'             => 8192,
-		'gemini-2.0-flash'           => 8192,
-		'gemini-2.0-flash-lite'      => 8192,
-		'gemini-1.5-pro'             => 8192,
-		'gemini-1.5-flash'           => 8192,
-		'gemini-1.5-flash-8b'        => 8192,
-	);
+	private $model_max_tokens = array();
 
 	/**
 	 * Constructor.
@@ -172,6 +129,8 @@ class GG_Data_RAG_Service {
 		$this->model_registry      = new GG_Data_Model_Registry();
 		$this->token_counter       = new GG_Data_Token_Counter();
 		$this->logger              = new GG_Data_Logger();
+		$this->model_context_limits = GG_Data_Model_Catalog::context_limits();
+		$this->model_max_tokens     = GG_Data_Model_Catalog::max_tokens_map();
 		// Note: AI Client uses static methods, no instantiation needed.
 	}
 

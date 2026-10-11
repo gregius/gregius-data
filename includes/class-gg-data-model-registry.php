@@ -448,6 +448,25 @@ class GG_Data_Model_Registry {
 	}
 
 	/**
+	 * Set a model's lifecycle status.
+	 *
+	 * Lifecycle is derived from provider signals: `active` (served) or
+	 * `retired` (no longer served).
+	 *
+	 * @since 1.0.0
+	 * @param string $model_key Model key (provider_model_id).
+	 * @param string $status    'active' | 'retired'.
+	 * @return bool True on success, false on failure.
+	 */
+	public function set_model_lifecycle( $model_key, $status ) {
+		return $this->update_model(
+			self::MODEL_SCOPE_GLOBAL,
+			$model_key,
+			array( 'lifecycle_status' => $status )
+		);
+	}
+
+	/**
 	 * Get models by provider
 	 *
 	 * @param string $connection_name Connection name.
@@ -487,9 +506,9 @@ class GG_Data_Model_Registry {
 	/**
 	 * Get active models capable of vision/document input.
 	 *
-	 * A model is vision-capable when its provider's get_vision_models() list
-	 * includes the model's provider_model_id. Providers without vision
-	 * capability return an empty list.
+	 * A model is vision-capable when its stored `vision_capable` flag is set
+	 * (falling back to the provider catalog for legacy registrations). Models
+	 * with lifecycle_status 'retired' are excluded.
 	 *
 	 * @since 1.0.0
 	 * @param string $connection_name Connection name (ignored for model definitions).
@@ -504,6 +523,16 @@ class GG_Data_Model_Registry {
 				function ( $model ) {
 					if ( empty( $model['provider'] ) || empty( $model['provider_model_id'] ) ) {
 						return false;
+					}
+
+					// Retired models are never selectable.
+					if ( isset( $model['lifecycle_status'] ) && 'retired' === $model['lifecycle_status'] ) {
+						return false;
+					}
+
+					// Stored capability wins; fall back to the catalog for legacy registrations.
+					if ( isset( $model['vision_capable'] ) ) {
+						return (bool) $model['vision_capable'];
 					}
 
 					$provider = GG_Data_LLM_Registry::get_provider( $model['provider'] );

@@ -49,7 +49,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Capabilities array.
 	 */
 	public function get_capabilities(): array {
-		return array( 'embeddings' );  // HashingTF only, no LLM
+		return array( 'embeddings' );  // HashingTF only, no LLM.
 	}
 
 	/**
@@ -74,7 +74,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as LLM is not supported.
 	 */
 	public function get_llm_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::llm_models( 'internal' );
 	}
 
 	/**
@@ -86,7 +86,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array.
 	 */
 	public function get_vision_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::vision_models( 'internal' );
 	}
 
 	/**
@@ -115,14 +115,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of embedding model configurations.
 	 */
 	public function get_embedding_models(): array {
-		return array(
-			'hashingtf-murmur3-1024' => array(
-				'name'             => 'Hashing TF Murmur3 1024D',
-				'dimensions'       => 1024,
-				'max_input_tokens' => 0,
-				'description'      => 'Free stateless local embeddings via feature hashing. No vocabulary required.',
-			),
-		);
+		return GG_Data_Model_Catalog::embedding_models( 'internal' );
 	}
 
 	/**
@@ -148,6 +141,6 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as Internal provider doesn\'t support reranking.
 	 */
 	public function get_rerank_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::rerank_models( 'internal' );
 	}
 }

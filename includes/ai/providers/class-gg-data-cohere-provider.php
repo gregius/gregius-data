@@ -137,7 +137,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers and names.
 	 */
 	public function get_llm_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::llm_models( 'cohere' );
 	}
 
 	/**
@@ -149,7 +149,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array.
 	 */
 	public function get_vision_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::vision_models( 'cohere' );
 	}
 
 	/**
@@ -270,14 +270,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of embedding model info.
 	 */
 	public function get_embedding_models(): array {
-		return array(
-			'embed-v4.0' => array(
-				'name'             => 'Embed v4.0',
-				'dimensions'       => 1536,
-				'max_input_tokens' => 128000,
-				'description'      => 'Latest multilingual embeddings (100+ languages). Supports MRL dimensions: 256, 512, 1024, 1536.',
-			),
-		);
+		return GG_Data_Model_Catalog::embedding_models( 'cohere' );
 	}
 
 	/**
@@ -398,13 +391,55 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of rerank model info keyed by model ID.
 	 */
 	public function get_rerank_models(): array {
-		return array(
-			'rerank-v4.0-fast' => array(
-				'name'        => 'Rerank v4.0 Fast',
-				'max_context' => 4096,
-				'description' => 'Fast multilingual reranking. Alternative to Voyage AI.',
-			),
+		return GG_Data_Model_Catalog::rerank_models( 'cohere' );
+	}
+
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_cohere_no_api_key', __( 'Cohere API key is required.', 'gregius-data' ) );
+		}
+
+		$response = wp_safe_remote_get(
+			self::BASE_URL . '/models',
+			array(
+				'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+				'timeout' => 20,
+			)
 		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		$list = array();
+		if ( is_array( $data ) && ! empty( $data['models'] ) && is_array( $data['models'] ) ) {
+			$list = $data['models'];
+		} elseif ( is_array( $data ) && ! empty( $data['data'] ) && is_array( $data['data'] ) ) {
+			$list = $data['data'];
+		}
+
+		if ( empty( $list ) ) {
+			return new WP_Error( 'gg_data_cohere_list_failed', __( 'Could not retrieve the Cohere model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $list as $model ) {
+			$id = is_array( $model ) ? ( $model['name'] ?? ( $model['id'] ?? '' ) ) : $model;
+			if ( ! empty( $id ) ) {
+				$ids[] = $id;
+			}
+		}
+
+		return $ids;
 	}
 
 	/**

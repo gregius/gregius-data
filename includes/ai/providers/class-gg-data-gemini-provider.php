@@ -279,7 +279,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 		}
 
 		// Validate response structure.
-		// Gemini response: { candidates: [{ content: { parts: [{ text: "..." }] } }], usageMetadata: {...} }
+		// Gemini response: { candidates: [{ content: { parts: [{ text: "..." }] } }], usageMetadata: {...} }.
 		if ( ! isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			// Check for safety block.
 			if ( isset( $data['candidates'][0]['finishReason'] ) && 'SAFETY' === $data['candidates'][0]['finishReason'] ) {
@@ -326,11 +326,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers and display names.
 	 */
 	public function get_llm_models(): array {
-		return array(
-			'gemini-2.5-flash'      => 'Gemini 2.5 Flash',
-			'gemini-2.5-pro'        => 'Gemini 2.5 Pro',
-			'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash Lite',
-		);
+		return GG_Data_Model_Catalog::llm_models( 'gemini' );
 	}
 
 	/**
@@ -340,33 +336,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers capable of vision input.
 	 */
 	public function get_vision_models(): array {
-		return array(
-			'gemini-2.5-flash',
-			'gemini-2.5-pro',
-			'gemini-2.0-flash-lite',
-		);
-	}
-
-	/**
-	 * Get detailed model information including pricing and limits.
-	 *
-	 * Note: Free tier available for all Gemini models via Google AI Studio.
-	 *
-	 * @since 1.0.0
-	 * @return array Array of model configurations with metadata.
-	 */
-	public function get_llm_models_detailed(): array {
-		return array(
-			'gemini-2.5-flash'      => array(
-				'name'           => 'Gemini 2.5 Flash',
-
-				'name'           => 'Gemini 2.5 Pro',
-
-				'name'           => 'Gemini 2.0 Flash Lite',
-				'description'    => 'Fastest and most cost-efficient',
-				'context_window' => 1048576,
-			),
-		);
+		return GG_Data_Model_Catalog::vision_models( 'gemini' );
 	}
 
 	/**
@@ -463,14 +433,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of embedding model configurations.
 	 */
 	public function get_embedding_models(): array {
-		return array(
-			'gemini-embedding-2' => array(
-				'name'             => 'Gemini Embedding 2',
-				'dimensions'       => 3072,
-				'max_input_tokens' => 8192,
-				'description'      => 'Latest multimodal embeddings with free tier available. Supports text, images, video, audio, and PDF (plugin uses text only).',
-			),
-		);
+		return GG_Data_Model_Catalog::embedding_models( 'gemini' );
 	}
 
 	/**
@@ -579,6 +542,48 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as Gemini doesn\'t support reranking.
 	 */
 	public function get_rerank_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::rerank_models( 'gemini' );
+	}
+
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_gemini_no_api_key', __( 'Google AI API Key is missing.', 'gregius-data' ) );
+		}
+
+		$url = add_query_arg(
+			array(
+				'key'      => rawurlencode( $api_key ),
+				'pageSize' => 1000,
+			),
+			self::BASE_URL . '/models'
+		);
+
+		$response = wp_safe_remote_get( $url, array( 'timeout' => 20 ) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['models'] ) || ! is_array( $data['models'] ) ) {
+			return new WP_Error( 'gg_data_gemini_list_failed', __( 'Could not retrieve the Gemini model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $data['models'] as $model ) {
+			if ( ! empty( $model['name'] ) ) {
+				$ids[] = str_replace( 'models/', '', $model['name'] );
+			}
+		}
+
+		return $ids;
 	}
 }

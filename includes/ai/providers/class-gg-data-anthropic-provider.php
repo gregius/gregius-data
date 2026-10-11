@@ -262,7 +262,7 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 		}
 
 		// Validate response structure.
-		// Anthropic response: { content: [{ type: "text", text: "..." }], usage: {...} }
+		// Anthropic response: { content: [{ type: "text", text: "..." }], usage: {...} }.
 		if ( ! isset( $data['content'][0]['text'] ) || ! isset( $data['usage'] ) ) {
 			return new WP_Error(
 				'gg_data_anthropic_invalid_response',
@@ -300,11 +300,7 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers and display names.
 	 */
 	public function get_llm_models(): array {
-		return array(
-			'claude-opus-4-20250514'   => 'Claude Opus 4.5',
-			'claude-sonnet-4-20250514' => 'Claude Sonnet 4.5',
-			'claude-haiku-4-20250514'  => 'Claude Haiku 4.5',
-		);
+		return GG_Data_Model_Catalog::llm_models( 'anthropic' );
 	}
 
 	/**
@@ -314,31 +310,7 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers capable of vision input.
 	 */
 	public function get_vision_models(): array {
-		return array(
-			'claude-opus-4-20250514',
-			'claude-sonnet-4-20250514',
-			'claude-haiku-4-20250514',
-		);
-	}
-
-	/**
-	 * Get detailed model information and limits.
-	 *
-	 * @since 1.0.0
-	 * @return array Array of model configurations with metadata.
-	 */
-	public function get_llm_models_detailed(): array {
-		return array(
-			'claude-opus-4-20250514'   => array(
-				'name'           => 'Claude Opus 4.5',
-
-				'name'           => 'Claude Sonnet 4.5',
-
-				'name'           => 'Claude Haiku 4.5',
-				'description'    => 'Fast and affordable for simple tasks',
-				'context_window' => 200000,
-			),
-		);
+		return GG_Data_Model_Catalog::vision_models( 'anthropic' );
 	}
 
 	/**
@@ -366,7 +338,7 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as Anthropic doesn't support embeddings.
 	 */
 	public function get_embedding_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::embedding_models( 'anthropic' );
 	}
 
 	/**
@@ -477,6 +449,52 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as Anthropic doesn\'t support reranking.
 	 */
 	public function get_rerank_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::rerank_models( 'anthropic' );
+	}
+
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 *
+	 * Note: unverified endpoint shape (no API key at implementation time);
+	 * discovery failures degrade to `unknown` and never retire a model.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_anthropic_no_api_key', __( 'No API key provided.', 'gregius-data' ) );
+		}
+
+		$response = wp_safe_remote_get(
+			self::BASE_URL . '/models',
+			array(
+				'headers' => array(
+					'x-api-key'         => $api_key,
+					'anthropic-version' => self::API_VERSION,
+				),
+				'timeout' => 20,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['data'] ) || ! is_array( $data['data'] ) ) {
+			return new WP_Error( 'gg_data_anthropic_list_failed', __( 'Could not retrieve the Anthropic model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $data['data'] as $model ) {
+			if ( ! empty( $model['id'] ) ) {
+				$ids[] = $model['id'];
+			}
+		}
+
+		return $ids;
 	}
 }

@@ -554,41 +554,17 @@ class GG_Data_DeepSeek_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers and display names.
 	 */
 	public function get_llm_models(): array {
-		return array(
-			'deepseek-chat'     => 'DeepSeek Chat',
-			'deepseek-reasoner' => 'DeepSeek R1',
-		);
+		return GG_Data_Model_Catalog::llm_models( 'deepseek' );
 	}
 
 	/**
 	 * Get vision/document-capable models.
 	 *
-	 * DeepSeek does not support vision input.
-	 *
 	 * @since 1.0.0
-	 * @return array Empty array.
+	 * @return array Array of model identifiers capable of vision input.
 	 */
 	public function get_vision_models(): array {
-		return array();
-	}
-
-	/**
-	 * Get detailed model information and limits.
-	 *
-	 * @since 1.0.0
-	 * @return array Array of model configurations with metadata.
-	 */
-	public function get_llm_models_detailed(): array {
-		return array(
-			'deepseek-chat'     => array(
-				'name'           => 'DeepSeek Chat',
-
-				'name'              => 'DeepSeek R1',
-				'description'       => 'Advanced reasoning with visible thinking process',
-				'context_window'    => 64000,
-				'supports_thinking' => true,
-			),
-		);
+		return GG_Data_Model_Catalog::vision_models( 'deepseek' );
 	}
 
 	/**
@@ -616,7 +592,7 @@ class GG_Data_DeepSeek_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as DeepSeek doesn't support embeddings.
 	 */
 	public function get_embedding_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::embedding_models( 'deepseek' );
 	}
 
 	/**
@@ -704,6 +680,49 @@ class GG_Data_DeepSeek_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as DeepSeek doesn\'t support reranking.
 	 */
 	public function get_rerank_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::rerank_models( 'deepseek' );
+	}
+
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 *
+	 * Note: unverified endpoint shape (no API key at implementation time);
+	 * discovery failures degrade to `unknown` and never retire a model.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_deepseek_no_api_key', __( 'No API key provided.', 'gregius-data' ) );
+		}
+
+		$response = wp_safe_remote_get(
+			self::BASE_URL . '/models',
+			array(
+				'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+				'timeout' => 20,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['data'] ) || ! is_array( $data['data'] ) ) {
+			return new WP_Error( 'gg_data_deepseek_list_failed', __( 'Could not retrieve the DeepSeek model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $data['data'] as $model ) {
+			if ( ! empty( $model['id'] ) ) {
+				$ids[] = $model['id'];
+			}
+		}
+
+		return $ids;
 	}
 }

@@ -159,10 +159,7 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers and names.
 	 */
 	public function get_llm_models(): array {
-		return array(
-			'gpt-4o'      => 'GPT-4o',
-			'gpt-4o-mini' => 'GPT-4o Mini',
-		);
+		return GG_Data_Model_Catalog::llm_models( 'openai' );
 	}
 
 	/**
@@ -172,10 +169,7 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of model identifiers capable of vision input.
 	 */
 	public function get_vision_models(): array {
-		return array(
-			'gpt-4o',
-			'gpt-4o-mini',
-		);
+		return GG_Data_Model_Catalog::vision_models( 'openai' );
 	}
 
 	/**
@@ -275,20 +269,7 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of embedding model configurations.
 	 */
 	public function get_embedding_models(): array {
-		return array(
-			'text-embedding-3-small' => array(
-				'name'             => 'Text Embedding 3 Small',
-				'dimensions'       => 1536,
-				'max_input_tokens' => 8191,
-			),
-			'text-embedding-3-large' => array(
-				'name'             => 'Text Embedding 3 Large',
-				'dimensions'       => 3072,
-				'max_input_tokens' => 8191,
-			),
-			// Ada-002 intentionally excluded - legacy model with inferior quality
-			// at 5x the cost of text-embedding-3-small. Use 3-small instead.
-		);
+		return GG_Data_Model_Catalog::embedding_models( 'openai' );
 	}
 
 	/**
@@ -462,7 +443,48 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as OpenAI doesn\'t support reranking.
 	 */
 	public function get_rerank_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::rerank_models( 'openai' );
+	}
+
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_openai_no_api_key', __( 'OpenAI API key is required.', 'gregius-data' ) );
+		}
+
+		$base_url = apply_filters( 'gg_data_openai_api_base_url', 'https://api.openai.com/v1', '' );
+		$response = wp_safe_remote_get(
+			$base_url . '/models',
+			array(
+				'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+				'timeout' => 20,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['data'] ) || ! is_array( $data['data'] ) ) {
+			return new WP_Error( 'gg_data_openai_list_failed', __( 'Could not retrieve the OpenAI model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $data['data'] as $model ) {
+			if ( ! empty( $model['id'] ) ) {
+				$ids[] = $model['id'];
+			}
+		}
+
+		return $ids;
 	}
 
 	/**

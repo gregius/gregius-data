@@ -78,6 +78,8 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-schema-manager.php',
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-settings-manager.php', // Settings manager.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-model-registry.php', // Model registry.
+	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-model-catalog.php', // Curated model catalog.
+	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-model-discovery.php', // Live model discovery + lifecycle.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-connection-model-manager.php', // Connection-Model manager.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-error-handler.php', // Error classification.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-retry-queue.php', // Retry queue manager.

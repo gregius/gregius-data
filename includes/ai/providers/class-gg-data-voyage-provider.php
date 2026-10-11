@@ -90,7 +90,7 @@ class GG_Data_Voyage_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array as no LLM models are available.
 	 */
 	public function get_llm_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::llm_models( 'voyage' );
 	}
 
 	/**
@@ -102,7 +102,7 @@ class GG_Data_Voyage_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Empty array.
 	 */
 	public function get_vision_models(): array {
-		return array();
+		return GG_Data_Model_Catalog::vision_models( 'voyage' );
 	}
 
 	/**
@@ -216,14 +216,7 @@ class GG_Data_Voyage_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of embedding model configurations.
 	 */
 	public function get_embedding_models(): array {
-		return array(
-			'voyage-4' => array(
-				'name'             => 'Voyage 4',
-				'dimensions'       => 1024,
-				'max_input_tokens' => 32000,
-				'description'      => 'General-purpose multilingual embeddings. Shared embedding space across the Voyage 4 series.',
-			),
-		);
+		return GG_Data_Model_Catalog::embedding_models( 'voyage' );
 	}
 
 	/**
@@ -342,15 +335,50 @@ class GG_Data_Voyage_Provider implements GG_Data_AI_Provider_Interface {
 	 * @return array Array of rerank model configurations.
 	 */
 	public function get_rerank_models(): array {
-		return array(
-			'rerank-2.5'      => array(
-				'name'        => 'Rerank 2.5',
+		return GG_Data_Model_Catalog::rerank_models( 'voyage' );
+	}
 
-				'name'        => 'Rerank 2.5 Lite',
-				'max_context' => 32000,
-				'description' => 'Budget reranking. 200M free tokens per account.',
-			),
+	/**
+	 * List the provider's live model ids from its GET /models endpoint.
+	 *
+	 * @since 1.0.0
+	 * @param string $api_key Provider API key.
+	 * @return array|WP_Error Array of model ids, or WP_Error.
+	 *
+	 * Note: unverified endpoint shape (no API key at implementation time);
+	 * discovery failures degrade to `unknown` and never retire a model.
+	 */
+	public function list_remote_models( string $api_key ): array|WP_Error {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'gg_data_voyage_no_api_key', __( 'API key is required.', 'gregius-data' ) );
+		}
+
+		$response = wp_safe_remote_get(
+			self::BASE_URL . '/models',
+			array(
+				'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+				'timeout' => 20,
+			)
 		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['data'] ) || ! is_array( $data['data'] ) ) {
+			return new WP_Error( 'gg_data_voyage_list_failed', __( 'Could not retrieve the Voyage model list.', 'gregius-data' ) );
+		}
+
+		$ids = array();
+		foreach ( $data['data'] as $model ) {
+			if ( ! empty( $model['id'] ) ) {
+				$ids[] = $model['id'];
+			}
+		}
+
+		return $ids;
 	}
 
 	/**
