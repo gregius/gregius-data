@@ -84,8 +84,8 @@ Mapping:
    - Purpose: chunk strategy registration/selection and payload shaping.
 
 4. **Search Hooks**
-   - Examples: `gg_data_search_title_weight`, `gg_data_search_content_weight`, `gg_data_search_similarity_threshold`, `gg_data_search_rate_limit`.
-   - Purpose: ranking, typo tolerance tuning, and rate limiting.
+   - Examples: `gg_data_search_title_weight`, `gg_data_search_content_weight`, `gg_data_search_rate_limit`.
+   - Purpose: relevance weighting and rate limiting.
 
 5. **Interaction Hooks**
    - Examples: `gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_received`.

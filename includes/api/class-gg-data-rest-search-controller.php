@@ -243,76 +243,20 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 			)
 		);
 
-		// GET /gg-data/v1/search/typo-tolerance-status - Get typo tolerance extension status.
+		// GET /gg-data/v1/search/trigram-status - Get pg_trgm extension status.
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/typo-tolerance-status',
+			'/' . $this->rest_base . '/trigram-status',
 			array(
 				array(
 					'methods'             => WP_REST_Server::READABLE,
-					'callback'            => array( $this, 'get_typo_tolerance_status' ),
+					'callback'            => array( $this, 'get_trigram_status' ),
 					'permission_callback' => array( $this, 'get_health_permissions_check' ),
 					'args'                => array(
 						'connection' => array(
 							'description' => 'Connection name',
 							'type'        => 'string',
 							'required'    => true,
-						),
-					),
-				),
-			)
-		);
-
-		// GET /gg-data/v1/search/typo-tolerance - Get typo tolerance settings.
-		register_rest_route(
-			$this->namespace,
-			'/' . $this->rest_base . '/typo-tolerance',
-			array(
-				array(
-					'methods'             => WP_REST_Server::READABLE,
-					'callback'            => array( $this, 'get_typo_tolerance_settings' ),
-					'permission_callback' => array( $this, 'get_health_permissions_check' ),
-					'args'                => array(
-						'connection' => array(
-							'description' => 'Connection name',
-							'type'        => 'string',
-							'required'    => true,
-						),
-					),
-				),
-			)
-		);
-
-		// POST /gg-data/v1/search/typo-tolerance - Update typo tolerance settings.
-		register_rest_route(
-			$this->namespace,
-			'/' . $this->rest_base . '/typo-tolerance',
-			array(
-				array(
-					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'update_typo_tolerance_settings' ),
-					'permission_callback' => array( $this, 'update_health_permissions_check' ),
-					'args'                => array(
-						'connection'           => array(
-							'description' => 'Connection name',
-							'type'        => 'string',
-							'required'    => true,
-						),
-						'typo_tolerance'       => array(
-							'description' => 'Enable typo tolerance',
-							'type'        => 'boolean',
-							'required'    => false,
-						),
-						'similarity_threshold' => array(
-							'description' => 'Similarity threshold (0.2-0.5)',
-							'type'        => 'number',
-							'required'    => false,
-						),
-						'retrieval_mode'       => array(
-							'description' => 'Search retrieval mode',
-							'type'        => 'string',
-							'enum'        => array( 'hybrid_default', 'postgresql_only' ),
-							'required'    => false,
 						),
 					),
 				),
@@ -693,7 +637,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Get typo tolerance extension status
+	 * Get trigram (pg_trgm) extension status
 	 *
 	 * Checks if pg_trgm extension is installed and available.
 	 *
@@ -701,7 +645,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response Response with extension status.
 	 * @throws Exception If database connection fails or query execution fails.
 	 */
-	public function get_typo_tolerance_status( $request ) {
+	public function get_trigram_status( $request ) {
 		$connection_name = $request->get_param( 'connection' );
 
 		try {
@@ -728,7 +672,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 
 			// Route to appropriate implementation.
 			if ( 'postgrest' === $provider ) {
-				return $this->get_typo_tolerance_status_supabase( $connection_name, $config );
+				return $this->get_trigram_status_supabase( $connection_name, $config );
 			}
 
 			// PDO PostgreSQL path.
@@ -771,7 +715,7 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 					'version'      => $version,
 					'message'      => $is_installed
 							? 'pg_trgm extension is installed and available'
-							: 'pg_trgm extension is not installed. Typo tolerance will not work.',
+							: 'pg_trgm extension is not installed. Trigram typo tolerance will not work.',
 				),
 				200
 			);
@@ -788,13 +732,13 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Get typo tolerance status for Supabase
+	 * Get trigram status for Supabase
 	 *
 	 * @param string $connection_name Connection name.
 	 * @param array  $config          Connection configuration.
 	 * @return WP_REST_Response Response with extension status.
 	 */
-	private function get_typo_tolerance_status_supabase( $connection_name, $config ) {
+	private function get_trigram_status_supabase( $connection_name, $config ) {
 		if ( ! class_exists( 'GG_Data_PostgREST_Provider' ) ) {
 			require_once __DIR__ . '/../providers/class-gg-postgrest-provider.php';
 		}
@@ -849,146 +793,10 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 				'version'      => $version,
 				'message'      => $is_installed
 					? 'pg_trgm extension is installed and available'
-					: 'pg_trgm extension is not installed. Typo tolerance will not work.',
+					: 'pg_trgm extension is not installed. Trigram typo tolerance will not work.',
 			),
 			200
 		);
-	}
-
-	/**
-	 * Get typo tolerance settings
-	 *
-	 * Retrieves typo_tolerance, similarity_threshold, and semantic activation settings.
-	 *
-	 * @param WP_REST_Request $request Request object with 'connection' parameter.
-	 * @return WP_REST_Response Response with settings.
-	 */
-	public function get_typo_tolerance_settings( $request ) {
-		$settings_scope = $this->get_search_settings_scope();
-
-		try {
-			$typo_tolerance       = $this->settings->get_with_category( 'search', $settings_scope, 'typo_tolerance', false );
-			$similarity_threshold = $this->settings->get_with_category( 'search', $settings_scope, 'similarity_threshold', 0.5 );
-			$retrieval_mode       = $this->settings->get_with_category( 'search', $settings_scope, 'retrieval_mode', 'hybrid_default' );
-
-			if ( ! in_array( $retrieval_mode, array( 'hybrid_default', 'postgresql_only' ), true ) ) {
-				$retrieval_mode = 'hybrid_default';
-			}
-
-			// Convert serialized boolean if needed.
-			if ( is_string( $typo_tolerance ) && 'b:0;' === $typo_tolerance ) {
-				$typo_tolerance = false;
-			} elseif ( is_string( $typo_tolerance ) && 'b:1;' === $typo_tolerance ) {
-				$typo_tolerance = true;
-			}
-
-			return new WP_REST_Response(
-				array(
-					'success'              => true,
-					'typo_tolerance'       => (bool) $typo_tolerance,
-					'similarity_threshold' => (float) $similarity_threshold,
-					'retrieval_mode'       => $retrieval_mode,
-				),
-				200
-			);
-
-		} catch ( Exception $e ) {
-			return new WP_REST_Response(
-				array(
-					'success' => false,
-					'error'   => $e->getMessage(),
-				),
-				500
-			);
-		}
-	}
-
-	/**
-	 * Update typo tolerance settings
-	 *
-	 * Updates typo_tolerance, similarity_threshold, semantic activation threshold, and/or retrieval_mode settings.
-	 *
-	 * @param WP_REST_Request $request Request object with typo/threshold/retrieval parameters.
-	 * @return WP_REST_Response Response with update status.
-	 */
-	public function update_typo_tolerance_settings( $request ) {
-		$settings_scope       = $this->get_search_settings_scope();
-		$typo_tolerance       = $request->get_param( 'typo_tolerance' );
-		$similarity_threshold = $request->get_param( 'similarity_threshold' );
-		$retrieval_mode       = $request->get_param( 'retrieval_mode' );
-
-		try {
-			$updated = array();
-
-			// Update typo_tolerance if provided.
-			if ( null !== $typo_tolerance ) {
-				$this->settings->set_with_category_public( 'search', $settings_scope, 'typo_tolerance', (bool) $typo_tolerance );
-				$updated[] = 'typo_tolerance';
-			}
-
-			// Update similarity_threshold if provided.
-			if ( null !== $similarity_threshold ) {
-				// Validate range.
-				$threshold = (float) $similarity_threshold;
-				if ( $threshold < 0.2 || $threshold > 0.5 ) {
-					return new WP_REST_Response(
-						array(
-							'success' => false,
-							'error'   => 'Similarity threshold must be between 0.2 and 0.5',
-						),
-						400
-					);
-				}
-
-				$this->settings->set_with_category_public( 'search', $settings_scope, 'similarity_threshold', $threshold );
-				$updated[] = 'similarity_threshold';
-			}
-
-			if ( null !== $retrieval_mode ) {
-				$retrieval_mode = sanitize_key( (string) $retrieval_mode );
-
-				if ( ! in_array( $retrieval_mode, array( 'hybrid_default', 'postgresql_only' ), true ) ) {
-					return new WP_REST_Response(
-						array(
-							'success' => false,
-							'error'   => 'Retrieval mode must be one of: hybrid_default, postgresql_only',
-						),
-						400
-					);
-				}
-
-				$this->settings->set_with_category_public( 'search', $settings_scope, 'retrieval_mode', $retrieval_mode );
-				$updated[] = 'retrieval_mode';
-			}
-
-			if ( empty( $updated ) ) {
-				return new WP_REST_Response(
-					array(
-						'success' => false,
-						'error'   => 'No settings provided to update',
-					),
-					400
-				);
-			}
-
-			return new WP_REST_Response(
-				array(
-					'success' => true,
-					'updated' => $updated,
-					'message' => 'Typo tolerance settings updated successfully',
-				),
-				200
-			);
-
-		} catch ( Exception $e ) {
-			return new WP_REST_Response(
-				array(
-					'success' => false,
-					'error'   => $e->getMessage(),
-				),
-				500
-			);
-		}
 	}
 
 	/**

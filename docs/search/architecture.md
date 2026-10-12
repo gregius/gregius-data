@@ -20,7 +20,7 @@ Scope includes:
 - JSONB metadata filtering contracts for deterministic scoped retrieval
 - Provider-path routing for PDO and PostgREST execution
 - Health fallback and observability behavior
-- Search management REST endpoints (status/schema/language/typo-tolerance)
+- Search management REST endpoints (status/schema/language/trigram-status)
 
 Explicitly excluded:
 - RAG synthesis and answer-generation architecture
@@ -87,7 +87,7 @@ Mapping:
 - Resolves active connection and search settings.
 - Executes PostgreSQL search and composes MySQL catch-up behavior for unsynced types.
 
-2. Search SQL Orchestration Component (`create-search-function.sql`)
+2. Search SQL Orchestration Component (`postgrest-schema.sql`)
 - Provides native orchestrator `search_native_orchestrate`.
 - Provides RAG-oriented orchestrator `search_rag_orchestrate` with JSONB metadata containment support.
 - Provides shared scoring helpers and vector candidate generation.
@@ -101,7 +101,7 @@ Mapping:
 - Tracks success/failure/latency metrics and degradation state.
 
 5. Search REST Management Component (`GG_Data_REST_Search_Controller`)
-- Exposes health, status, schema, language, and typo-tolerance routes.
+- Exposes health, status, schema, language, and trigram status routes.
 - Provides operator entrypoints for maintenance and diagnostics.
 
 ### 3.2 Provider Path Routing
@@ -181,7 +181,7 @@ Controller callback
    ├─ health/status retrieval
    ├─ schema creation
    ├─ language status/update
-   └─ typo tolerance status/config update
+   └─ trigram status
    │
    ▼
 Structured success/error response

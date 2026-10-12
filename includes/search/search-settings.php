@@ -67,12 +67,6 @@ function gg_data_init_search_settings() {
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 	}
 
-	// Backfill similarity threshold to 0.5 for improved default latency.
-	$stored_threshold = $settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', null );
-	if ( null === $stored_threshold || (float) $stored_threshold <= 0.3 ) {
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
-	}
-
 	// Backfill expensive telemetry toggle for existing installs.
 	$observability_toggle = $settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', null );
 	if ( null === $observability_toggle ) {

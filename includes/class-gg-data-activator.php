@@ -694,6 +694,49 @@ Keep reason concise. Do not add extra keys or text.',
 		}
 
 		/**
+		 * Remove the obsolete `typo_tolerance` and `similarity_threshold` search
+		 * settings on existing installs.
+		 *
+		 * These settings are no longer read: title trigram is now automatic for
+		 * the algorithmic (hashingtf) embedding, and the trigram similarity
+		 * threshold was removed. Runs once, guarded by a site option.
+		 *
+		 * @since 1.0.0
+		 */
+		public static function migrate_remove_typo_tolerance_settings() {
+			if ( get_option( 'gg_data_typo_tolerance_settings_removed' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_remove_typo_tolerance_settings_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_remove_typo_tolerance_settings_for_current_site();
+		}
+
+		/**
+		 * Delete the obsolete search settings for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function migrate_remove_typo_tolerance_settings_for_current_site() {
+			$settings = new GG_Data_Settings_Manager();
+			$settings->delete_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'typo_tolerance' );
+			$settings->delete_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold' );
+
+			update_option( 'gg_data_typo_tolerance_settings_removed', true );
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -717,6 +760,7 @@ Keep reason concise. Do not add extra keys or text.',
 			self::migrate_hashingtf();
 			self::migrate_search_vector_language();
 			self::migrate_search_rag_precomputed_query_vector();
+			self::migrate_remove_typo_tolerance_settings();
 		}
 
 		/**

@@ -52,7 +52,7 @@ Notable behavior:
 Source: [../../includes/search/class-gg-data-search-schema.php](../../includes/search/class-gg-data-search-schema.php)
 
 Core responsibilities:
-- Provision SQL functions from `includes/search/sql/create-search-function.sql`.
+- Provision whitelisted search functions from `includes/sql/postgrest-schema.sql`.
 - Validate function existence.
 - Report readiness status per connection.
 
@@ -71,12 +71,12 @@ Source: [../../includes/api/class-gg-data-rest-search-controller.php](../../incl
 
 Core responsibilities:
 - Expose search status and controls under `gg-data/v1/search/*`.
-- Support schema creation, language checks/updates, and typo-tolerance operations.
+- Support schema creation, language checks/updates, and trigram status checks.
 - Enforce administrative permission callbacks for management operations.
 
 ## 4. SQL Function Contract
 
-Source: [../../includes/search/sql/create-search-function.sql](../../includes/search/sql/create-search-function.sql)
+Source: [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
 
 Primary entrypoints:
 - `search_native_orchestrate(...)` (native search with parallel RRF)
@@ -91,7 +91,6 @@ search_native_orchestrate(
     limit_count integer DEFAULT 50,
     search_language text DEFAULT 'english',
     enable_trigram boolean DEFAULT false,
-    similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT false,
     vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
@@ -109,12 +108,12 @@ search_rag_orchestrate(
     limit_count integer DEFAULT 50,
     search_language text DEFAULT 'english',
     enable_trigram boolean DEFAULT true,
-    similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT true,
     vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
     metadata_filter jsonb DEFAULT '{}'::jsonb,
-    rrf_k integer DEFAULT 60
+    rrf_k integer DEFAULT 60,
+    precomputed_query_vector text DEFAULT NULL
 )
 ```
 
@@ -160,10 +159,8 @@ Schema and language:
 - `POST /update-language`
 - `POST /fix-settings`
 
-Typo tolerance:
-- `GET /typo-tolerance-status`
-- `GET /typo-tolerance`
-- `POST /typo-tolerance`
+Trigram status:
+- `GET /trigram-status`
 
 All search management routes use admin-style permission checks in controller callbacks.
 
@@ -181,9 +178,7 @@ Core keys (default values in parentheses):
 | `search.embedding_model` | `hashingtf-murmur3-1024` | Resolves to a vector table name for semantic search. |
 | `search.retrieval_mode` | `hybrid_default` | PostgreSQL + MySQL merge or PostgreSQL-only. |
 | `search.language` | `english` | PostgreSQL text search configuration. |
-| `search.similarity_threshold` | `0.5` (PHP runtime) / `0.3` (SQL default) | Trigram matching strictness. The SQL function default is `0.3`, but the PHP runtime overrides to `0.5` on every call. |
 | `search.observability_enabled` | `false` | Opt-in expensive probe toggle. |
-| `search.typo_tolerance` | (capability-gated) | Not a persisted default; runtime eligibility is derived from `pg_trgm` extension presence or persisted `trigram_supported` state. |
 
 Behavior notes:
 - Search enablement is opt-in.
@@ -199,7 +194,7 @@ Behavior notes:
 - When `search.observability_enabled` is `false`, trigram/vector eligibility is determined only from persisted per-connection capability state.
 - When `search.observability_enabled` is `false`, both `latency_pg_extension_checks_ms` and `latency_pg_vector_readiness_ms` remain `0`.
 - When `search.observability_enabled` is `true`, PDO and PostgREST paths run the full observability probe set.
-- `search.typo_tolerance` is settable via the management API (`POST /search/typo-tolerance`) and persisted in settings. Runtime trigram eligibility is determined by two capability paths: live `pg_trgm` extension checks (when observability is enabled) or persisted per-connection `trigram_supported` state (baseline mode).
+- Trigram eligibility is derived from `pg_trgm` extension presence: live checks (when observability is enabled) or persisted per-connection `trigram_supported` state (baseline mode).
 
 ### 6.1 Observability Field Interpretation
 
@@ -241,7 +236,7 @@ When metadata filtering is used from RAG-oriented retrieval, preserve these inva
 - Provider paths (PDO and PostgREST) must pass equivalent JSONB payloads for parity.
 
 Implementation surfaces:
-- SQL signatures in [../../includes/search/sql/create-search-function.sql](../../includes/search/sql/create-search-function.sql)
+- SQL signatures in [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
 - Supabase/PostgREST schema in [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
 - Content-cleaner manifest population in [../../includes/class-gg-data-content-cleaner.php](../../includes/class-gg-data-content-cleaner.php)
 - Schema manager column/index provisioning in [../../includes/class-gg-data-schema-manager.php](../../includes/class-gg-data-schema-manager.php)
@@ -277,13 +272,13 @@ EXISTS (
 
 A post qualifies if its `metadata_manifest.taxonomy_manifest` array contains **any** of the filter terms. This enables broad NBA result pools that span multiple taxonomy categories.
 
-**Applied in both SQL files, all three CTE branches:**
+**Applied in the single canonical SQL file, all three CTE branches:**
 
-| CTE | PDO File | PostgREST File |
-|---|---|---|
-| `fts_results` | `create-search-function.sql` ~line 435 | `postgrest-schema.sql` |
-| `trigram_results` | same | same |
-| `vector_results` | same | same |
+| CTE | SQL File |
+|---|---|
+| `fts_results` | `postgrest-schema.sql` |
+| `trigram_results` | same |
+| `vector_results` | same |
 
 PostgREST file path: [`includes/sql/postgrest-schema.sql`](../../includes/sql/postgrest-schema.sql) — must be manually copied to Supabase SQL editor; no auto-deploy.
 
@@ -322,9 +317,6 @@ Legacy pills using `pill.anchor` (single `taxonomy:slug:id` string) are handled 
 ## 8. Extension Points
 
 ### 8.1 Filters
-
-- `gg_data_search_similarity_threshold`
-  - Adjust trigram similarity threshold dynamically by query and connection context.
 
 - `gg_data_search_rate_limit`
   - Adjust search rate limiting. Receives `['limit' => int, 'window' => int]`.
@@ -461,7 +453,6 @@ Search SQL functions are shared across native (frontend search) and RAG-oriented
 **Search settings governing RAG retrieval:**
 
 - `search.language` — the PostgreSQL text search configuration (e.g. `english`). Used by `retrieve_chunks_pdo()` via `$options['language']` (default: `english`).
-- `search.similarity_threshold` — default `0.5` in PHP runtime (SQL default is `0.3`). Controls trigram matching strictness in both PDO and PostgREST paths.
 - `search.embedding_model` — default `hashingtf-murmur3-1024`. Resolves to a vector table name for semantic search candidates. Must map to a valid model in the model registry.
 
 **Metadata-filter changes** must be mirrored in both SQL artifacts and provider payload builders.
@@ -476,11 +467,11 @@ Checklist:
 - Check schema status (`GET /search/status`) and function provisioning.
 - Validate synced post types and data availability.
 
-### 11.2 Typo Tolerance Not Working
+### 11.2 Trigram Typo Tolerance Not Working
 
 Checklist:
-- Verify `pg_trgm` extension presence (`GET /search/typo-tolerance-status`).
-- Confirm typo tolerance setting/threshold values.
+- Verify `pg_trgm` extension presence (`GET /search/trigram-status`).
+- Confirm the active embedding model is algorithmic (hashingtf); neural models handle typos semantically without trigram.
 - Confirm query does not hit short-word suppression behavior.
 
 ### 11.3 Vector Search Not Active
@@ -519,7 +510,7 @@ Checklist:
 
 The integration class (`GG_Data_Search_Integration`) includes automatic detection and repair of missing SQL functions:
 - `is_missing_function_error()` (line 839) — checks if a PDO exception indicates a missing `search_native_orchestrate` function.
-- `repair_missing_search_functions()` (line 859) — recreates the missing function by re-running the SQL definition from `create-search-function.sql`; called automatically when a missing-function error is detected during a search request.
+- `repair_missing_search_functions()` (line 859) — recreates the missing function by re-running the SQL definition from `postgrest-schema.sql`; called automatically when a missing-function error is detected during a search request.
 
 This means a single failed request due to a dropped function (e.g. after a DB restore) can self-heal on the next search attempt. If auto-repair fails, the search falls back to MySQL.
 

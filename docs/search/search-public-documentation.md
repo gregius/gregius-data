@@ -26,11 +26,11 @@ This feature enables **site administrators** to enhance WordPress search with Po
 - [How to: Manage Search Operations](#how-to-manage-search-operations)
   - [Check Health Status](#check-health-status)
   - [Create Search Schema](#create-search-schema)
-  - [Adjust Typo Tolerance](#adjust-typo-tolerance)
+  - [Check Trigram Status](#check-trigram-status)
   - [Manage Search Language](#manage-search-language)
 - [How to: Troubleshoot Search Issues](#how-to-troubleshoot-search-issues)
   - [No PostgreSQL Search Results](#no-postgresql-search-results)
-  - [Typo Tolerance Not Working](#typo-tolerance-not-working)
+  - [Trigram Typo Tolerance Not Working](#trigram-typo-tolerance-not-working)
   - [Vector Search Not Active](#vector-search-not-active)
   - [Health Status Remains Degraded](#health-status-remains-degraded)
 - [Permissions](#permissions)
@@ -102,15 +102,13 @@ Before PostgreSQL search can execute, the required SQL search functions must be 
 
 [SRS: SEARCH-FR-08]
 
-### Adjust Typo Tolerance
+### Check Trigram Status
 
-Typo tolerance uses trigram similarity matching (`pg_trgm`) to find results even when search terms are misspelled.
+Trigram matching (`pg_trgm`) powers typo tolerance for the algorithmic (hashingtf) embedding, finding results even when search terms are misspelled. Neural embeddings handle typos semantically and do not use trigram.
 
-- Check extension availability: `GET /wp-json/gg-data/v1/search/typo-tolerance-status`
-- View current threshold: `GET /wp-json/gg-data/v1/search/typo-tolerance`
-- Update threshold: `POST /wp-json/gg-data/v1/search/typo-tolerance`
+- Check extension availability: `GET /wp-json/gg-data/v1/search/trigram-status`
 
-Short queries where every word is under 4 characters skip typo tolerance automatically for performance and precision.
+Short queries where every word is under 4 characters skip trigram automatically for performance and precision.
 
 ### Manage Search Language
 
@@ -132,10 +130,10 @@ Search language alignment with the WordPress site locale:
 - Check schema status via the search status endpoint.
 - Validate that synced post types contain searchable data.
 
-### Typo Tolerance Not Working
+### Trigram Typo Tolerance Not Working
 
 - Verify `pg_trgm` extension is installed on the PostgreSQL server.
-- Check typo tolerance settings and threshold values.
+- Confirm the active embedding model is algorithmic (hashingtf); neural models handle typos semantically without trigram.
 - Ensure the search query is not triggering short-word suppression.
 
 ### Vector Search Not Active
@@ -163,7 +161,7 @@ Search language alignment with the WordPress site locale:
 | Function | Who can use it |
 |---|---|
 | Frontend search (enhanced) | All site visitors |
-| Search management (health, schema, language, typo tolerance) | Administrators only |
+| Search management (health, schema, language, trigram status) | Administrators only |
 
 [SRS: SEARCH-OR-01]
 

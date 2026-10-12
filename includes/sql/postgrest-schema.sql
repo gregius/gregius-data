@@ -887,7 +887,6 @@ CREATE OR REPLACE FUNCTION search_native_orchestrate(
     limit_count integer DEFAULT 50,
     search_language text DEFAULT 'english',
     enable_trigram boolean DEFAULT false,
-    similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT false,
     vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
@@ -911,7 +910,6 @@ DECLARE
     v_has_short_words boolean;
 BEGIN
     IF enable_trigram THEN
-        EXECUTE format('SET pg_trgm.word_similarity_threshold = %s', similarity_threshold);
         EXECUTE 'SET LOCAL enable_seqscan = off';
     END IF;
 
@@ -984,27 +982,6 @@ BEGIN
                 AND p.post_type = ANY(post_types)
                 AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
             ORDER BY search_text <<-> pc.post_title_clean ASC
-            LIMIT GREATEST(limit_count, 20))
-
-            UNION ALL
-
-            (SELECT
-                pc.post_id,
-                (1.0 - (search_text <<-> pc.post_content_clean))::real AS source_score,
-                pc.post_title_clean AS post_title,
-                COALESCE(
-                    pc.post_excerpt_clean,
-                    LEFT(pc.post_content_clean, 200) || '...'
-                ) AS post_excerpt,
-                p.post_type,
-                p.post_status
-            FROM wp_posts_clean pc
-            INNER JOIN wp_posts p ON pc.post_id = p.id
-            WHERE
-                enable_trigram = true
-                AND p.post_type = ANY(post_types)
-                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
-            ORDER BY search_text <<-> pc.post_content_clean ASC
             LIMIT GREATEST(limit_count, 20))
         ) tr
         GROUP BY tr.post_id
@@ -1083,7 +1060,6 @@ CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     limit_count integer DEFAULT 50,
     search_language text DEFAULT 'english',
     enable_trigram boolean DEFAULT true,
-    similarity_threshold real DEFAULT 0.3,
     enable_vector boolean DEFAULT true,
     vector_table text DEFAULT 'wp_posts_hashingtf_murmur3_1024',
     vector_column text DEFAULT 'embedding',
@@ -1108,7 +1084,6 @@ DECLARE
     v_has_short_words boolean;
 BEGIN
     IF enable_trigram THEN
-        EXECUTE format('SET pg_trgm.word_similarity_threshold = %s', similarity_threshold);
         EXECUTE 'SET LOCAL enable_seqscan = off';
     END IF;
 
@@ -1211,42 +1186,6 @@ BEGIN
                     )
                 )
             ORDER BY search_text <<-> pc.post_title_clean ASC
-            LIMIT GREATEST(limit_count, 20))
-
-            UNION ALL
-
-            (SELECT
-                pc.post_id,
-                (1.0 - (search_text <<-> pc.post_content_clean))::real AS source_score,
-                pc.post_title_clean AS post_title,
-                COALESCE(
-                    pc.post_excerpt_clean,
-                    LEFT(pc.post_content_clean, 200) || '...'
-                ) AS post_excerpt,
-                p.post_type,
-                p.post_status
-            FROM wp_posts_clean pc
-            INNER JOIN wp_posts p ON pc.post_id = p.id
-            WHERE
-                enable_trigram = true
-                AND p.post_type = ANY(post_types)
-                AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
-                AND (
-                    metadata_filter = '{}'::jsonb
-                    OR (
-                        (metadata_filter->>'filter_operator' IS NULL OR metadata_filter->>'filter_operator' = 'AND')
-                        AND COALESCE(pc.metadata_manifest, '{}'::jsonb) @> (metadata_filter - 'filter_operator')
-                    )
-                    OR (
-                        metadata_filter->>'filter_operator' = 'OR'
-                        AND EXISTS (
-                            SELECT 1 FROM jsonb_array_elements(metadata_filter->'taxonomy_manifest') AS f
-                            WHERE COALESCE(pc.metadata_manifest, '{}'::jsonb) @>
-                                jsonb_build_object('taxonomy_manifest', jsonb_build_array(f))
-                        )
-                    )
-                )
-            ORDER BY search_text <<-> pc.post_content_clean ASC
             LIMIT GREATEST(limit_count, 20))
         ) tr
         GROUP BY tr.post_id
@@ -1363,13 +1302,12 @@ $$;
 -- the bounded post_title_clean column only.
 DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content;
 DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content_gist;
+DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_excerpt;
+DROP INDEX IF EXISTS idx_wp_posts_clean_fts;
 
 -- GIN Trigram Indexes (for typo tolerance)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title 
 ON wp_posts_clean USING GIN (post_title_clean gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_excerpt 
-ON wp_posts_clean USING GIN (post_excerpt_clean gin_trgm_ops);
 
 -- GiST Trigram Indexes (for efficient ORDER BY similarity with LIMIT pushdown)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title_gist 
@@ -1387,12 +1325,12 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 -- SELECT * FROM search_native_orchestrate('base de datos', ARRAY['post', 'page'], 20, 'spanish');
 
 -- With typo tolerance:
--- SELECT * FROM search_native_orchestrate('audiolgy', ARRAY['post'], 20, 'english', true, 0.3);
--- SELECT * FROM search_native_orchestrate('databse', ARRAY['post'], 20, 'english', true, 0.3);
+-- SELECT * FROM search_native_orchestrate('audiolgy', ARRAY['post'], 20, 'english', true);
+-- SELECT * FROM search_native_orchestrate('databse', ARRAY['post'], 20, 'english', true);
 
 -- With vector semantic search (parallel hybrid RRF):
--- SELECT * FROM search_native_orchestrate('hearing loss treatment', ARRAY['post'], 20, 'english', true, 0.3, true);
--- SELECT * FROM search_native_orchestrate('vehicle transportation', ARRAY['post'], 30, 'english', true, 0.3, true);
+-- SELECT * FROM search_native_orchestrate('hearing loss treatment', ARRAY['post'], 20, 'english', true, true);
+-- SELECT * FROM search_native_orchestrate('vehicle transportation', ARRAY['post'], 30, 'english', true, true);
 -- 
 -- ============================================
 -- Parameters
@@ -1401,11 +1339,10 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 -- 2. post_types: Array of post types to search (default: ['post', 'page'])
 -- 3. limit_count: Maximum results to return (default: 50)
 -- 4. search_language: PostgreSQL text search config (default: 'english')
--- 5. enable_trigram: Enable typo tolerance with word similarity matching (default: false)
--- 6. similarity_threshold: Minimum similarity score 0.0-1.0 (default: 0.3)
--- 7. enable_vector: Enable semantic vector search for related content (default: false)
--- 8. vector_table: Name of the vector table (default: 'wp_posts_hashingtf_murmur3_1024')
--- 9. vector_column: Name of the embedding column (default: 'embedding')
+-- 5. enable_trigram: Enable title trigram typo tolerance (default: false)
+-- 6. enable_vector: Enable semantic vector search for related content (default: false)
+-- 7. vector_table: Name of the vector table (default: 'wp_posts_hashingtf_murmur3_1024')
+-- 8. vector_column: Name of the embedding column (default: 'embedding')
 --
 -- ============================================
 -- Returns

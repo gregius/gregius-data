@@ -116,7 +116,7 @@ Requirement notation:
 | REST-FR-08 | The software MUST validate and sanitize route arguments according to each route definition and reject invalid requests with structured errors. | Must |
 | REST-FR-09 | The software MUST expose sync operation endpoints for status, configuration, taxonomy sync, post-type sync, and orphan cleanup workflows. | Must |
 | REST-FR-10 | The software MUST expose vector lifecycle endpoints for queue inspection, generation, batch generation, status, cleanup, and post-level vector views. | Must |
-| REST-FR-11 | The software MUST expose search operational endpoints for health checks, status, language settings, schema creation, and typo-tolerance management. | Must |
+| REST-FR-11 | The software MUST expose search operational endpoints for health checks, status, language settings, schema creation, and trigram status. | Must |
 | REST-FR-12 | The software MUST expose schema-management endpoints for schema status, creation, upgrade, verification, and SQL retrieval. | Must |
 | REST-FR-13 | The software MUST expose model-management endpoints for model CRUD, provider listing, model testing, and usage reset. | Must |
 | REST-FR-14 | The software MUST expose prompt-management endpoints for prompt CRUD and activation workflows. | Must |

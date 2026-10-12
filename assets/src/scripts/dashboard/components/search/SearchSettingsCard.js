@@ -14,7 +14,6 @@ import {
 	CardBody,
 	ToggleControl,
 	SelectControl,
-	RangeControl,
 	Notice,
 	Button,
 	Spinner,
@@ -41,13 +40,9 @@ const SearchSettingsCard = ({ connections = [] }) => {
 	const [isCheckingLanguage, setIsCheckingLanguage] = useState(false);
 	const [isUpdatingLanguage, setIsUpdatingLanguage] = useState(false);
 
-	// Phase 5-6: Typo tolerance state
-	const [typoTolerance, setTypoTolerance] = useState(false);
-	const [similarityThreshold, setSimilarityThreshold] = useState(0.3);
 	const [retrievalMode, setRetrievalMode] = useState('hybrid_default');
 	const [telemetryExpensiveProbesEnabled, setTelemetryExpensiveProbesEnabled] = useState(false);
 	const [extensionStatus, setExtensionStatus] = useState(null);
-	const [loadingTypoSettings, setLoadingTypoSettings] = useState(false);
 	const [savingTypoSettings, setSavingTypoSettings] = useState(false);
 
 	// Embedding model state
@@ -67,7 +62,6 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			checkSchemaVersion();
 			checkLanguageStatus();
 			checkExtensionStatus();
-			loadTypoToleranceSettings();
 			loadAvailableModels();
 		} else {
 			setSchemaVersion(null);
@@ -228,7 +222,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/typo-tolerance-status?connection=${searchConnection}`,
+				path: `/gg-data/v1/search/trigram-status?connection=${searchConnection}`,
 			});
 
 			if (response && response.success) {
@@ -241,28 +235,6 @@ const SearchSettingsCard = ({ connections = [] }) => {
 		}
 	};
 
-	// Phase 5-6: Load typo tolerance settings (global)
-	const loadTypoToleranceSettings = async () => {
-		try {
-			setLoadingTypoSettings(true);
-			const response = await apiFetch({
-				path: `/gg-data/v1/search/typo-tolerance?connection=${SEARCH_SETTINGS_CONNECTION}`,
-			});
-
-		if (response && response.success) {
-			setTypoTolerance(response.typo_tolerance);
-			setSimilarityThreshold(response.similarity_threshold);
-			if (response.retrieval_mode) {
-				setRetrievalMode(response.retrieval_mode);
-			}
-		}
-	} catch (err) {
-		// Use defaults on error
-	} finally {
-		setLoadingTypoSettings(false);
-	}
-};
-
 	// Handle retrieval mode toggle (global setting).
 	const handleRetrievalModeToggle = async (isMergeEnabled) => {
 		const newMode = isMergeEnabled ? 'hybrid_default' : 'postgresql_only';
@@ -273,73 +245,20 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setSuccess(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/typo-tolerance`,
+				path: `/gg-data/v1/settings/search/retrieval_mode`,
 				method: 'POST',
 				data: {
 					connection: SEARCH_SETTINGS_CONNECTION,
-					retrieval_mode: newMode,
+					value: newMode,
 				},
 			});
 
-			if (response && response.success) {
+			if (response && response.updated) {
 				setRetrievalMode(newMode);
 				setSuccess(__('Search retrieval mode updated!', 'gregius-data'));
 			}
 		} catch (err) {
 			setError(__('Failed to update retrieval mode: ', 'gregius-data') + err.message);
-		} finally {
-			setSavingTypoSettings(false);
-		}
-	};
-
-	// Phase 5-6: Handle typo tolerance toggle (global setting)
-	const handleTypoToleranceToggle = async (newValue) => {
-		try {
-			setSavingTypoSettings(true);
-			setError(null);
-			setSuccess(null);
-
-			const response = await apiFetch({
-				path: `/gg-data/v1/search/typo-tolerance`,
-				method: 'POST',
-				data: {
-					connection: SEARCH_SETTINGS_CONNECTION,
-					typo_tolerance: newValue,
-				},
-			});
-
-			if (response && response.success) {
-				setTypoTolerance(newValue);
-				setSuccess(__('Typo tolerance settings updated!', 'gregius-data'));
-			}
-		} catch (err) {
-			setError(__('Failed to update typo tolerance: ', 'gregius-data') + err.message);
-			setTypoTolerance(!newValue);
-		} finally {
-			setSavingTypoSettings(false);
-		}
-	};
-
-	// Phase 5-6: Handle similarity threshold change (global setting)
-	const handleSimilarityThresholdChange = async (newValue) => {
-		try {
-			setSavingTypoSettings(true);
-			setError(null);
-
-			const response = await apiFetch({
-				path: `/gg-data/v1/search/typo-tolerance`,
-				method: 'POST',
-				data: {
-					connection: SEARCH_SETTINGS_CONNECTION,
-					similarity_threshold: parseFloat(newValue),
-				},
-			});
-
-			if (response && response.success) {
-				setSimilarityThreshold(parseFloat(newValue));
-			}
-		} catch (err) {
-			setError(__('Failed to update similarity threshold: ', 'gregius-data') + err.message);
 		} finally {
 			setSavingTypoSettings(false);
 		}
@@ -589,9 +508,9 @@ const SearchSettingsCard = ({ connections = [] }) => {
 					<ToggleControl
 						label={__('Enable Enhanced Search', 'gregius-data')}
 						help={
-							searchEnabled
-								? __('Enhanced search is active site-wide with full-text search, field weighting (title matches rank higher), stemming ("running" finds "run", "runs", "ran"), stop word filtering, typo tolerance (if pg_trgm extension available), and vector-based semantic search (finds related content "vehicle" also finds posts about "car" and "automobile").', 'gregius-data')
-								: __('Enable enhanced search site-wide with full-text search, typo tolerance, and vector-based semantic search to find related content by meaning.', 'gregius-data')
+						searchEnabled
+							? __('Enhanced search is active site-wide with full-text search, typo tolerance, and semantic search.', 'gregius-data')
+							: __('Enable enhanced search site-wide with full-text search, typo tolerance, and semantic search.', 'gregius-data')
 						}
 						checked={searchEnabled}
 						onChange={handleToggle}
@@ -619,7 +538,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 									: __('Running pure PostgreSQL semantic vector search. Provides ultra-fast, high-accuracy results exclusively for synced content only.', 'gregius-data')}
 								checked={retrievalMergeEnabled}
 								onChange={handleRetrievalModeToggle}
-								disabled={loadingTypoSettings || savingTypoSettings}
+								disabled={savingTypoSettings}
 								__nextHasNoMarginBottom={true}
 							/>
 						</>
@@ -662,7 +581,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 										{__('pg_trgm extension not installed', 'gregius-data')}
 									</span>
 									<span>
-										{__('Enhanced search is active but typo tolerance is unavailable. The pg_trgm extension is required for typo forgiveness features. Contact your hosting provider or database administrator to install it.', 'gregius-data')}
+										{__('Enhanced search is active but trigram-based typo tolerance is unavailable. The pg_trgm extension is required for typo forgiveness features. Contact your hosting provider or database administrator to install it.', 'gregius-data')}
 									</span>
 								</div>
 							</Notice>

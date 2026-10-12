@@ -26,7 +26,7 @@ Examples of Tier 1 areas:
 
 - Sync control — which posts to sync, which meta keys to skip
 - Chunking strategy — custom chunking logic and payload shaping
-- Search tuning — relevance weights, similarity thresholds, rate limits
+- Search tuning — relevance weights and rate limits
 - Interaction tracking — custom metadata and post-record callbacks
 - RAG lifecycle — retrieval filtering, LLM response post-processing, tool registration
 - Log governance — retention policy, pre- and post-purge observability
@@ -58,7 +58,7 @@ Gregius Data hooks are organized by the subsystem they extend:
 | Configuration and batch | Tune throughput for sync, embeddings, vector deletion | `gg_data_post_sync_batch_size`, `gg_data_vector_delete_batch_size` |
 | Sync control | Filter which posts and meta keys are synced, enrich metadata | `gg_data_should_sync_post`, `gg_data_metadata_manifest` |
 | Chunking | Register custom chunk strategies, shape chunk output | `gg_data_chunking_strategies`, `gg_data_embedding_chunks` |
-| Search | Adjust relevance weights, similarity thresholds, rate limits | `gg_data_search_title_weight`, `gg_data_search_rate_limit` |
+| Search | Adjust relevance weights and rate limits | `gg_data_search_title_weight`, `gg_data_search_rate_limit` |
 | Interaction | Add custom analytics metadata, react to recorded interactions | `gg_data_interaction_meta_fields`, `gg_data_interaction_feedback_received` |
 | RAG tools | Register tools, intercept tool execution, react to completion | `gg_data_rag_tools`, `gg_data_rag_complete` |
 | RAG lifecycle | Filter retrieval queries, pre-retrieval criteria, LLM responses, source relevance | `gg_data_rag_search_query`, `gg_data_rag_llm_response` |

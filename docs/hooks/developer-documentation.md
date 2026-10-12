@@ -150,12 +150,6 @@ add_filter( 'gg_data_vector_delete_batch_size', function( $batch_size, $model_ke
 - Default: `'B'`
 - Emitted in: `includes/class-gg-data-schema-manager.php`
 
-#### `gg_data_search_similarity_threshold`
-- Type: Filter
-- Signature: `(float $threshold, string $connection_name, string $search_query): float`
-- Default: `0.5`
-- Emitted in: `includes/search/class-gg-data-search-integration.php`
-
 #### `gg_data_search_rate_limit`
 - Type: Filter
 - Signature: `(array $config): array`
@@ -759,9 +753,9 @@ comm -23 /tmp/code_hooks.txt /tmp/doc_hooks.txt
 
 ### Scanner Exceptions (Documented but Not Literal Match)
 
-Twelve hooks are emitted via multiline patterns not captured by the single-line extraction regex; direct source search confirms all are present:
+Eleven hooks are emitted via multiline patterns not captured by the single-line extraction regex; direct source search confirms all are present:
 
-- `gg_data_rag_abstain_message`, `gg_data_rag_compare_acceptance_fallback_enabled`, `gg_data_rag_compare_acceptance_soft_floor_threshold`, `gg_data_rag_compare_rerank_acceptance_threshold`, `gg_data_rag_governance_decision`, `gg_data_rag_policy_retrieval_mode`, `gg_data_rag_rerank_acceptance_threshold`, `gg_data_rag_rerank_min_candidates`, `gg_data_rag_rerank_policy`, `gg_data_rag_retrieval_policy`, `gg_data_rag_threshold_profile`, `gg_data_search_similarity_threshold`
+- `gg_data_rag_abstain_message`, `gg_data_rag_compare_acceptance_fallback_enabled`, `gg_data_rag_compare_acceptance_soft_floor_threshold`, `gg_data_rag_compare_rerank_acceptance_threshold`, `gg_data_rag_governance_decision`, `gg_data_rag_policy_retrieval_mode`, `gg_data_rag_rerank_acceptance_threshold`, `gg_data_rag_rerank_min_candidates`, `gg_data_rag_rerank_policy`, `gg_data_rag_retrieval_policy`, `gg_data_rag_threshold_profile`
 
 Reason: These are emitted inside multiline filter calls or conditional blocks where the hook name is split across lines.
 

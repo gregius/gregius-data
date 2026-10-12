@@ -516,22 +516,22 @@ class GG_Data_RAG_Service {
 		$base_url = rtrim( $config['project_url'], '/' );
 
 		// Get search settings from global settings.
-		$language             = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
-		$similarity_threshold = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
+		$language = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
+
+		$enable_trigram = ( false !== strpos( strtolower( (string) $this->embedding_model_key ), 'hashingtf' ) );
 
 		// Build RPC request payload.
 		$rpc_url = $base_url . '/rest/v1/rpc/search_rag_orchestrate';
 		$payload = array(
-			'search_text'          => $query,
-			'post_types'           => $options['post_types'],
-			'limit_count'          => $options['num_results'],
-			'search_language'      => $language,
-			'enable_trigram'       => true,
-			'similarity_threshold' => (float) $similarity_threshold,
-			'enable_vector'        => ! (bool) $options['disable_vector'],
-			'vector_table'         => $vector_config['table_name'],
-			'vector_column'        => $vector_config['embedding_column'],
-			'metadata_filter'      => ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass(),
+			'search_text'     => $query,
+			'post_types'      => $options['post_types'],
+			'limit_count'     => $options['num_results'],
+			'search_language' => $language,
+			'enable_trigram'  => $enable_trigram,
+			'enable_vector'   => ! (bool) $options['disable_vector'],
+			'vector_table'    => $vector_config['table_name'],
+			'vector_column'   => $vector_config['embedding_column'],
+			'metadata_filter' => ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass(),
 		);
 
 		// Pass a directly-hashed/embedded query vector when the active model supports it.
@@ -653,8 +653,7 @@ class GG_Data_RAG_Service {
 			return $this->retrieve_chunks_fallback( $query, $options );
 		}
 
-		$language             = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
-		$similarity_threshold = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
+		$language = $this->settings_manager->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
 
 		// Build post types array literal for PostgreSQL function call.
 		$post_types_safe  = array_map(
@@ -690,8 +689,9 @@ class GG_Data_RAG_Service {
 			$enable_vector = false;
 		}
 
-		$rag_pdo_fn = 'search_rag_orchestrate';
-		$sql        = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb, :rrf_k::integer, :precomputed_query_vector::text)";
+		$rag_pdo_fn     = 'search_rag_orchestrate';
+		$enable_trigram = ( false !== strpos( strtolower( (string) $this->embedding_model_key ), 'hashingtf' ) );
+		$sql            = "SELECT * FROM {$rag_pdo_fn}(:search_term::text, {$post_types_array}, :limit_count::int, :language::text, :enable_trigram::boolean, :enable_vector::boolean, :vector_table::text, :vector_column::text, :metadata_filter::jsonb, :rrf_k::integer, :precomputed_query_vector::text)";
 
 		try {
 			$stmt = $connection->prepare( $sql );
@@ -700,8 +700,7 @@ class GG_Data_RAG_Service {
 					':search_term'              => $query,
 					':limit_count'              => (int) $options['num_results'],
 					':language'                 => $language,
-					':enable_trigram'           => 'true',
-					':similarity_threshold'     => (float) $similarity_threshold,
+					':enable_trigram'           => $enable_trigram ? 'true' : 'false',
 					':enable_vector'            => $enable_vector ? 'true' : 'false',
 					':vector_table'             => $vector_config['table_name'] ?? '',
 					':vector_column'            => $vector_config['embedding_column'] ?? 'embedding',

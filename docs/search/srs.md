@@ -43,7 +43,7 @@ The Search subsystem bridges WordPress query execution and database retrieval se
 - Execute database retrieval through SQL functions supporting lexical, trigram, and vector strategies.
 - Support both PDO PostgreSQL and PostgREST provider execution paths.
 - Maintain health telemetry and fallback behavior for degraded search states.
-- Expose REST routes for health, schema, language, and typo-tolerance management.
+- Expose REST routes for health, schema, language, and trigram status.
 
 #### 1.3.3 User Characteristics
 
@@ -81,7 +81,7 @@ The Search subsystem bridges WordPress query execution and database retrieval se
 - includes/search/class-gg-data-search-fallback.php
 - includes/search/class-gg-data-search-language.php
 - includes/search/search-settings.php
-- includes/search/sql/create-search-function.sql
+- includes/sql/postgrest-schema.sql
 - includes/api/class-gg-data-rest-search-controller.php
 - includes/providers/class-gg-postgresql-provider.php
 - includes/rag/class-gg-data-rag-service.php
@@ -107,7 +107,7 @@ Requirement notation:
 | SEARCH-FR-08 | The software MUST expose a search schema creation flow that provisions the required SQL search functions. | Must |
 | SEARCH-FR-09 | The software MUST expose health monitoring and health-reset controls for search fallback behavior. | Must |
 | SEARCH-FR-10 | The software MUST expose language-status and language-update controls for search-language alignment with WordPress locale behavior. | Must |
-| SEARCH-FR-11 | The software MUST expose typo-tolerance capability and settings controls, including extension availability and threshold tuning. | Must |
+| SEARCH-FR-11 | The software MUST expose trigram capability status, including pg_trgm extension availability. | Must |
 | SEARCH-FR-12 | The software MUST emit search completion events that include post IDs, counts, and context metadata for downstream observers. | Must |
 | SEARCH-FR-13 | The software MUST support deterministic JSONB metadata filtering in orchestrator search execution so lexical, trigram, and vector branches evaluate the same metadata filter contract. | Must |
 | SEARCH-FR-14 | The software MUST support exactly two user-facing native retrieval modes: `hybrid_default` (PostgreSQL+MySQL merge) and `postgresql_only` (PostgreSQL-native only). | Must |
@@ -137,9 +137,8 @@ Requirement notation:
 | SEARCH-OR-02 | The subsystem MUST preserve site availability when PostgreSQL search fails by executing fallback-safe behavior and avoiding fatal query interruption. | Must |
 | SEARCH-OR-03 | Health tracking MUST capture consecutive failure conditions and support alert-oriented operational status transitions. | Must |
 | SEARCH-OR-04 | The subsystem SHOULD support connection-specific search execution for multi-connection deployments. | Should |
-| SEARCH-OR-05 | The subsystem MUST allow runtime tuning of trigram similarity thresholds through extension hooks. | Must |
 | SEARCH-OR-06 | The subsystem MUST disable vector-search execution when required capabilities (extension/table/data availability) are not present. | Must |
-| SEARCH-OR-07 | The subsystem MUST avoid executing typo-tolerance for all-short-word queries where trigram behavior is intentionally suppressed for performance and precision. | Must |
+| SEARCH-OR-07 | The subsystem MUST avoid executing trigram typo tolerance for all-short-word queries where trigram behavior is intentionally suppressed for performance and precision. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -166,18 +165,18 @@ Requirement notation:
 
 Acceptance baseline for migration phase:
 - Search package requirements reflect current orchestrator-capable implementation.
-- Search operational controls (health/schema/language/typo-tolerance) are represented in canonical subsystem documentation.
+- Search operational controls (health/schema/language/trigram-status) are represented in canonical subsystem documentation.
 - Provider-path parity assumptions and fallback contracts are explicit.
 
 ## 5. Traceability
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| SEARCH-FR-01 to SEARCH-FR-07, SEARCH-FR-13 to SEARCH-FR-15 | includes/search/class-gg-data-search-integration.php, includes/search/sql/create-search-function.sql, includes/sql/postgrest-schema.sql | WordPress interception, SQL execution, retrieval-mode behavior, ranking behavior, and metadata-filter parity |
+| SEARCH-FR-01 to SEARCH-FR-07, SEARCH-FR-13 to SEARCH-FR-15 | includes/search/class-gg-data-search-integration.php, includes/sql/postgrest-schema.sql | WordPress interception, SQL execution, retrieval-mode behavior, ranking behavior, and metadata-filter parity |
 | SEARCH-FR-08 to SEARCH-FR-11 | includes/search/class-gg-data-search-schema.php, includes/api/class-gg-data-rest-search-controller.php, includes/search/class-gg-data-search-language.php | Schema provisioning and search-management endpoint behavior |
 | SEARCH-FR-12, SEARCH-DR-01 to SEARCH-DR-11 | includes/search/class-gg-data-search-integration.php, includes/search/class-gg-data-search-fallback.php, includes/providers/class-gg-postgresql-provider.php, includes/class-gg-data-schema-manager.php, includes/class-gg-data-content-cleaner.php | Event emission, response contracts, contextual source metadata, health telemetry, provider path parity, and metadata-manifest contracts |
 | SEARCH-OR-01 to SEARCH-OR-07 | includes/api/class-gg-data-rest-search-controller.php, includes/search/class-gg-data-search-fallback.php, includes/search/class-gg-data-search-integration.php | Permissions, fallback operations, and runtime controls |
-| SEARCH-QR-01 to SEARCH-QR-09 | docs/search/architecture.md, includes/search/sql/create-search-function.sql, includes/sql/postgrest-schema.sql, implementation files listed in References | Performance, compatibility, observability, and parity expectations |
+| SEARCH-QR-01 to SEARCH-QR-09 | docs/search/architecture.md, includes/sql/postgrest-schema.sql, implementation files listed in References | Performance, compatibility, observability, and parity expectations |
 
 ## 6. Appendices
 

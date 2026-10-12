@@ -186,13 +186,7 @@ Key routes:
 - `GET /search/language-status`
 - `POST /search/update-language`
 - `POST /search/fix-settings`
-- `GET /search/typo-tolerance-status`
-- `GET /search/typo-tolerance`
-- `POST /search/typo-tolerance`
-
-Contract notes:
-- `POST /search/typo-tolerance` accepts `connection` (string, required), `typo_tolerance` (boolean, optional), `similarity_threshold` (number 0.2–0.5, optional), and `retrieval_mode` (string, optional).
-- `GET /search/typo-tolerance` returns `typo_tolerance`, `similarity_threshold`, and `retrieval_mode`.
+- `GET /search/trigram-status`
 
 ### 4.9 Vector Queue Controller
 

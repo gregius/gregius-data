@@ -587,45 +587,23 @@ class GG_Data_Search_Integration {
 		}
 
 		// Get stored search settings from global settings.
-		$language             = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
-		$similarity_threshold = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
+		$language = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
 
-		/**
-		 * Filter the trigram similarity threshold for typo tolerance.
-		 *
-		 * Controls how similar the search term must be to content for trigram pattern matching.
-		 * Lower threshold = more lenient matching (more results, more false positives).
-		 * Higher threshold = stricter matching (fewer results, fewer false positives).
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param float  $similarity_threshold Default similarity threshold (0.0-1.0).
-		 * @param string $connection_name      PostgreSQL connection name.
-		 * @param string $search_term          The search query.
-		 * @return float Filtered similarity threshold.
-		 */
-		$similarity_threshold = apply_filters(
-			'gg_data_search_similarity_threshold',
-			$similarity_threshold,
-			$connection_name,
-			$search_term
-		);
-
-		$typo_tolerance = false;
-		$has_pgvector   = false;
+		$trigram_supported = false;
+		$has_pgvector      = false;
 
 		if ( $expensive_probes_enabled ) {
 			$extension_checks_start = microtime( true );
 
 			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
 			try {
-				$extension_check = $connection->query( "SELECT COUNT(*) FROM pg_extension WHERE extname = 'pg_trgm'" );
-				$has_extension   = $extension_check && $extension_check->fetchColumn() > 0;
-				$typo_tolerance  = $has_extension;
+				$extension_check   = $connection->query( "SELECT COUNT(*) FROM pg_extension WHERE extname = 'pg_trgm'" );
+				$has_extension     = $extension_check && $extension_check->fetchColumn() > 0;
+				$trigram_supported = $has_extension;
 			} catch ( Exception $e ) {
-				$typo_tolerance = false;
+				$trigram_supported = false;
 				$this->logger->log(
-					'pg_trgm extension check failed; continuing search with typo tolerance disabled',
+					'pg_trgm extension check failed; continuing search with trigram disabled',
 					'debug',
 					'search',
 					$connection_name,
@@ -642,14 +620,14 @@ class GG_Data_Search_Integration {
 				$has_pgvector = false;
 			}
 
-			$this->persist_search_capabilities( $connection_name, $typo_tolerance, $has_pgvector );
+			$this->persist_search_capabilities( $connection_name, $trigram_supported, $has_pgvector );
 			$pg_diagnostics['latency_pg_extension_checks_ms'] = round( ( microtime( true ) - $extension_checks_start ) * 1000, 2 );
 			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 		} else {
 			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
-			$capabilities    = $this->get_persisted_search_capabilities( $connection_name );
-			$typo_tolerance  = ! empty( $capabilities['trigram_supported'] );
-			$has_pgvector    = ! empty( $capabilities['vector_supported'] );
+			$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
+			$trigram_supported = ! empty( $capabilities['trigram_supported'] );
+			$has_pgvector      = ! empty( $capabilities['vector_supported'] );
 			$pg_diagnostics['latency_pg_extension_checks_ms'] = 0.0;
 			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 		}
@@ -716,15 +694,17 @@ class GG_Data_Search_Integration {
 		$post_types_array = 'ARRAY[' . implode( ',', $post_types_safe ) . ']::text[]';
 
 		// Prepare search function parameters.
+		$is_hashingtf   = ( false !== strpos( strtolower( (string) $model_key ), 'hashingtf' ) );
+		$enable_trigram = $trigram_supported && $is_hashingtf;
+
 		$precomputed_query_vector = $this->get_precomputed_query_vector_literal( $search_term, $model_key, $vector_table );
-		$sql                      = "SELECT * FROM search_native_orchestrate(:search_term::text, {$post_types_array}, 50, :language::text, :enable_trigram::boolean, :similarity_threshold::real, :enable_vector::boolean, :vector_table::text, :vector_column::text, :rrf_k::integer, :precomputed_query_vector::text)";
+		$sql                      = "SELECT * FROM search_native_orchestrate(:search_term::text, {$post_types_array}, 50, :language::text, :enable_trigram::boolean, :enable_vector::boolean, :vector_table::text, :vector_column::text, :rrf_k::integer, :precomputed_query_vector::text)";
 
 		try {
 			$params = array(
 				':search_term'              => $search_term,
 				':language'                 => $language,
-				':enable_trigram'           => $typo_tolerance ? 'true' : 'false',
-				':similarity_threshold'     => $similarity_threshold,
+				':enable_trigram'           => $enable_trigram ? 'true' : 'false',
 				':enable_vector'            => $vector_search ? 'true' : 'false',
 				':vector_table'             => ! empty( $vector_table ) ? $vector_table : 'wp_posts_hashingtf_murmur3_1024',
 				':vector_column'            => ! empty( $vector_column ) ? $vector_column : 'embedding',
@@ -960,44 +940,27 @@ class GG_Data_Search_Integration {
 		}
 
 		// Get search settings from global settings.
-		$language             = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
-		$similarity_threshold = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
+		$language = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', 'english' );
 
-		/**
-		 * Filter the trigram similarity threshold (Supabase).
-		 *
-		 * @since 1.0.0
-		 * @param float  $similarity_threshold Default similarity threshold.
-		 * @param string $connection_name      Connection name.
-		 * @param string $search_term          Search query.
-		 * @return float Filtered threshold.
-		 */
-		$similarity_threshold = apply_filters(
-			'gg_data_search_similarity_threshold',
-			$similarity_threshold,
-			$connection_name,
-			$search_term
-		);
-
-		$typo_tolerance = false;
-		$has_pgvector   = false;
-		$vector_search  = false;
-		$has_vectors    = false;
-		$vector_table   = '';
-		$vector_column  = '';
+		$trigram_supported = false;
+		$has_pgvector      = false;
+		$vector_search     = false;
+		$has_vectors       = false;
+		$vector_table      = '';
+		$vector_column     = '';
 
 		if ( $expensive_probes_enabled ) {
 			$extension_checks_start = microtime( true );
 			$capabilities           = $this->get_supabase_extension_capabilities( $runtime_config );
-			$typo_tolerance         = ! empty( $capabilities['trigram_supported'] );
+			$trigram_supported      = ! empty( $capabilities['trigram_supported'] );
 			$has_pgvector           = ! empty( $capabilities['vector_supported'] );
-			$this->persist_search_capabilities( $connection_name, $typo_tolerance, $has_pgvector );
+			$this->persist_search_capabilities( $connection_name, $trigram_supported, $has_pgvector );
 			$pg_diagnostics['latency_pg_extension_checks_ms'] = round( ( microtime( true ) - $extension_checks_start ) * 1000, 2 );
 		} else {
 			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
-			$capabilities    = $this->get_persisted_search_capabilities( $connection_name );
-			$typo_tolerance  = ! empty( $capabilities['trigram_supported'] );
-			$has_pgvector    = ! empty( $capabilities['vector_supported'] );
+			$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
+			$trigram_supported = ! empty( $capabilities['trigram_supported'] );
+			$has_pgvector      = ! empty( $capabilities['vector_supported'] );
 			$pg_diagnostics['latency_pg_extension_checks_ms'] = 0.0;
 			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 		}
@@ -1056,18 +1019,20 @@ class GG_Data_Search_Integration {
 		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
 		// Build RPC request payload.
+		$is_hashingtf   = ( false !== strpos( strtolower( (string) $model_key ), 'hashingtf' ) );
+		$enable_trigram = $trigram_supported && $is_hashingtf;
+
 		$rpc_url = rtrim( $runtime_config['project_url'], '/' ) . '/rest/v1/rpc/search_native_orchestrate';
 		$payload = array(
-			'search_text'          => $search_term,
-			'post_types'           => $post_types,
-			'limit_count'          => 50,
-			'search_language'      => $language,
-			'enable_trigram'       => $typo_tolerance,
-			'similarity_threshold' => (float) $similarity_threshold,
-			'enable_vector'        => $vector_search,
-			'vector_table'         => ! empty( $vector_table ) ? $vector_table : 'wp_posts_hashingtf_murmur3_1024',
-			'vector_column'        => ! empty( $vector_column ) ? $vector_column : 'embedding',
-			'rrf_k'                => 60,
+			'search_text'     => $search_term,
+			'post_types'      => $post_types,
+			'limit_count'     => 50,
+			'search_language' => $language,
+			'enable_trigram'  => $enable_trigram,
+			'enable_vector'   => $vector_search,
+			'vector_table'    => ! empty( $vector_table ) ? $vector_table : 'wp_posts_hashingtf_murmur3_1024',
+			'vector_column'   => ! empty( $vector_column ) ? $vector_column : 'embedding',
+			'rrf_k'           => 60,
 		);
 
 		// Prepare HTTP request args.
