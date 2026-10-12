@@ -34,6 +34,20 @@ class GG_Data_Search_Schema {
 	private $logger;
 
 	/**
+	 * Search functions to extract from the canonical schema on refresh.
+	 *
+	 * @var string[]
+	 */
+	private const SEARCH_FUNCTIONS = array(
+		'search_core_fuse_rrf',
+		'search_core_vector_candidates',
+		'search_native_orchestrate',
+		'search_rag_orchestrate',
+		'gg_generate_search_vector',
+		'search_rag_get_context',
+	);
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -75,9 +89,6 @@ class GG_Data_Search_Schema {
 			// Language setting - store globally.
 			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', $site_language );
 
-			// Typo tolerance settings - Default to disabled for backwards compatibility.
-			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'typo_tolerance', false );
-			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'similarity_threshold', 0.5 );
 			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
 
@@ -117,9 +128,7 @@ class GG_Data_Search_Schema {
 				array(
 					'language'             => $site_language,
 					'locale'               => get_locale(),
-					'typo_tolerance'       => false,
-					'similarity_threshold' => 0.5,
-				'retrieval_mode'       => 'hybrid_default',
+					'retrieval_mode'       => 'hybrid_default',
 					'observability_enabled' => false,
 					'connection'           => $connection_name,
 				)
@@ -127,7 +136,7 @@ class GG_Data_Search_Schema {
 			);
 
 			// Read SQL file.
-			$sql_file = plugin_dir_path( __FILE__ ) . 'sql/create-search-function.sql';
+			$sql_file = plugin_dir_path( __FILE__ ) . '../sql/postgrest-schema.sql';
 
 			if ( ! file_exists( $sql_file ) ) {
 				throw new Exception( "SQL file not found: {$sql_file}" );
@@ -149,18 +158,22 @@ class GG_Data_Search_Schema {
 			// Extract individual statements.
 			$statements = array();
 
-			// 1. Extract all DROP FUNCTION statements.
+			// 1. Extract DROP FUNCTION statements for whitelisted search functions.
 			preg_match_all( '/DROP\s+FUNCTION\s+IF\s+EXISTS[^;]+;/is', $sql_clean, $drop_matches );
 			foreach ( $drop_matches[0] as $drop_stmt ) {
-				$statements[] = trim( $drop_stmt );
+				if ( $this->is_search_function_statement( $drop_stmt ) ) {
+					$statements[] = trim( $drop_stmt );
+				}
 			}
 
-			// 2. Extract all CREATE OR REPLACE FUNCTION statements.
+			// 2. Extract CREATE OR REPLACE FUNCTION statements for whitelisted search functions.
 			// Match from CREATE FUNCTION start through dollar-quoted function terminator ($$;),
 			// independent of whether LANGUAGE appears before or after AS $$ in SQL formatting.
 			preg_match_all( '/CREATE\s+OR\s+REPLACE\s+FUNCTION.+?\$\$\s*;/is', $sql_clean, $create_matches );
 			foreach ( $create_matches[0] as $create_stmt ) {
-				$statements[] = trim( $create_stmt );
+				if ( $this->is_search_function_statement( $create_stmt ) ) {
+					$statements[] = trim( $create_stmt );
+				}
 			}
 
 			// 3. Skip CREATE INDEX - it should already exist from schema setup.
@@ -218,6 +231,20 @@ class GG_Data_Search_Schema {
 
 			return false;
 		}
+	}
+
+	/**
+	 * Determine whether a SQL statement targets a whitelisted search function.
+	 *
+	 * @param string $statement A DROP or CREATE FUNCTION SQL statement.
+	 * @return bool True when the statement belongs to a whitelisted search function.
+	 */
+	private function is_search_function_statement( $statement ) {
+		if ( preg_match( '/FUNCTION\s+(?:IF\s+EXISTS\s+)?(?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_]+)/i', $statement, $matches ) ) {
+			return in_array( strtolower( $matches[1] ), self::SEARCH_FUNCTIONS, true );
+		}
+
+		return false;
 	}
 
 	/**

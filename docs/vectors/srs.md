@@ -81,7 +81,7 @@ The vectors subsystem consumes cleaned and chunked content from sync contracts a
 - includes/api/class-gg-data-rest-vector-queue-controller.php
 - includes/api/class-gg-data-rest-connection-models-controller.php
 - includes/class-gg-data-chunker.php
-- includes/search/sql/create-search-function.sql
+- includes/sql/postgrest-schema.sql
 
 ## 3. Software Requirements
 
