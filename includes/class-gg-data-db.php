@@ -261,11 +261,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Uses provider architecture for post upsert operations.
 		 *
 		 * @param WP_Post|array $post_data        Post data or WP_Post object.
-		 * @param int           $blog_id          Blog ID for multisite support.
 		 * @param string|null   $connection_name  Connection name to use.
 		 * @return bool Success or failure.
 		 */
-		public function upsert_post( $post_data, $blog_id = 1, $connection_name = null ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Kept for backward compatibility with caller signature.
+		public function upsert_post( $post_data, $connection_name = null ) {
 			if ( ! $this->provider ) {
 				$this->last_error = 'Failed to upsert post: provider is not available';
 				$this->logger->log( $this->last_error, 'error', 'connection', $connection_name );
@@ -289,11 +288,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Delete a post from PostgreSQL
 		 *
 		 * @param int         $post_id         Post ID.
-		 * @param int         $site_id         Site ID.
 		 * @param string|null $connection_name Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function delete_post( $post_id, $site_id, $connection_name = null ) {
+		public function delete_post( $post_id, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -311,12 +309,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				$stmt_meta->execute();
 
 				// Delete vector embeddings (if vector functionality is enabled).
-				$sql_vector  = 'DELETE FROM vector_store WHERE post_id = :post_id AND site_id = :site_id';
+				$sql_vector  = 'DELETE FROM vector_store WHERE post_id = :post_id';
 				$stmt_vector = $conn->prepare( $sql_vector );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt_vector->bindParam( ':post_id', $post_id, PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt_vector->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				$stmt_vector->execute();
 
 				// Delete term relationships.
@@ -329,12 +325,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 
 				// Delete post.
 				$posts_table = $this->get_table_name( 'posts' );
-				$sql_post    = "DELETE FROM $posts_table WHERE ID = :post_id AND site_id = :site_id";
+				$sql_post    = "DELETE FROM $posts_table WHERE ID = :post_id";
 				$stmt_post   = $conn->prepare( $sql_post );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt_post->bindParam( ':post_id', $post_id, PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt_post->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				$stmt_post->execute();              // Commit transaction.
 				$conn->commit();
 
@@ -356,7 +350,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 					$error_message,
 					array(
 						'post_id' => $post_id,
-						'site_id' => $site_id,
 					)
 				);
 
@@ -367,47 +360,31 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		/**
 		 * Insert or update post meta in PostgreSQL
 		 *
-		 * @param mixed       $meta_id_or_data Meta ID or meta data array.
-		 * @param mixed       $post_id_or_site_id Post ID or site ID depending on first param.
-		 * @param string      $meta_key Optional meta key if individual params used.
-		 * @param mixed       $meta_value Optional meta value if individual params used.
-		 * @param integer     $blog_id Optional blog ID if individual params used.
+		 * @param int         $meta_id         Meta ID.
+		 * @param int         $post_id         Post ID.
+		 * @param string      $meta_key        Meta key.
+		 * @param mixed       $meta_value      Meta value.
 		 * @param string|null $connection_name Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function upsert_post_meta( $meta_id_or_data, $post_id_or_site_id, $meta_key = null, $meta_value = null, $blog_id = 1, $connection_name = null ) {
+		public function upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
 				return false;
 			}
 
-			// Determine if we're using array format or individual parameters.
-			$meta_data = array();
-			$site_id   = 1;
-
-			if ( is_array( $meta_id_or_data ) ) {
-				// Array format.
-				GG_Data_Debug::log( 'Using meta data array directly', $this->logger );
-				$meta_data = $meta_id_or_data;
-				$site_id   = $post_id_or_site_id;
-			} else {
-				// Individual parameters.
-				GG_Data_Debug::log( 'Converting individual meta parameters to array', $this->logger );
-
-				/*
-				 * Note: meta_key and meta_value usage here is safe and performant.
-				 * These are function parameters being assigned to an array for processing.
-				 * No database query is performed at this point - this is just data preparation.
-				 */
-				$meta_data = array(
-					'meta_id'    => $meta_id_or_data,
-					'post_id'    => $post_id_or_site_id,
-					'meta_key'   => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Safe: Function parameter assignment, not a query.
-					'meta_value' => $meta_value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Safe: Function parameter assignment, not a query.
-				);
-				$site_id   = $blog_id;
-			}
+			/*
+			 * Note: meta_key and meta_value usage here is safe and performant.
+			 * These are function parameters being assigned to an array for processing.
+			 * No database query is performed at this point - this is just data preparation.
+			 */
+			$meta_data = array(
+				'meta_id'    => $meta_id,
+				'post_id'    => $post_id,
+				'meta_key'   => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Safe: Function parameter assignment, not a query.
+				'meta_value' => $meta_value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Safe: Function parameter assignment, not a query.
+			);
 
 			try {
 				// Handle serialized data.
@@ -517,11 +494,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 *
 		 * @param int         $post_id         Post ID.
 		 * @param string      $meta_key        Meta key.
-		 * @param int         $site_id         Site ID.
 		 * @param string|null $connection_name Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function delete_post_meta( $post_id, $meta_key, $site_id, $connection_name = null ) {
+		public function delete_post_meta( $post_id, $meta_key, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -547,7 +523,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 					array(
 						'post_id'  => $post_id,
 						'meta_key' => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Safe: Function parameter, not a query.
-						'site_id'  => $site_id,
 					)
 				);
 
@@ -572,11 +547,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Insert or update a term in PostgreSQL
 		 *
 		 * @param array|stdClass $term_data        Term data.
-		 * @param int            $blog_id          Blog/site ID.
 		 * @param string|null    $connection_name  Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function upsert_term( $term_data, $blog_id = 1, $connection_name = null ) {
+		public function upsert_term( $term_data, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -590,14 +564,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 			$term_arr = array();
 			if ( is_object( $term_data ) && ( $term_data instanceof stdClass ) ) {
 				$this->logger->log( 'Converting stdClass object to array', 'debug', 'connection' );
-				$term_arr            = get_object_vars( $term_data );
-				$term_arr['site_id'] = $blog_id;
+				$term_arr = get_object_vars( $term_data );
 			} elseif ( is_array( $term_data ) ) {
 				$this->logger->log( 'Using term data array directly', 'debug', 'connection' );
 				$term_arr = $term_data;
-				if ( ! isset( $term_arr['site_id'] ) ) {
-					$term_arr['site_id'] = $blog_id;
-				}
 			} else {
 				$this->logger->log( 'Invalid term data type: ' . gettype( $term_data ), 'error', 'connection' );
 				return false;
@@ -607,11 +577,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				// Prepare SQL query.
 				$terms_table = $this->get_table_name( 'terms' );
 				$sql         = "INSERT INTO $terms_table (
-				term_id, site_id, name, slug, term_group
+				term_id, name, slug, term_group
 			) VALUES (
-				:term_id, :site_id, :name, :slug, :term_group
+				:term_id, :name, :slug, :term_group
 			) ON CONFLICT (term_id) DO UPDATE SET
-				site_id = :site_id,
 				name = :name,
 				slug = :slug,
 				term_group = :term_group";
@@ -621,8 +590,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				// Bind parameters correctly using $term_arr.
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt->bindParam( ':term_id', $term_arr['term_id'], PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt->bindParam( ':site_id', $term_arr['site_id'], PDO::PARAM_INT );
 				$stmt->bindParam( ':name', $term_arr['name'] );
 				$stmt->bindParam( ':slug', $term_arr['slug'] );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
@@ -638,10 +605,9 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Delete a term from PostgreSQL
 		 *
 		 * @param int $term_id Term ID.
-		 * @param int $site_id Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function delete_term( $term_id, $site_id ) {
+		public function delete_term( $term_id ) {
 			$conn = $this->get_connection();
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -664,12 +630,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 
 				// Delete term.
 				$terms_table = $this->get_table_name( 'terms' );
-				$sql_term    = "DELETE FROM $terms_table WHERE term_id = :term_id AND site_id = :site_id";
+				$sql_term    = "DELETE FROM $terms_table WHERE term_id = :term_id";
 				$stmt_term   = $conn->prepare( $sql_term );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt_term->bindParam( ':term_id', $term_id, PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt_term->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				$stmt_term->execute();              // Commit transaction.
 				$conn->commit();
 
@@ -689,10 +653,9 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Delete term relationships by term_taxonomy_id from PostgreSQL
 		 *
 		 * @param int $term_taxonomy_id Term taxonomy ID.
-		 * @param int $site_id Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function delete_term_relationships_by_taxonomy_id( $term_taxonomy_id, $site_id = 1 ) {
+		public function delete_term_relationships_by_taxonomy_id( $term_taxonomy_id ) {
 			$conn = $this->get_connection();
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -701,12 +664,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 
 			try {
 				$term_relationships_table = $this->get_table_name( 'term_relationships' );
-				$sql                      = "DELETE FROM $term_relationships_table WHERE term_taxonomy_id = :tt_id AND site_id = :site_id";
+				$sql                      = "DELETE FROM $term_relationships_table WHERE term_taxonomy_id = :tt_id";
 				$stmt                     = $conn->prepare( $sql );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt->bindParam( ':tt_id', $term_taxonomy_id, PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				$stmt->execute();
 				return true;
 			} catch ( PDOException $e ) {
@@ -719,10 +680,9 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Delete term taxonomy from PostgreSQL
 		 *
 		 * @param int $term_taxonomy_id Term taxonomy ID.
-		 * @param int $site_id Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function delete_term_taxonomy( $term_taxonomy_id, $site_id = 1 ) {
+		public function delete_term_taxonomy( $term_taxonomy_id ) {
 			$conn = $this->get_connection();
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -731,12 +691,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 
 			try {
 				$term_taxonomy_table = $this->get_table_name( 'term_taxonomy' );
-				$sql                 = "DELETE FROM $term_taxonomy_table WHERE term_taxonomy_id = :tt_id AND site_id = :site_id";
+				$sql                 = "DELETE FROM $term_taxonomy_table WHERE term_taxonomy_id = :tt_id";
 				$stmt                = $conn->prepare( $sql );
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 				$stmt->bindParam( ':tt_id', $term_taxonomy_id, PDO::PARAM_INT );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				$stmt->execute();
 				return true;
 			} catch ( PDOException $e ) {
@@ -749,10 +707,9 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * Delete term from PostgreSQL if it's not used by any taxonomies
 		 *
 		 * @param int $term_id Term ID.
-		 * @param int $site_id Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function delete_term_if_unused( $term_id, $site_id = 1 ) {
+		public function delete_term_if_unused( $term_id ) {
 			$conn = $this->get_connection();
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -762,11 +719,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 			try {
 				// Check if term is still referenced by any taxonomies.
 				$term_taxonomy_table = $this->get_table_name( 'term_taxonomy' );
-				$check_sql           = "SELECT COUNT(*) FROM $term_taxonomy_table WHERE term_id = :term_id AND site_id = :site_id";
+				$check_sql           = "SELECT COUNT(*) FROM $term_taxonomy_table WHERE term_id = :term_id";
 				$check_stmt          = $conn->prepare( $check_sql );
 				// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL.
 				$check_stmt->bindParam( ':term_id', $term_id, PDO::PARAM_INT );
-				$check_stmt->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 				// phpcs:enable WordPress.DB.RestrictedClasses.mysql__PDO
 				$check_stmt->execute();
 
@@ -775,11 +731,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				// Only delete if not referenced by any taxonomies.
 				if ( 0 === (int) $count ) {
 					$terms_table = $this->get_table_name( 'terms' );
-					$delete_sql  = "DELETE FROM $terms_table WHERE term_id = :term_id AND site_id = :site_id";
+					$delete_sql  = "DELETE FROM $terms_table WHERE term_id = :term_id";
 					$delete_stmt = $conn->prepare( $delete_sql );
 					// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL.
 					$delete_stmt->bindParam( ':term_id', $term_id, PDO::PARAM_INT );
-					$delete_stmt->bindParam( ':site_id', $site_id, PDO::PARAM_INT );
 					// phpcs:enable WordPress.DB.RestrictedClasses.mysql__PDO
 					$delete_stmt->execute();
 
@@ -801,11 +756,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * @param array|int   $relationship_data Relationship data or object_id.
 		 * @param int         $term_taxonomy_id Optional term_taxonomy_id if first param is object_id.
 		 * @param int         $term_order       Optional term_order if first param is object_id.
-		 * @param int         $site_id          Site ID.
 		 * @param string|null $connection_name  Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function upsert_term_relationship( $relationship_data, $term_taxonomy_id = null, $term_order = 0, $site_id = 1, $connection_name = null ) {
+		public function upsert_term_relationship( $relationship_data, $term_taxonomy_id = null, $term_order = 0, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -873,10 +827,9 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 *
 		 * @param int    $post_id  Post ID.
 		 * @param string $taxonomy Taxonomy.
-		 * @param int    $site_id  Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function delete_term_relationships( $post_id, $taxonomy, $site_id ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Kept for backward compatibility with caller signature.
+		public function delete_term_relationships( $post_id, $taxonomy ) {
 			$conn = $this->get_connection();
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -905,11 +858,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 		 * @param string      $description Term description.
 		 * @param int         $parent_term Parent term ID.
 		 * @param int         $count Term count.
-		 * @param int         $blog_id Blog/site ID.
 		 * @param string|null $connection_name Connection name to use (optional).
 		 * @return bool Success or failure.
 		 */
-		public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $blog_id = 1, $connection_name = null ) {
+		public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name = null ) {
 			$conn = $this->get_connection( $connection_name );
 			if ( ! $conn || ! is_object( $conn ) ) {
 				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
@@ -920,11 +872,10 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				// Prepare SQL query.
 				$term_taxonomy_table = $this->get_table_name( 'term_taxonomy' );
 				$sql                 = "INSERT INTO $term_taxonomy_table (
-					term_taxonomy_id, site_id, term_id, taxonomy, description, parent, count
+					term_taxonomy_id, term_id, taxonomy, description, parent, count
 				) VALUES (
-					:term_taxonomy_id, :site_id, :term_id, :taxonomy, :description, :parent, :count
+					:term_taxonomy_id, :term_id, :taxonomy, :description, :parent, :count
 				) ON CONFLICT (term_taxonomy_id) DO UPDATE SET
-					site_id = :site_id,
 					term_id = :term_id,
 					taxonomy = :taxonomy,
 					description = :description,
@@ -936,7 +887,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 				$stmt->execute(
 					array(
 						':term_taxonomy_id' => $term_taxonomy_id,
-						':site_id'          => $blog_id,
 						':term_id'          => $term_id,
 						':taxonomy'         => $taxonomy,
 						':description'      => $description,
@@ -1045,7 +995,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 							'slug'       => $term_taxonomy->slug,
 							'term_group' => $term_taxonomy->term_group,
 						),
-						1, // blog_id.
 						$connection_name
 					);
 
@@ -1057,7 +1006,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 						$term_taxonomy->description,
 						$term_taxonomy->parent,
 						$term_taxonomy->count,
-						1, // blog_id.
 						$connection_name
 					);
 				}
@@ -1072,7 +1020,6 @@ if ( ! class_exists( 'GG_Data_DB' ) ) {
 						),
 						null, // term_taxonomy_id (not used when passing array).
 						0,    // term_order (not used when passing array).
-						1,    // site_id.
 						$connection_name
 					);
 

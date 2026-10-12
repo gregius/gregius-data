@@ -140,21 +140,20 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 * Upsert term using provider or fallback to DB
 		 *
 		 * @param object $term            Term object.
-		 * @param int    $site_id         Site ID.
 		 * @param string $connection_name Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_with_provider( $term, $site_id, $connection_name ) {
+		protected function upsert_term_with_provider( $term, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term( $term, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term( $term, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term( $term, $site_id, $connection_name );
+			return $this->db->upsert_term( $term, $connection_name );
 		}
 
 		/**
@@ -166,21 +165,20 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 * @param string $description      Description.
 		 * @param int    $parent_term      Parent term ID.
 		 * @param int    $count            Term count.
-		 * @param int    $site_id          Site ID.
 		 * @param string $connection_name  Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_taxonomy_with_provider( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name ) {
+		protected function upsert_term_taxonomy_with_provider( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term_taxonomy' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name );
+			return $this->db->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name );
 		}
 
 		/**
@@ -189,21 +187,20 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 * @param int    $object_id        Object ID (post ID).
 		 * @param int    $term_taxonomy_id Term taxonomy ID.
 		 * @param int    $term_order       Term order.
-		 * @param int    $site_id          Site ID.
 		 * @param string $connection_name  Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_relationship_with_provider( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name ) {
+		protected function upsert_term_relationship_with_provider( $object_id, $term_taxonomy_id, $term_order, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term_relationship' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name );
+			return $this->db->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $connection_name );
 		}
 
 		/**
@@ -211,10 +208,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 *
 		 * @param int    $term_id  Term ID.
 		 * @param string $taxonomy Taxonomy name.
-		 * @param int    $site_id  Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function sync_single_term( $term_id, $taxonomy, $site_id = 1 ) {
+		public function sync_single_term( $term_id, $taxonomy ) {
 			global $wpdb;
 
 			try {
@@ -247,7 +243,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 				// First, sync term.
 				$term_result = $this->upsert_term_with_provider(
 					$term,
-					$site_id,
 					$this->connection_name
 				);
 
@@ -264,7 +259,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 						$term_taxonomy->description,
 						$term_taxonomy->parent,
 						$term_taxonomy->count,
-						$site_id,
 						$this->connection_name
 					);
 
@@ -287,10 +281,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 *
 		 * @param int    $post_id  Post ID.
 		 * @param string $taxonomy Taxonomy name.
-		 * @param int    $site_id  Site ID.
 		 * @return bool Success or failure.
 		 */
-		public function sync_post_term_relationships( $post_id, $taxonomy, $site_id = 1 ) {
+		public function sync_post_term_relationships( $post_id, $taxonomy ) {
 			global $wpdb;
 
 			try {
@@ -329,7 +322,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					// Sync term.
 					$this->upsert_term_with_provider(
 						$term,
-						$site_id,
 						$this->connection_name
 					);
 
@@ -341,7 +333,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 							$rel->description,
 							$rel->parent,
 							$rel->count,
-							$site_id,
 							$this->connection_name
 						);
 				}
@@ -352,7 +343,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 						$rel->object_id,
 						$rel->term_taxonomy_id,
 						$rel->term_order,
-						$site_id,
 						$this->connection_name
 					);
 				}
@@ -369,10 +359,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		/**
 		 * Run a full synchronization of all taxonomy data
 		 *
-		 * @param int $site_id Site ID.
 		 * @return array Status report.
 		 */
-		public function full_sync( $site_id = 1 ) {
+		public function full_sync() {
 			global $wpdb;
 
 			$report = array(
@@ -400,7 +389,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 			$report['terms']['total'] = count( $terms );
 
 			foreach ( $terms as $term ) {
-				$result = $this->upsert_term_with_provider( $term, $site_id, $this->connection_name );
+				$result = $this->upsert_term_with_provider( $term, $this->connection_name );
 
 				if ( $result ) {
 					++$report['terms']['success'];
@@ -413,16 +402,15 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required to fetch all term_taxonomies from WordPress core table for full sync operation
 			$term_taxonomies                    = $wpdb->get_results( "SELECT * FROM {$wpdb->term_taxonomy}" );
 			$report['term_taxonomies']['total'] = count( $term_taxonomies );            foreach ( $term_taxonomies as $tax ) {
-				$result = $this->upsert_term_taxonomy_with_provider(
-					$tax->term_taxonomy_id,
-					$tax->term_id,
-					$tax->taxonomy,
-					$tax->description,
-					$tax->parent,
-					$tax->count,
-					$site_id,
-					$this->connection_name
-				);
+					$result = $this->upsert_term_taxonomy_with_provider(
+						$tax->term_taxonomy_id,
+						$tax->term_id,
+						$tax->taxonomy,
+						$tax->description,
+						$tax->parent,
+						$tax->count,
+						$this->connection_name
+					);
 
 				if ( $result ) {
 					++$report['term_taxonomies']['success'];
@@ -444,10 +432,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		/**
 		 * Sync terms only (for debugging individual components)
 		 *
-		 * @param int $site_id Site ID.
 		 * @return array Sync results.
 		 */
-		public function sync_terms( $site_id = 1 ) {
+		public function sync_terms() {
 			global $wpdb;
 
 			$report = array(
@@ -469,7 +456,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					continue;
 				}
 
-				$result = $this->upsert_term_with_provider( $term, $site_id, $this->connection_name );
+				$result = $this->upsert_term_with_provider( $term, $this->connection_name );
 
 				if ( $result ) {
 					++$report['success'];
@@ -486,10 +473,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		/**
 		 * Sync term taxonomies only (for debugging individual components)
 		 *
-		 * @param int $site_id Site ID.
 		 * @return array Sync results.
 		 */
-		public function sync_term_taxonomies( $site_id = 1 ) {
+		public function sync_term_taxonomies() {
 			global $wpdb;
 
 			$report = array(
@@ -517,7 +503,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					$tax->description,
 					$tax->parent,
 					$tax->count,
-					$site_id,
 					$this->connection_name
 				);
 
@@ -540,10 +525,9 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 		 * post types and statuses configured in settings. This prevents orphaned
 		 * relationships and ensures data consistency between WordPress and PostgreSQL.
 		 *
-		 * @param int $site_id Site ID.
 		 * @return array Sync results.
 		 */
-		public function sync_term_relationships( $site_id = 1 ) {
+		public function sync_term_relationships() {
 			global $wpdb;
 
 			$report = array(
@@ -589,7 +573,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					$rel->object_id,
 					$rel->term_taxonomy_id,
 					$rel->term_order,
-					$site_id,
 					$this->connection_name
 				);
 
@@ -633,7 +616,6 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 						$tax->description,
 						$tax->parent,
 						$tax->count,
-						1,
 						$this->connection_name
 					);
 
@@ -731,7 +713,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 
 				$terms_to_sync = $terms;
 				if ( ! empty( $terms_to_sync ) ) {
-					$bulk_result = $this->provider->bulk_upsert_terms( $terms_to_sync, 1, $this->connection_name );
+					$bulk_result = $this->provider->bulk_upsert_terms( $terms_to_sync, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
 						throw new Exception( 'Bulk term upsert failed: ' . esc_html( $error_msg ) );
@@ -763,7 +745,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
 					if ( ! empty( $term_taxonomies ) ) {
-						$tax_bulk_result = $this->provider->bulk_upsert_term_taxonomies( $term_taxonomies, 1, $this->connection_name );
+						$tax_bulk_result = $this->provider->bulk_upsert_term_taxonomies( $term_taxonomies, $this->connection_name );
 						if ( empty( $tax_bulk_result['success'] ) ) {
 							$error_msg = isset( $tax_bulk_result['error'] ) ? $tax_bulk_result['error'] : 'Unknown error';
 							throw new Exception( 'Bulk term taxonomy upsert failed: ' . esc_html( $error_msg ) );
@@ -857,7 +839,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 				}
 
 				if ( ! empty( $taxonomies_to_sync ) ) {
-					$bulk_result = $this->provider->bulk_upsert_term_taxonomies( $taxonomies_to_sync, 1, $this->connection_name );
+					$bulk_result = $this->provider->bulk_upsert_term_taxonomies( $taxonomies_to_sync, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
 						throw new Exception( 'Bulk term taxonomy upsert failed: ' . esc_html( $error_msg ) );
@@ -975,7 +957,7 @@ if ( ! class_exists( 'GG_Data_Taxonomy_Sync' ) ) {
 				}
 
 				if ( ! empty( $relationships_to_sync ) ) {
-					$bulk_result = $this->provider->bulk_upsert_term_relationships( $relationships_to_sync, 1, $this->connection_name );
+					$bulk_result = $this->provider->bulk_upsert_term_relationships( $relationships_to_sync, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
 						throw new Exception( 'Bulk term relationship upsert failed: ' . esc_html( $error_msg ) );

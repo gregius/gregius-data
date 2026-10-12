@@ -86,7 +86,6 @@ if ( ! class_exists( 'GG_Data_Postmeta_Sync' ) ) {
 		 *
 		 * @param int $batch_size Records per batch (default: 5000).
 		 * @param int $offset     Starting offset for pagination (default: 0).
-		 * @param int $site_id    Site ID for multisite (default: 1).
 		 * @return array {
 		 *     Batch sync results.
 		 *
@@ -98,7 +97,7 @@ if ( ! class_exists( 'GG_Data_Postmeta_Sync' ) ) {
 		 *     @type int    $total     Total postmeta records matching criteria.
 		 * }
 		 */
-		public function batch_sync_postmeta( $batch_size = 5000, $offset = 0, $site_id = 1 ) {
+		public function batch_sync_postmeta( $batch_size = 5000, $offset = 0 ) {
 			global $wpdb;
 
 			$result = array(
@@ -205,16 +204,10 @@ if ( ! class_exists( 'GG_Data_Postmeta_Sync' ) ) {
 						 * No WHERE meta_key or WHERE meta_value clauses are used in the actual database query.
 						 */
 						$sync_result = $this->db->upsert_post_meta(
-							array(
-								'meta_id'    => $meta->meta_id,
-								'post_id'    => $meta->post_id,
-								'meta_key'   => $meta->meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Safe: Reading column from JOIN-filtered results.
-								'meta_value' => $meta->meta_value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Safe: Reading column from JOIN-filtered results.
-							),
-							$site_id,
-							null,
-							null,
-							1,
+							$meta->meta_id,
+							$meta->post_id,
+							$meta->meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Safe: Reading column from JOIN-filtered results.
+							$meta->meta_value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Safe: Reading column from JOIN-filtered results.
 							$this->connection_name
 						);                      if ( false !== $sync_result ) {
 								++$result['processed'];

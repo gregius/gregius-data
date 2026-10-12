@@ -82,6 +82,21 @@ Primary entrypoints:
 - `search_native_orchestrate(...)` (native search with parallel RRF)
 - `search_rag_orchestrate(...)` (RAG-oriented orchestration path with supplementary metadata filter)
 
+The schema file is **idempotent and create-only**: it provisions the full schema on
+a brand-new connection via `CREATE [OR REPLACE]` / `CREATE ... IF NOT EXISTS`. The
+only `DROP` statements are the trigger-function `CASCADE` (PostgreSQL has no
+`CREATE OR REPLACE TRIGGER`) and the `DROP POLICY IF EXISTS` pairs (RLS policies
+have no `CREATE OR REPLACE` form). There are no migration/overload `DROP`s — a
+pre-1.0 connection that predates a signature or return-type change must drop the
+affected functions once, or be recreated from scratch.
+
+> **Schema/registry lockstep:** when you add or change an embedding model, update
+> both the model registry (`GG_Data_Model_Registry`) and this `postgrest-schema.sql`
+> file in the same change. Each embedding model has a dedicated vector table here
+> whose DDL must stay byte-for-byte identical to what the PHP schema manager emits
+> (`GG_Data_Schema_Manager::create_openai_embedding_tables()` and
+> `create_hashingtf_embedding_table()`).
+
 ### `search_native_orchestrate`
 
 ```sql

@@ -262,7 +262,6 @@ class GG_Data_Retry_Queue {
 							$item['entity_id'],
 							$item['operation_data']['meta_key'],
 							$item['operation_data']['meta_value'],
-							1, // blog_id.
 							null // connection_name - will use default connection logic.
 						);
 					}
@@ -270,18 +269,14 @@ class GG_Data_Retry_Queue {
 
 				case 'delete_post':
 					// Retry post deletion.
-					if ( isset( $item['operation_data']['site_id'] ) ) {
-						return $db->delete_post( $item['entity_id'], $item['operation_data']['site_id'], $item['connection_name'] );
-					}
-					return false;
+					return $db->delete_post( $item['entity_id'], $item['connection_name'] );
 
 				case 'delete_meta':
 					// Retry meta deletion.
-					if ( isset( $item['operation_data']['meta_key'], $item['operation_data']['site_id'] ) ) {
+					if ( isset( $item['operation_data']['meta_key'] ) ) {
 						return $db->delete_post_meta(
 							$item['entity_id'],
 							$item['operation_data']['meta_key'],
-							$item['operation_data']['site_id'],
 							null // connection_name - will use default connection logic.
 						);
 					}

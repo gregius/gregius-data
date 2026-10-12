@@ -288,7 +288,6 @@ class GG_Data_CLI_Sync {
 	 */
 	private function sync_post_type( $post_type, $connection, $batch_size, $dry_run ) {
 		$post_sync = new GG_Data_Post_Sync( $connection );
-		$site_id   = get_current_blog_id();
 
 		// Get total count.
 		$total = $this->get_post_count( $post_type );
@@ -327,7 +326,7 @@ class GG_Data_CLI_Sync {
 
 		for ( $batch = 0; $batch < $batches; $batch++ ) {
 			$offset = $batch * $batch_size;
-			$result = $post_sync->batch_sync_post_type( $post_type, $batch_size, $offset, $site_id );
+			$result = $post_sync->batch_sync_post_type( $post_type, $batch_size, $offset );
 
 			if ( isset( $result['processed'] ) ) {
 				$processed += $result['processed'];

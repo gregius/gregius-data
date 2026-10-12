@@ -48,11 +48,10 @@ class GG_Data_Sync_Service {
 	 * @param string $post_type  Post type slug.
 	 * @param int    $batch_size Batch size.
 	 * @param int    $offset     Offset.
-	 * @param int    $site_id    Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function batch_sync_post_type( $post_type, $batch_size, $offset, $site_id = 1 ) {
+	public function batch_sync_post_type( $post_type, $batch_size, $offset ) {
 		$this->logger->log(
 			sprintf( 'Sync Service: Starting batch sync for post type "%s"', $post_type ),
 			'info',
@@ -62,13 +61,12 @@ class GG_Data_Sync_Service {
 				'post_type'  => $post_type,
 				'batch_size' => $batch_size,
 				'offset'     => $offset,
-				'site_id'    => $site_id,
 			)
 		);
 
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-post-sync.php';
 		$syncer = new GG_Data_Post_Sync( $this->connection_name );
-		$result = $syncer->batch_sync_post_type( $post_type, $batch_size, $offset, $site_id );
+		$result = $syncer->batch_sync_post_type( $post_type, $batch_size, $offset );
 
 		$this->logger->log(
 			sprintf(
@@ -96,11 +94,10 @@ class GG_Data_Sync_Service {
 	 *
 	 * @param int $batch_size Batch size.
 	 * @param int $offset     Offset.
-	 * @param int $site_id    Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function batch_sync_postmeta( $batch_size, $offset, $site_id = 1 ) {
+	public function batch_sync_postmeta( $batch_size, $offset ) {
 		$this->logger->log(
 			'Sync Service: Starting batch sync for postmeta',
 			'info',
@@ -109,13 +106,12 @@ class GG_Data_Sync_Service {
 			array(
 				'batch_size' => $batch_size,
 				'offset'     => $offset,
-				'site_id'    => $site_id,
 			)
 		);
 
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-postmeta-sync.php';
 		$syncer = new GG_Data_Postmeta_Sync( $this->connection_name );
-		$result = $syncer->batch_sync_postmeta( $batch_size, $offset, $site_id );
+		$result = $syncer->batch_sync_postmeta( $batch_size, $offset );
 
 		$this->logger->log(
 			sprintf(
@@ -139,11 +135,10 @@ class GG_Data_Sync_Service {
 	 * Sync postmeta bulk (Legacy)
 	 *
 	 * @param int $batch_size Batch size.
-	 * @param int $site_id    Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function sync_postmeta_bulk( $batch_size, $site_id = 1 ) {
+	public function sync_postmeta_bulk( $batch_size ) {
 		$this->logger->log(
 			'Sync Service: Starting bulk sync for postmeta',
 			'info',
@@ -151,13 +146,12 @@ class GG_Data_Sync_Service {
 			$this->connection_name,
 			array(
 				'batch_size' => $batch_size,
-				'site_id'    => $site_id,
 			)
 		);
 
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-postmeta-sync.php';
 		$syncer = new GG_Data_Postmeta_Sync( $this->connection_name );
-		$result = $syncer->sync_postmeta_bulk( $batch_size, $site_id );
+		$result = $syncer->sync_postmeta_bulk( $batch_size );
 
 		$this->logger->log(
 			sprintf(
@@ -306,22 +300,20 @@ class GG_Data_Sync_Service {
 	/**
 	 * Full taxonomy sync (Legacy)
 	 *
-	 * @param int $site_id Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function sync_taxonomy_full( $site_id = 1 ) {
+	public function sync_taxonomy_full() {
 		$this->logger->log(
 			'Sync Service: Starting full taxonomy sync',
 			'info',
 			'sync',
-			$this->connection_name,
-			array( 'site_id' => $site_id )
+			$this->connection_name
 		);
 
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-taxonomy-sync.php';
 		$syncer = new GG_Data_Taxonomy_Sync( $this->connection_name );
-		$result = $syncer->full_sync( $site_id );
+		$result = $syncer->full_sync();
 
 		$this->logger->log(
 			'Sync Service: Completed full taxonomy sync',
@@ -341,40 +333,37 @@ class GG_Data_Sync_Service {
 	/**
 	 * Sync terms only (Legacy/Debug)
 	 *
-	 * @param int $site_id Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function sync_taxonomy_terms_only( $site_id = 1 ) {
+	public function sync_taxonomy_terms_only() {
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-taxonomy-sync.php';
 		$syncer = new GG_Data_Taxonomy_Sync( $this->connection_name );
-		return $syncer->sync_terms( $site_id );
+		return $syncer->sync_terms();
 	}
 
 	/**
 	 * Sync term taxonomies only (Legacy/Debug)
 	 *
-	 * @param int $site_id Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function sync_taxonomy_taxonomies_only( $site_id = 1 ) {
+	public function sync_taxonomy_taxonomies_only() {
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-taxonomy-sync.php';
 		$syncer = new GG_Data_Taxonomy_Sync( $this->connection_name );
-		return $syncer->sync_term_taxonomies( $site_id );
+		return $syncer->sync_term_taxonomies();
 	}
 
 	/**
 	 * Sync term relationships only (Legacy/Debug)
 	 *
-	 * @param int $site_id Site ID.
 	 * @return array Result array.
 	 * @throws Exception On error.
 	 */
-	public function sync_taxonomy_relationships_only( $site_id = 1 ) {
+	public function sync_taxonomy_relationships_only() {
 		require_once GG_DATA_PLUGIN_DIR . 'includes/batch/class-gg-data-taxonomy-sync.php';
 		$syncer = new GG_Data_Taxonomy_Sync( $this->connection_name );
-		return $syncer->sync_term_relationships( $site_id );
+		return $syncer->sync_term_relationships();
 	}
 
 	/**

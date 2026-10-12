@@ -191,12 +191,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'default'     => 'default',
 							'required'    => false,
 						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
-							'required'    => false,
-						),
 					),
 				),
 			)
@@ -216,12 +210,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'description' => __( 'Connection name to sync to', 'gregius-data' ),
 							'type'        => 'string',
 							'default'     => 'default',
-							'required'    => false,
-						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
 							'required'    => false,
 						),
 					),
@@ -245,12 +233,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'default'     => 'default',
 							'required'    => false,
 						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
-							'required'    => false,
-						),
 					),
 				),
 			)
@@ -270,12 +252,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'description' => __( 'Connection name to sync to', 'gregius-data' ),
 							'type'        => 'string',
 							'default'     => 'default',
-							'required'    => false,
-						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
 							'required'    => false,
 						),
 					),
@@ -546,12 +522,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'default'     => 0,
 							'required'    => false,
 						),
-						'site_id'         => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
-							'required'    => false,
-						),
 					),
 				),
 			)
@@ -571,12 +541,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'description' => __( 'Connection name to sync to', 'gregius-data' ),
 							'type'        => 'string',
 							'default'     => 'default',
-							'required'    => false,
-						),
-						'site_id'    => array(
-							'description' => __( 'Site ID for multisite installations', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
 							'required'    => false,
 						),
 						'batch_size' => array(
@@ -621,12 +585,6 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 							'description' => __( 'Offset for pagination', 'gregius-data' ),
 							'type'        => 'integer',
 							'default'     => 0,
-							'required'    => false,
-						),
-						'site_id'         => array(
-							'description' => __( 'Site ID for multisite', 'gregius-data' ),
-							'type'        => 'integer',
-							'default'     => 1,
 							'required'    => false,
 						),
 					),
@@ -1466,10 +1424,9 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 	public function sync_taxonomy_bulk( $request ) {
 		try {
 			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
 
 			$service     = new GG_Data_Sync_Service( $connection_name );
-			$sync_report = $service->sync_taxonomy_full( $site_id );
+			$sync_report = $service->sync_taxonomy_full();
 
 			// Add timestamp.
 			$sync_report['timestamp']  = current_time( 'mysql' );
@@ -1565,10 +1522,9 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 	public function sync_taxonomy_terms( $request ) {
 		try {
 			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
 
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$results = $service->sync_taxonomy_terms_only( $site_id );
+			$results = $service->sync_taxonomy_terms_only();
 
 			return rest_ensure_response(
 				array(
@@ -1598,10 +1554,9 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 	public function sync_taxonomy_taxonomies( $request ) {
 		try {
 			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
 
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$results = $service->sync_taxonomy_taxonomies_only( $site_id );
+			$results = $service->sync_taxonomy_taxonomies_only();
 
 			return rest_ensure_response(
 				array(
@@ -1631,10 +1586,9 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 	public function sync_taxonomy_relationships( $request ) {
 		try {
 			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
 
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$results = $service->sync_taxonomy_relationships_only( $site_id );
+			$results = $service->sync_taxonomy_relationships_only();
 
 			return rest_ensure_response(
 				array(
@@ -1665,11 +1619,10 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 		$connection_name = $request->get_param( 'connection_name' ) ?? 'default';
 		$batch_size      = $request->get_param( 'batch_size' ) ?? 5000;
 		$offset          = $request->get_param( 'offset' ) ?? 0;
-		$site_id         = $request->get_param( 'site_id' ) ?? 1;
 
 		try {
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$result  = $service->batch_sync_postmeta( $batch_size, $offset, $site_id );
+			$result  = $service->batch_sync_postmeta( $batch_size, $offset );
 
 			if ( ! $result['success'] ) {
 				return new WP_REST_Response(
@@ -1714,11 +1667,10 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 		$connection_name = $request->get_param( 'connection_name' ) ?? 'default';
 		$batch_size      = $request->get_param( 'batch_size' ) ?? 100;
 		$offset          = $request->get_param( 'offset' ) ?? 0;
-		$site_id         = $request->get_param( 'site_id' ) ?? 1;
 
 		try {
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$result  = $service->batch_sync_post_type( $post_type, $batch_size, $offset, $site_id );
+			$result  = $service->batch_sync_post_type( $post_type, $batch_size, $offset );
 
 			if ( ! $result['success'] ) {
 				return new WP_REST_Response(
@@ -1767,11 +1719,10 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 	public function sync_postmeta_bulk( $request ) {
 		try {
 			$connection_name = $request->get_param( 'connection' );
-			$site_id         = $request->get_param( 'site_id' );
 			$batch_size      = $request->get_param( 'batch_size' );
 
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$results = $service->sync_postmeta_bulk( $batch_size, $site_id );
+			$results = $service->sync_postmeta_bulk( $batch_size );
 
 			return rest_ensure_response(
 				array(
@@ -1874,7 +1825,7 @@ class GG_Data_REST_Sync_Controller extends WP_REST_Controller {
 			$cleared = GG_Data_Content_Source::reset_extraction_cache( $connection_name );
 
 			$service = new GG_Data_Sync_Service( $connection_name );
-			$result  = $service->batch_sync_post_type( 'attachment', 100, 0, 1 );
+			$result  = $service->batch_sync_post_type( 'attachment', 100, 0 );
 
 			return rest_ensure_response(
 				array(

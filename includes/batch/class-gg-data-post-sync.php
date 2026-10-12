@@ -147,21 +147,20 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * Upsert post using provider or fallback to DB
 		 *
 		 * @param object $post            Post object.
-		 * @param int    $site_id         Site ID.
 		 * @param string $connection_name Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_post_with_provider( $post, $site_id, $connection_name ) {
+		protected function upsert_post_with_provider( $post, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_post' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_post( $post, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_post( $post, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_post( $post, $site_id, $connection_name );
+			return $this->db->upsert_post( $post, $connection_name );
 		}
 
 		/**
@@ -171,42 +170,40 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * @param int    $post_id         Post ID.
 		 * @param string $meta_key        Meta key.
 		 * @param mixed  $meta_value      Meta value.
-		 * @param int    $site_id         Site ID.
 		 * @param string $connection_name Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_post_meta_with_provider( $meta_id, $post_id, $meta_key, $meta_value, $site_id, $connection_name ) {
+		protected function upsert_post_meta_with_provider( $meta_id, $post_id, $meta_key, $meta_value, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_post_meta' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $site_id, $connection_name );
+			return $this->db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
 		}
 
 		/**
 		 * Upsert term using provider or fallback to DB
 		 *
 		 * @param object $term            Term object.
-		 * @param int    $site_id         Site ID.
 		 * @param string $connection_name Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_with_provider( $term, $site_id, $connection_name ) {
+		protected function upsert_term_with_provider( $term, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term( $term, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term( $term, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term( $term, $site_id, $connection_name );
+			return $this->db->upsert_term( $term, $connection_name );
 		}
 
 		/**
@@ -218,21 +215,20 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * @param string $description      Description.
 		 * @param int    $parent_term      Parent term ID.
 		 * @param int    $count            Term count.
-		 * @param int    $site_id          Site ID.
 		 * @param string $connection_name  Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_taxonomy_with_provider( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name ) {
+		protected function upsert_term_taxonomy_with_provider( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term_taxonomy' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $site_id, $connection_name );
+			return $this->db->upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description, $parent_term, $count, $connection_name );
 		}
 
 		/**
@@ -241,21 +237,20 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * @param int    $object_id        Object ID (post ID).
 		 * @param int    $term_taxonomy_id Term taxonomy ID.
 		 * @param int    $term_order       Term order.
-		 * @param int    $site_id          Site ID.
 		 * @param string $connection_name  Connection name.
 		 * @return bool Success status.
 		 */
-		protected function upsert_term_relationship_with_provider( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name ) {
+		protected function upsert_term_relationship_with_provider( $object_id, $term_taxonomy_id, $term_order, $connection_name ) {
 			if ( $this->provider && method_exists( $this->provider, 'upsert_term_relationship' ) ) {
 				$provider_connected = ! method_exists( $this->provider, 'is_connected' ) || $this->provider->is_connected();
 				if ( $provider_connected ) {
-					$provider_result = $this->provider->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name );
+					$provider_result = $this->provider->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $connection_name );
 					if ( $provider_result ) {
 						return true;
 					}
 				}
 			}
-			return $this->db->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $site_id, $connection_name );
+			return $this->db->upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order, $connection_name );
 		}
 
 		/**
@@ -298,7 +293,6 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * @param string $post_type  Post type slug (post, page, product, etc.).
 		 * @param int    $batch_size Number of posts to process per batch (default: 100).
 		 * @param int    $offset     Starting offset for pagination (default: 0).
-		 * @param int    $site_id    Site ID for multisite (default: 1).
 		 * @throws Exception When provider contract validation or bulk sync operations fail.
 		 * @return array {
 		 *     Batch sync results.
@@ -311,7 +305,7 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 *     @type int    $total     Total posts matching criteria.
 		 * }
 		 */
-		public function batch_sync_post_type( $post_type, $batch_size = 100, $offset = 0, $site_id = 1 ) {
+		public function batch_sync_post_type( $post_type, $batch_size = 100, $offset = 0 ) {
 			global $wpdb;
 
 			/**
@@ -481,7 +475,7 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 				}
 
 				if ( ! empty( $posts_to_sync ) ) {
-					$bulk_result = $this->provider->bulk_upsert_posts( $posts_to_sync, $site_id, $this->connection_name );
+					$bulk_result = $this->provider->bulk_upsert_posts( $posts_to_sync, $this->connection_name );
 					if ( empty( $bulk_result['success'] ) ) {
 						$error_msg = isset( $bulk_result['error'] ) ? $bulk_result['error'] : 'Unknown error';
 						throw new Exception( 'Bulk post upsert failed: ' . $error_msg );
@@ -514,7 +508,7 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 					if ( ! empty( $all_postmeta ) ) {
-						$meta_result = $this->provider->bulk_upsert_postmeta( $all_postmeta, $site_id, $this->connection_name );
+						$meta_result = $this->provider->bulk_upsert_postmeta( $all_postmeta, $this->connection_name );
 						if ( empty( $meta_result['success'] ) ) {
 							$error_msg = isset( $meta_result['error'] ) ? $meta_result['error'] : 'Unknown error';
 							throw new Exception( 'Bulk postmeta upsert failed: ' . $error_msg );
@@ -534,7 +528,7 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 					if ( ! empty( $all_relationships ) ) {
-						$rel_result = $this->provider->bulk_upsert_term_relationships( $all_relationships, $site_id, $this->connection_name );
+						$rel_result = $this->provider->bulk_upsert_term_relationships( $all_relationships, $this->connection_name );
 						if ( empty( $rel_result['success'] ) ) {
 							$error_msg = isset( $rel_result['error'] ) ? $rel_result['error'] : 'Unknown error';
 							throw new Exception( 'Bulk term relationships upsert failed: ' . $error_msg );
@@ -596,10 +590,9 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * Sync all postmeta for a specific post
 		 *
 		 * @param int $post_id Post ID.
-		 * @param int $site_id Site ID for multisite.
 		 * @return int Number of postmeta synced.
 		 */
-		private function sync_postmeta_for_post( $post_id, $site_id = 1 ) {
+		private function sync_postmeta_for_post( $post_id ) {
 			global $wpdb;
 
 			// Get all postmeta from WordPress (source of truth).
@@ -626,7 +619,6 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 						$meta->post_id,
 						$meta->meta_key,
 						$meta->meta_value,
-						$site_id,
 						$this->connection_name
 					);
 
@@ -687,10 +679,9 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 		 * Sync term relationships for a specific post
 		 *
 		 * @param int $post_id Post ID.
-		 * @param int $site_id Site ID for multisite.
 		 * @return int Number of relationships synced.
 		 */
-		private function sync_term_relationships( $post_id, $site_id = 1 ) {
+		private function sync_term_relationships( $post_id ) {
 			global $wpdb;
 
 			// Get all term relationships for this post from WordPress.
@@ -724,7 +715,6 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 							// Sync term first (idempotent).
 							$term_result = $this->upsert_term_with_provider(
 								$term_data,
-								$site_id,
 								$this->connection_name
 							);
 
@@ -737,7 +727,6 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 								$term_data->description,
 								$term_data->parent,
 								$term_data->count,
-								$site_id,
 								$this->connection_name
 							);
 
@@ -747,7 +736,6 @@ if ( ! class_exists( 'GG_Data_Post_Sync' ) ) {
 									$rel->object_id,
 									$rel->term_taxonomy_id,
 									$rel->term_order,
-									$site_id,
 									$this->connection_name
 								);
 

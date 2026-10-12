@@ -297,9 +297,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 		}
 
 		try {
-			// Get blog ID for multisite support.
-			$blog_id = get_current_blog_id();
-
 			// Convert WP_Post object to array if needed.
 			$post_arr = array();
 			if ( is_object( $post_data ) ) {
@@ -318,13 +315,9 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 					'post_modified_gmt' => isset( $post_data->post_modified_gmt ) ? $post_data->post_modified_gmt : '',
 					'post_type'         => isset( $post_data->post_type ) ? $post_data->post_type : '',
 					'guid'              => isset( $post_data->guid ) ? $post_data->guid : '',
-					'site_id'           => $blog_id,
 				);
 			} elseif ( is_array( $post_data ) ) {
 				$post_arr = $post_data;
-				if ( ! isset( $post_arr['site_id'] ) ) {
-					$post_arr['site_id'] = $blog_id;
-				}
 			} else {
 				return array(
 					'success' => false,
@@ -374,7 +367,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 			// Build base columns (always present in v1.0.0).
 			$columns = array(
 				'id',
-				'site_id',
 				'post_author',
 				'post_date',
 				'post_date_gmt',
@@ -393,7 +385,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 			// Build parameter map for base columns.
 			$params = array(
 				':id'                => $post_arr['ID'],
-				':site_id'           => $post_arr['site_id'],
 				':post_author'       => $post_arr['post_author'],
 				':post_date'         => $post_arr['post_date'],
 				':post_date_gmt'     => $post_arr['post_date_gmt'],
@@ -483,8 +474,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 		}
 
 		try {
-			$site_id = get_current_blog_id();
-
 			// Begin transaction.
 			$this->conn->beginTransaction();
 
@@ -496,12 +485,11 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 
 			// Delete vector embeddings.
 			$vector_table = $this->get_table_name( 'vector_store' );
-			$sql_vector   = "DELETE FROM {$vector_table} WHERE post_id = :post_id AND site_id = :site_id";
+			$sql_vector   = "DELETE FROM {$vector_table} WHERE post_id = :post_id";
 			$stmt_vector  = $this->conn->prepare( $sql_vector );
 			$stmt_vector->execute(
 				array(
 					':post_id' => $post_id,
-					':site_id' => $site_id,
 				)
 			);
 
@@ -513,12 +501,11 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 
 			// Delete post.
 			$posts_table = $this->get_table_name( 'posts' );
-			$sql_post    = "DELETE FROM {$posts_table} WHERE id = :post_id AND site_id = :site_id";
+			$sql_post    = "DELETE FROM {$posts_table} WHERE id = :post_id";
 			$stmt_post   = $this->conn->prepare( $sql_post );
 			$stmt_post->execute(
 				array(
 					':post_id' => $post_id,
-					':site_id' => $site_id,
 				)
 			);
 
@@ -895,11 +882,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Upsert term (GG_Data_DB compatibility).
 	 *
 	 * @param object $term            Term object from WordPress.
-	 * @param int    $site_id         Site ID (unused for wp_terms).
 	 * @param string $connection_name Connection name.
 	 * @return bool Success status.
 	 */
-	public function upsert_term( $term, $site_id = 1, $connection_name = null ) {
+	public function upsert_term( $term, $connection_name = null ) {
 		if ( ! $this->conn || ! is_object( $term ) || ! isset( $term->term_id ) ) {
 			return false;
 		}
@@ -931,11 +917,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert terms (batch operation).
 	 *
 	 * @param array  $terms           Array of term objects.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_terms( $terms, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_terms( $terms, $connection_name = null ) {
 		if ( empty( $terms ) ) {
 			return array(
 				'success' => true,
@@ -946,7 +931,7 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 
 		$count = 0;
 		foreach ( $terms as $term ) {
-			if ( $this->upsert_term( $term, $site_id, $connection_name ) ) {
+			if ( $this->upsert_term( $term, $connection_name ) ) {
 				++$count;
 			}
 		}
@@ -961,11 +946,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert term taxonomies (batch operation).
 	 *
 	 * @param array  $taxonomies      Array of taxonomy rows.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_term_taxonomies( $taxonomies, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_term_taxonomies( $taxonomies, $connection_name = null ) {
 		if ( empty( $taxonomies ) ) {
 			return array(
 				'success' => true,
@@ -992,7 +976,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 				isset( $taxonomy_row['description'] ) ? (string) $taxonomy_row['description'] : '',
 				isset( $taxonomy_row['parent'] ) ? (int) $taxonomy_row['parent'] : 0,
 				isset( $taxonomy_row['count'] ) ? (int) $taxonomy_row['count'] : 0,
-				$site_id,
 				$connection_name
 			);
 
@@ -1019,11 +1002,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * @param string $description      Description.
 	 * @param int    $parent_term      Parent term.
 	 * @param int    $count            Term count.
-	 * @param int    $site_id          Site ID.
 	 * @param string $connection_name  Connection name.
 	 * @return bool Success status.
 	 */
-	public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description = '', $parent_term = 0, $count = 0, $site_id = 1, $connection_name = null ) {
+	public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description = '', $parent_term = 0, $count = 0, $connection_name = null ) {
 		if ( ! $this->conn ) {
 			return false;
 		}
@@ -1033,15 +1015,14 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 			return false;
 		}
 
-		$sql = "INSERT INTO {$table} (term_taxonomy_id, term_id, taxonomy, description, parent, count, site_id)
-			VALUES (:term_taxonomy_id, :term_id, :taxonomy, :description, :parent, :count, :site_id)
+		$sql = "INSERT INTO {$table} (term_taxonomy_id, term_id, taxonomy, description, parent, count)
+			VALUES (:term_taxonomy_id, :term_id, :taxonomy, :description, :parent, :count)
 			ON CONFLICT (term_taxonomy_id) DO UPDATE SET
 				term_id = EXCLUDED.term_id,
 				taxonomy = EXCLUDED.taxonomy,
 				description = EXCLUDED.description,
 				parent = EXCLUDED.parent,
-				count = EXCLUDED.count,
-				site_id = EXCLUDED.site_id";
+				count = EXCLUDED.count";
 
 		$stmt = $this->conn->prepare( $sql );
 		return (bool) $stmt->execute(
@@ -1052,7 +1033,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 				':description'      => (string) $description,
 				':parent'           => (int) $parent_term,
 				':count'            => (int) $count,
-				':site_id'          => (int) $site_id,
 			)
 		);
 	}
@@ -1061,11 +1041,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert term relationships (batch operation).
 	 *
 	 * @param array  $relationships   Array of relationship rows.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_term_relationships( $relationships, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_term_relationships( $relationships, $connection_name = null ) {
 		if ( empty( $relationships ) ) {
 			return array(
 				'success' => true,
@@ -1089,7 +1068,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 				isset( $relationship['object_id'] ) ? (int) $relationship['object_id'] : 0,
 				isset( $relationship['term_taxonomy_id'] ) ? (int) $relationship['term_taxonomy_id'] : 0,
 				isset( $relationship['term_order'] ) ? (int) $relationship['term_order'] : 0,
-				$site_id,
 				$connection_name
 			);
 
@@ -1111,11 +1089,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert posts.
 	 *
 	 * @param array  $posts           Array of post objects.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_posts( $posts, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_posts( $posts, $connection_name = null ) {
 		if ( empty( $posts ) ) {
 			return array(
 				'success' => true,
@@ -1126,7 +1103,7 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 
 		$count = 0;
 		foreach ( $posts as $post ) {
-			if ( $this->upsert_post( $post, $site_id, $connection_name ) ) {
+			if ( $this->upsert_post( $post, $connection_name ) ) {
 				++$count;
 			}
 		}
@@ -1141,11 +1118,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert post meta.
 	 *
 	 * @param array  $meta_records    Array of meta rows.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_postmeta( $meta_records, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_postmeta( $meta_records, $connection_name = null ) {
 		if ( empty( $meta_records ) ) {
 			return array(
 				'success' => true,
@@ -1162,7 +1138,7 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 			$meta_key   = isset( $record->meta_key ) ? (string) $record->meta_key : ( isset( $record['meta_key'] ) ? (string) $record['meta_key'] : '' );
 			$meta_value = isset( $record->meta_value ) ? $record->meta_value : ( isset( $record['meta_value'] ) ? $record['meta_value'] : '' );
 
-			if ( $this->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $site_id, $connection_name ) ) {
+			if ( $this->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name ) ) {
 				++$count;
 			} else {
 				$last_meta_error = ! empty( $this->last_error ) ? $this->last_error : 'Unknown provider error';
@@ -1184,11 +1160,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * @param int    $object_id        Object ID.
 	 * @param int    $term_taxonomy_id Term taxonomy ID.
 	 * @param int    $term_order       Term order.
-	 * @param int    $site_id          Site ID.
 	 * @param string $connection_name  Connection name.
 	 * @return bool Success status.
 	 */
-	public function upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order = 0, $site_id = 1, $connection_name = null ) {
+	public function upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order = 0, $connection_name = null ) {
 		if ( ! $this->conn ) {
 			$this->last_error = 'No active database connection';
 			return false;
@@ -1226,11 +1201,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * Upsert post (GG_Data_DB compatibility).
 	 *
 	 * @param object $post            Post object.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return bool Success status.
 	 */
-	public function upsert_post( $post, $site_id = 1, $connection_name = null ) {
+	public function upsert_post( $post, $connection_name = null ) {
 		if ( ! is_object( $post ) || ! isset( $post->ID ) ) {
 			return false;
 		}
@@ -1249,7 +1223,6 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 			'post_modified_gmt' => isset( $post->post_modified_gmt ) ? $post->post_modified_gmt : '',
 			'post_type'         => isset( $post->post_type ) ? $post->post_type : '',
 			'guid'              => isset( $post->guid ) ? $post->guid : '',
-			'site_id'           => $site_id,
 		);
 
 		$result = $this->sync_post( (int) $post->ID, $post_data );
@@ -1263,11 +1236,10 @@ class GG_Data_PostgreSQL_Provider implements GG_Data_DB_Provider {
 	 * @param int    $post_id         Post ID.
 	 * @param string $meta_key        Meta key.
 	 * @param mixed  $meta_value      Meta value.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return bool Success status.
 	 */
-	public function upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $site_id = 1, $connection_name = null ) {
+	public function upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name = null ) {
 		if ( ! $this->conn ) {
 			$this->last_error = 'No active database connection';
 			return false;

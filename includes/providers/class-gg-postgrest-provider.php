@@ -754,11 +754,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Upsert term (for GG_Data_DB compatibility)
 	 *
 	 * @param object $term            Term object from WordPress.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name (unused for HTTP).
 	 * @return bool Success status.
 	 */
-	public function upsert_term( $term, $site_id = 1, $connection_name = null ) {
+	public function upsert_term( $term, $connection_name = null ) {
 		$url = trailingslashit( $this->config['project_url'] ) . 'rest/v1/wp_terms';
 
 		$data = array(
@@ -802,11 +801,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert terms (batch operation)
 	 *
 	 * @param array  $terms           Array of term objects.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and details.
 	 */
-	public function bulk_upsert_terms( $terms, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_terms( $terms, $connection_name = null ) {
 		if ( empty( $terms ) ) {
 			return array(
 				'success' => true,
@@ -871,11 +869,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert term taxonomies (batch operation)
 	 *
 	 * @param array  $taxonomies      Array of taxonomy data arrays.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and details.
 	 */
-	public function bulk_upsert_term_taxonomies( $taxonomies, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_term_taxonomies( $taxonomies, $connection_name = null ) {
 		if ( empty( $taxonomies ) ) {
 			return array(
 				'success' => true,
@@ -934,11 +931,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * @param string $description      Description.
 	 * @param int    $parent_term_id   Parent term ID.
 	 * @param int    $count            Term count.
-	 * @param int    $site_id          Site ID.
 	 * @param string $connection_name  Connection name (unused for HTTP).
 	 * @return bool Success status.
 	 */
-	public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description = '', $parent_term_id = 0, $count = 0, $site_id = 1, $connection_name = null ) {
+	public function upsert_term_taxonomy( $term_taxonomy_id, $term_id, $taxonomy, $description = '', $parent_term_id = 0, $count = 0, $connection_name = null ) {
 		$url = trailingslashit( $this->config['project_url'] ) . 'rest/v1/wp_term_taxonomy';
 
 		$data = array(
@@ -977,11 +973,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert term relationships (batch operation)
 	 *
 	 * @param array  $relationships   Array of relationship data arrays.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name.
 	 * @return array Result with success status and details.
 	 */
-	public function bulk_upsert_term_relationships( $relationships, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_term_relationships( $relationships, $connection_name = null ) {
 		if ( empty( $relationships ) ) {
 			return array(
 				'success' => true,
@@ -1035,11 +1030,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert posts
 	 *
 	 * @param array  $posts           Array of post objects.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name (unused for HTTP).
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_posts( $posts, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_posts( $posts, $connection_name = null ) {
 		if ( empty( $this->config ) || empty( $this->config['project_url'] ) ) {
 			return array(
 				'success' => false,
@@ -1129,11 +1123,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Bulk upsert post meta
 	 *
 	 * @param array  $meta_records    Array of meta records with meta_id, post_id, meta_key, meta_value.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name (unused for HTTP).
 	 * @return array Result with success status and count.
 	 */
-	public function bulk_upsert_postmeta( $meta_records, $site_id = 1, $connection_name = null ) {
+	public function bulk_upsert_postmeta( $meta_records, $connection_name = null ) {
 		if ( empty( $meta_records ) ) {
 			return array(
 				'success' => true,
@@ -1143,7 +1136,7 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 		}
 
 		/*
-		 * Convert records to data arrays (no site_id in Supabase schema).
+		 * Convert records to data arrays.
 		 * Note: meta_key and meta_value usage here is safe - reading from PHP objects/arrays.
 		 * Not performing database queries.
 		 */
@@ -1204,11 +1197,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * @param int    $object_id        Object ID (post ID).
 	 * @param int    $term_taxonomy_id Term taxonomy ID.
 	 * @param int    $term_order        Term order.
-	 * @param int    $site_id          Site ID.
 	 * @param string $connection_name  Connection name (unused for HTTP).
 	 * @return bool Success status.
 	 */
-	public function upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order = 0, $site_id = 1, $connection_name = null ) {
+	public function upsert_term_relationship( $object_id, $term_taxonomy_id, $term_order = 0, $connection_name = null ) {
 		$url = trailingslashit( $this->config['project_url'] ) . 'rest/v1/wp_term_relationships';
 
 		$data = array(
@@ -1244,11 +1236,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * Upsert post (for GG_Data_DB compatibility)
 	 *
 	 * @param object $post            Post object from WordPress.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name (unused for HTTP).
 	 * @return bool Success status.
 	 */
-	public function upsert_post( $post, $site_id = 1, $connection_name = null ) {
+	public function upsert_post( $post, $connection_name = null ) {
 		// Convert post object to array for sync_post.
 		$post_data = array(
 			'post_title'   => $post->post_title,
@@ -1271,11 +1262,10 @@ class GG_Data_PostgREST_Provider implements GG_Data_DB_Provider {
 	 * @param int    $post_id         Post ID.
 	 * @param string $meta_key        Meta key.
 	 * @param mixed  $meta_value      Meta value.
-	 * @param int    $site_id         Site ID.
 	 * @param string $connection_name Connection name (unused for HTTP).
 	 * @return bool Success status.
 	 */
-	public function upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $site_id = 1, $connection_name = null ) {
+	public function upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name = null ) {
 		$url = trailingslashit( $this->config['project_url'] ) . 'rest/v1/wp_postmeta';
 
 		/*

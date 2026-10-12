@@ -24,6 +24,37 @@ INSERT INTO gg_schema_meta (key, value)
 VALUES ('version', '1.0.0')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
+-- Sync metadata entities table (individual entity modification tracking).
+-- Mirrors the PHP-generated schema (GG_Data_Schema_Manager::create_sync_metadata_postgresql_table).
+CREATE TABLE IF NOT EXISTS wp_gg_sync_metadata_entities (
+    id BIGSERIAL PRIMARY KEY,
+    connection_name VARCHAR(100) NOT NULL DEFAULT 'default',
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(255) NOT NULL,
+    source_id BIGINT NULL,
+    post_type VARCHAR(20) NULL,
+    source_modified_at TIMESTAMP NULL,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_pg_entity UNIQUE (connection_name, entity_type, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pg_connection ON wp_gg_sync_metadata_entities(connection_name);
+CREATE INDEX IF NOT EXISTS idx_pg_entity_type ON wp_gg_sync_metadata_entities(entity_type);
+CREATE INDEX IF NOT EXISTS idx_pg_post_type ON wp_gg_sync_metadata_entities(post_type);
+CREATE INDEX IF NOT EXISTS idx_pg_source_id ON wp_gg_sync_metadata_entities(source_id);
+CREATE INDEX IF NOT EXISTS idx_pg_source_modified ON wp_gg_sync_metadata_entities(source_modified_at);
+CREATE INDEX IF NOT EXISTS idx_pg_synced_at ON wp_gg_sync_metadata_entities(synced_at);
+CREATE INDEX IF NOT EXISTS idx_pg_updated ON wp_gg_sync_metadata_entities(updated_at);
+
+COMMENT ON TABLE wp_gg_sync_metadata_entities IS 'Tracks individual entities synced from WordPress to PostgreSQL for modification detection';
+COMMENT ON COLUMN wp_gg_sync_metadata_entities.entity_type IS 'Type: post, postmeta, term, term_taxonomy, term_relationship';
+COMMENT ON COLUMN wp_gg_sync_metadata_entities.entity_id IS 'Entity ID (integer for posts/terms, composite string for term_relationships like 123-456)';
+COMMENT ON COLUMN wp_gg_sync_metadata_entities.source_id IS 'Parent entity (post_id for postmeta, term_id for term_taxonomy)';
+COMMENT ON COLUMN wp_gg_sync_metadata_entities.source_modified_at IS 'Source entity modification timestamp for change detection';
+COMMENT ON COLUMN wp_gg_sync_metadata_entities.synced_at IS 'Timestamp when entity was synced to PostgreSQL';
+
 -- WordPress Posts table (main content)
 CREATE TABLE IF NOT EXISTS wp_posts (
     id BIGINT PRIMARY KEY,
@@ -71,58 +102,13 @@ CREATE TABLE IF NOT EXISTS wp_posts_clean (
     post_excerpt_clean TEXT DEFAULT '',
     metadata_manifest JSONB DEFAULT '{}'::jsonb,
     cleaned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    content_hash VARCHAR(32) DEFAULT '',
+    content_hash VARCHAR(64) DEFAULT '',
     cleaning_version VARCHAR(10) DEFAULT '1.0',
     word_count INT DEFAULT 0,
     reading_time_minutes INT DEFAULT 0,
     search_vector_weighted tsvector, -- Precomputed weighted tsvector for fast FTS
     visibility VARCHAR(20) DEFAULT 'public'
 );
-
--- Add search_vector_weighted column if it doesn't exist (for schema updates)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name = 'wp_posts_clean' 
-        AND column_name = 'search_vector_weighted'
-    ) THEN
-        ALTER TABLE wp_posts_clean ADD COLUMN search_vector_weighted tsvector;
-    END IF;
-END $$;
-
--- Add metadata_manifest column if it doesn't exist (for schema updates)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'wp_posts_clean'
-        AND column_name = 'metadata_manifest'
-    ) THEN
-        ALTER TABLE wp_posts_clean ADD COLUMN metadata_manifest JSONB DEFAULT '{}'::jsonb;
-    END IF;
-END $$;
-
--- Add visibility column if it doesn't exist (for schema updates)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'wp_posts_clean'
-        AND column_name = 'visibility'
-    ) THEN
-        ALTER TABLE wp_posts_clean ADD COLUMN visibility VARCHAR(20) DEFAULT 'public';
-    END IF;
-END $$;
-
--- Backfill visibility from post_status (publish + inherit are searchable).
-UPDATE wp_posts_clean pc
-SET visibility = CASE WHEN p.post_status IN ('publish', 'inherit') THEN 'public' ELSE 'private' END
-FROM wp_posts p
-WHERE p.id = pc.post_id;
 
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_hash ON wp_posts_clean(content_hash);
 
@@ -145,7 +131,7 @@ ON wp_posts_clean USING GIN (metadata_manifest jsonb_path_ops);
 --   - apply_filters('gg_data_search_content_weight', 'B', $connection_name)
 -- PostgreSQL tsvector weights: A=1.0, B=0.4, C=0.2, D=0.1
 
--- Drop trigger function if exists (handles parameter changes)
+-- Drop and recreate the trigger function (PostgreSQL lacks CREATE OR REPLACE TRIGGER).
 DROP FUNCTION IF EXISTS wp_posts_clean_search_vector_update() CASCADE;
 
 CREATE OR REPLACE FUNCTION wp_posts_clean_search_vector_update() 
@@ -159,7 +145,6 @@ END;
 $$ LANGUAGE plpgsql
 SET search_path = public, extensions, pg_temp;
 
-DROP TRIGGER IF EXISTS tsvector_update ON wp_posts_clean;
 CREATE TRIGGER tsvector_update 
 BEFORE INSERT OR UPDATE ON wp_posts_clean
 FOR EACH ROW EXECUTE FUNCTION wp_posts_clean_search_vector_update();
@@ -260,7 +245,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_openai_text_embedding_3_small_1536 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1536),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
@@ -293,7 +278,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_openai_text_embedding_3_large_3072 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding halfvec(3072),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
@@ -326,7 +311,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_2_3072 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding halfvec(3072),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
@@ -358,7 +343,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_voyage_voyage_4_1024 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1024),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
@@ -390,7 +375,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v40_1536 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1536),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
@@ -425,7 +410,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_hashingtf_murmur3_1024 (
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
     embedding vector(1024),
-    content_hash VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
     generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -446,32 +431,14 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_field_type ON wp_posts_ha
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_status ON wp_posts_hashingtf_murmur3_1024(status);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_hashingtf_1024_tokenizer_version ON wp_posts_hashingtf_murmur3_1024(tokenizer_version);
 
--- Denormalized post_type for filtered-HNSW retrieval. post_type is immutable in
--- WordPress, so it is safe to co-locate on the vector tables and drive the HNSW
--- index directly (post_status remains a live post-filter on wp_posts).
-ALTER TABLE wp_posts_openai_text_embedding_3_small_1536 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-ALTER TABLE wp_posts_openai_text_embedding_3_large_3072 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-ALTER TABLE wp_posts_gemini_gemini_embedding_2_3072 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-ALTER TABLE wp_posts_voyage_voyage_4_1024 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-ALTER TABLE wp_posts_cohere_embed_v40_1536 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-ALTER TABLE wp_posts_hashingtf_murmur3_1024 ADD COLUMN IF NOT EXISTS post_type VARCHAR(20);
-
--- Backfill post_type from wp_posts (idempotent; only fills NULL rows).
-UPDATE wp_posts_openai_text_embedding_3_small_1536 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
-UPDATE wp_posts_openai_text_embedding_3_large_3072 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
-UPDATE wp_posts_gemini_gemini_embedding_2_3072 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
-UPDATE wp_posts_voyage_voyage_4_1024 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
-UPDATE wp_posts_cohere_embed_v40_1536 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
-UPDATE wp_posts_hashingtf_murmur3_1024 v SET post_type = p.post_type FROM wp_posts p WHERE v.post_id = p.id AND v.post_type IS NULL;
+-- post_type is denormalized onto each vector table (see the CREATE TABLE
+-- definitions above) to drive the filtered-HNSW retrieval path directly. It is
+-- immutable in WordPress, so co-locating it is safe (post_status remains a live
+-- post-filter on wp_posts).
 
 -- ================================================
 -- RPC FUNCTIONS
 -- ================================================
-
--- Drop existing function signatures before recreating
--- This handles parameter name changes that PostgreSQL doesn't allow in-place
-DROP FUNCTION IF EXISTS get_posts_needing_vectors(text, int);
-DROP FUNCTION IF EXISTS get_schema_status();
 
 -- Get posts needing vector generation (row-per-embedding)
 -- Returns posts that don't have a title embedding yet for the specified model
@@ -514,7 +481,6 @@ END;
 $$;
 
 -- Generic RAG context retrieval for model-resolved vector stores.
-DROP FUNCTION IF EXISTS search_rag_get_context(vector, int, int, text, text[]);
 
 CREATE OR REPLACE FUNCTION search_rag_get_context(
     query_vector vector,
@@ -672,6 +638,7 @@ ALTER TABLE wp_posts_voyage_voyage_4_1024 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_cohere_embed_v40_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_hashingtf_murmur3_1024 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gg_schema_meta ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wp_gg_sync_metadata_entities ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies (if any) before recreating
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts;
@@ -688,6 +655,7 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_voyage_vo
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON gg_schema_meta;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_gg_sync_metadata_entities;
 
 -- Create permissive policies for service_role
 CREATE POLICY "Enable all access for service_role" ON wp_posts FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -704,6 +672,7 @@ CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1
 CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_gg_sync_metadata_entities FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Read-only policies for the anonymous role (used by the server-side search/RAG
 -- functions, which run as `anon`). Scoped to the tables those functions read.
@@ -734,7 +703,6 @@ CREATE POLICY "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024 F
  -- Architecture: Row-per-Embedding (v1.0.0)
 
 -- Shared core helper: reciprocal rank fusion (RRF) score by rank position.
-DROP FUNCTION IF EXISTS search_core_fuse_rrf(integer, integer);
 
 CREATE OR REPLACE FUNCTION search_core_fuse_rrf(
     rank_position integer,
@@ -755,8 +723,6 @@ $$;
 -- Resolves the query vector and candidate set from the embedding model's registered table.
 -- Handles dense embedding models (HashingTF, OpenAI, Cohere) and any future models
 -- without hardcoding table names anywhere in the call chain.
-DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text);
-DROP FUNCTION IF EXISTS search_core_vector_candidates(text, text[], integer, text, text, text, text);
 
 CREATE OR REPLACE FUNCTION search_core_vector_candidates(
     search_text     text,
@@ -876,10 +842,6 @@ END;
 $$;
 
 -- Native search orchestrator with parallel hybrid retrieval and reciprocal rank fusion.
-DROP FUNCTION IF EXISTS search_native_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text);
-DROP FUNCTION IF EXISTS search_native_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer);
-DROP FUNCTION IF EXISTS search_native_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer, text);
-DROP FUNCTION IF EXISTS search_native_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, integer, text);
 
 CREATE OR REPLACE FUNCTION search_native_orchestrate(
     search_text text,
@@ -1052,13 +1014,6 @@ END;
 $$;
 
 -- RAG orchestrator (always blended when source is available) with reciprocal rank fusion.
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, integer, jsonb);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, jsonb, integer);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, integer);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, integer, jsonb);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, text, jsonb, integer);
-DROP FUNCTION IF EXISTS search_rag_orchestrate(text, text[], integer, text, boolean, real, boolean, text, text, jsonb, integer, text);
 
 CREATE OR REPLACE FUNCTION search_rag_orchestrate(
     search_text text,
@@ -1266,11 +1221,6 @@ BEGIN
 END;
 $$;
 
--- Drop old helper function signatures
-DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text);
-DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text);
-DROP FUNCTION IF EXISTS gg_generate_search_vector(text, text, text, text, text, integer);
-
 -- Helper function: Generate search vector using document averaging
 -- For row-per-embedding schema, averages embeddings from matching documents
 CREATE OR REPLACE FUNCTION gg_generate_search_vector(
@@ -1308,14 +1258,9 @@ $$;
 -- Index Creation (run after table creation)
 -- ============================================
 
--- Trigram on post_content_clean is removed: a GIST trigram index over long
--- documents exceeds PostgreSQL's 8191-byte index-row limit (clean writes fail
--- with SQLSTATE 54000), and content trigrams do not scale. Trigram is kept on
--- the bounded post_title_clean column only.
-DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content;
-DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_content_gist;
-DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_excerpt;
-DROP INDEX IF EXISTS idx_wp_posts_clean_fts;
+-- Trigram indexes are created on post_title_clean only: a GIST trigram index
+-- over post_content_clean exceeds PostgreSQL's 8191-byte index-row limit (clean
+-- writes fail with SQLSTATE 54000), and content trigrams do not scale.
 
 -- GIN Trigram Indexes (for typo tolerance)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title 

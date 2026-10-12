@@ -477,7 +477,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				// Run migration steps.
 				$this->migrate_postmeta_table( $conn );
 				$this->migrate_posts_table_for_sync( $conn ); // Add sync tracking columns.
-				$this->migrate_taxonomy_tables( $conn );
 				$this->logger->log( 'Completed schema migrations', 'info', 'system', $connection_name ); // Ensure pgvector extension is installed (for upgrades from older versions).
 				$this->install_pgvector_extension( $conn );
 
@@ -765,7 +764,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			$sql = "
 		CREATE TABLE IF NOT EXISTS $table_name (
 			ID BIGINT PRIMARY KEY,
-			site_id BIGINT DEFAULT 1,
 			post_author BIGINT,
 			post_date TIMESTAMP WITH TIME ZONE,
 			post_date_gmt TIMESTAMP WITH TIME ZONE,
@@ -863,107 +861,39 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 
 			$conn->exec( $sql );
 
-			// Add search_vector_weighted column if it doesn't exist (for existing installations).
-			try {
-				$conn->exec(
-					"
-					DO \$\$
-					BEGIN
-						IF NOT EXISTS (
-							SELECT 1 
-							FROM information_schema.columns 
-							WHERE table_name = '$table_name' 
-							AND column_name = 'search_vector_weighted'
-						) THEN
-							ALTER TABLE $table_name ADD COLUMN search_vector_weighted tsvector;
-						END IF;
-					END \$\$;
-				"
-				);
-			} catch ( PDOException $e ) {
-				$this->logger->log(
-					'Warning: Could not add search_vector_weighted column (may already exist): ' . $e->getMessage(),
-					'warning',
-					'system',
-					$connection_name
-				);
-			}
-
-			// Add metadata_manifest column if it doesn't exist (for existing installations).
-			try {
-				$conn->exec(
-					"
-						DO \$\$
-						BEGIN
-							IF NOT EXISTS (
-								SELECT 1
-								FROM information_schema.columns
-								WHERE table_name = '$table_name'
-								AND column_name = 'metadata_manifest'
-							) THEN
-								ALTER TABLE $table_name ADD COLUMN metadata_manifest JSONB DEFAULT '{}'::jsonb;
-							END IF;
-						END \$\$;
-					"
-				);
-			} catch ( PDOException $e ) {
-				$this->logger->log(
-					'Warning: Could not add metadata_manifest column (may already exist): ' . $e->getMessage(),
-					'warning',
-					'system',
-					$connection_name
-				);
-			}
-
-			// Add visibility column if it doesn't exist (for existing installations).
-			try {
-				$conn->exec(
-					"
-					DO \$\$
-					BEGIN
-						IF NOT EXISTS (
-							SELECT 1
-							FROM information_schema.columns
-							WHERE table_name = '$table_name'
-							AND column_name = 'visibility'
-						) THEN
-							ALTER TABLE $table_name ADD COLUMN visibility VARCHAR(20) DEFAULT 'public';
-						END IF;
-					END \$\$;
-				"
-				);
-			} catch ( PDOException $e ) {
-				$this->logger->log(
-					'Warning: Could not add visibility column (may already exist): ' . $e->getMessage(),
-					'warning',
-					'system',
-					$connection_name
-				);
-			}
-
 			// Create trigger and populate the precomputed search vector column.
 			$this->rebuild_search_vector( $conn, $connection_name, $detected_language );
 
 			// Create full-text search indexes on cleaned content.
 			$indexes = array(
 				// FAST: GIN index on precomputed search_vector_weighted (used by search function).
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_search_vector_idx 
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_search_vector 
 				ON $table_name 
 				USING GIN (search_vector_weighted)",
 
 				// B-tree index on content_hash for change detection.
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_content_hash_idx 
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_hash 
 				ON $table_name (content_hash)",
 
 				// Composite index for faster joins (excludes content to save space).
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_post_id_include_idx 
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_post_id_include 
 				ON $table_name (post_id) 
 				INCLUDE (post_title_clean, post_excerpt_clean)",
 
 				// GIN index for deterministic JSONB metadata containment filters.
-				"CREATE INDEX IF NOT EXISTS {$prefix}posts_clean_metadata_manifest_gin_idx
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_metadata_manifest_gin
 				ON $table_name
 				USING GIN (metadata_manifest jsonb_path_ops)",
+
+				// Title trigram GIN (typo tolerance) + GiST (similarity KNN pushdown).
+				// Trigram is title-only: a trigram index over post_content_clean exceeds
+				// PostgreSQL's 8191-byte index-row limit (SQLSTATE 54000) and does not scale.
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_trigram_title 
+				ON $table_name 
+				USING GIN (post_title_clean gin_trgm_ops)",
+				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_trigram_title_gist 
+				ON $table_name 
+				USING GIST (post_title_clean gist_trgm_ops)",
 			);
 
 			foreach ( $indexes as $index_sql ) {
@@ -1236,7 +1166,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					$sql = "
 		CREATE TABLE IF NOT EXISTS $table_name (
 			term_id BIGINT PRIMARY KEY,
-			site_id BIGINT DEFAULT 1,
 			name VARCHAR(200),
 			slug VARCHAR(200),
 			term_group BIGINT DEFAULT 0
@@ -1269,7 +1198,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					$sql = "
 		CREATE TABLE IF NOT EXISTS $table_name (
 			term_taxonomy_id BIGINT PRIMARY KEY,
-			site_id BIGINT DEFAULT 1,
 			term_id BIGINT REFERENCES $terms_table(term_id) ON DELETE CASCADE,
 			taxonomy VARCHAR(32),
 			description TEXT,
@@ -1685,53 +1613,6 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		}
 
 		/**
-		 * Migrate taxonomy tables to add site_id column if missing
-		 *
-		 * @param PDO $conn Database connection.
-		 * @return bool Success or failure.
-		 */
-		protected function migrate_taxonomy_tables( $conn ) {
-			$prefix = $this->get_table_prefix();
-
-			try {
-				// Check and add site_id to wp_terms table.
-				$terms_table     = $prefix . 'terms';
-				$check_terms_sql = "SELECT column_name FROM information_schema.columns 
-                                    WHERE table_schema = 'WordPress' 
-									AND table_name = '$terms_table' 
-									AND column_name = 'site_id'";
-
-				$result = $conn->query( $check_terms_sql );
-				if ( $result->rowCount() === 0 ) {
-					// Add site_id column.
-					$sql = "ALTER TABLE WordPress.$terms_table ADD COLUMN site_id BIGINT DEFAULT 1";
-					$conn->exec( $sql );
-					$this->logger->log( "Added site_id column to $terms_table table", 'info', 'system' );
-				}
-
-				// Check and add site_id to wp_term_taxonomy table.
-				$term_taxonomy_table = $prefix . 'term_taxonomy';
-				$check_taxonomy_sql  = "SELECT column_name FROM information_schema.columns 
-                                       WHERE table_schema = 'WordPress' 
-									   AND table_name = '$term_taxonomy_table' 
-									   AND column_name = 'site_id'";
-
-				$result = $conn->query( $check_taxonomy_sql );
-				if ( $result->rowCount() === 0 ) {
-					// Add site_id column.
-					$sql = "ALTER TABLE WordPress.$term_taxonomy_table ADD COLUMN site_id BIGINT DEFAULT 1";
-					$conn->exec( $sql );
-					$this->logger->log( "Added site_id column to $term_taxonomy_table table", 'info', 'system' );
-				}
-
-				return true;
-			} catch ( Exception $e ) {
-				$this->logger->log( 'Error migrating taxonomy tables: ' . $e->getMessage(), 'error', 'system' );
-				return false;
-			}
-		}
-
-		/**
 		 * Create chunks table for content chunking (shared, model-agnostic)
 		 *
 		 * All embedding models read from this table. Chunks are created during
@@ -1860,11 +1741,11 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				embedding {$vector_type}({$dimensions}),
 				
 				-- Metadata
-				content_hash VARCHAR(32) NOT NULL,
+				content_hash VARCHAR(64) NOT NULL,
 				token_count INTEGER NOT NULL DEFAULT 0,
 				cost DECIMAL(10, 8) DEFAULT 0,
 				status VARCHAR(20) DEFAULT 'pending',
-				generated_at TIMESTAMP DEFAULT NOW(),
+				generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 				model_used VARCHAR(100) DEFAULT '{$model_label}',
 				error_message TEXT,
 				
@@ -1896,9 +1777,9 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					$conn->exec( $index_sql );
 				}
 
-				// Denormalized post_type for filtered-HNSW retrieval (immutable; enables index-driven filtering).
-				$conn->exec( "ALTER TABLE {$table_name} ADD COLUMN IF NOT EXISTS post_type VARCHAR(20)" );
-				$conn->exec( "UPDATE {$table_name} v SET post_type = p.post_type FROM {$posts_table} p WHERE v.post_id = p.id AND v.post_type IS NULL" );
+				// post_type is denormalized onto the vector table (defined in the CREATE
+				// TABLE above) to drive filtered-HNSW retrieval. It is immutable in
+				// WordPress, so co-locating it is safe.
 
 				$this->logger->log( "Created $table_name with row-per-embedding schema and single HNSW index ({$vector_type}, {$dimensions}d)", 'info', 'system' );
 			}
@@ -1929,10 +1810,10 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 			field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
 			chunk_index INTEGER,
 			embedding vector(1024),
-			content_hash VARCHAR(32) NOT NULL,
+			content_hash VARCHAR(64) NOT NULL,
 			token_count INTEGER NOT NULL DEFAULT 0,
 			status VARCHAR(20) DEFAULT 'pending',
-			generated_at TIMESTAMP DEFAULT NOW(),
+			generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 			tokenizer_version INTEGER NOT NULL DEFAULT 1,
 			error_message TEXT,
 			UNIQUE(post_id, field_type, chunk_index),
@@ -1956,9 +1837,9 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				$conn->exec( $index_sql );
 			}
 
-			// Denormalized post_type for filtered-HNSW retrieval (immutable; enables index-driven filtering).
-			$conn->exec( "ALTER TABLE {$table_name} ADD COLUMN IF NOT EXISTS post_type VARCHAR(20)" );
-			$conn->exec( "UPDATE {$table_name} v SET post_type = p.post_type FROM {$posts_table} p WHERE v.post_id = p.id AND v.post_type IS NULL" );
+			// post_type is denormalized onto the vector table (defined in the CREATE
+			// TABLE above) to drive filtered-HNSW retrieval. It is immutable in
+			// WordPress, so co-locating it is safe.
 
 			$this->logger->log( "Created $table_name with row-per-embedding schema and HNSW index (vector, 1024d, stateless)", 'info', 'system' );
 
@@ -2160,10 +2041,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * @return bool True on success.
 		 */
 		protected function create_sync_metadata_postgresql_table( $conn ) {
-			global $wpdb;
-
 			// 2. Create PostgreSQL metadata table (individual entity tracking for modification detection).
-			$pg_table = $wpdb->prefix . 'gg_sync_metadata_entities';
+			$pg_table = $this->get_table_prefix() . 'gg_sync_metadata_entities';
 
 			$pg_sql = "CREATE TABLE IF NOT EXISTS $pg_table (
 			id BIGSERIAL PRIMARY KEY,
@@ -2196,7 +2075,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 
 			$conn->exec( $pg_sql );
 
-			$this->logger->log( 'Created ' . $wpdb->prefix . 'gg_sync_metadata_entities table in PostgreSQL for entity modification tracking', 'info', 'system' );
+			$this->logger->log( 'Created ' . $pg_table . ' table in PostgreSQL for entity modification tracking', 'info', 'system' );
 
 			return true;
 		}

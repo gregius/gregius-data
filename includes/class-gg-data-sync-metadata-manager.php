@@ -89,7 +89,7 @@ class GG_Data_Sync_Metadata_Manager {
 		$this->wpdb               = $wpdb;
 		$this->connection_name    = $connection_name;
 		$this->mysql_table        = $wpdb->prefix . 'gg_sync_metadata';
-		$this->pg_table           = $wpdb->prefix . 'gg_sync_metadata_entities';
+		$this->pg_table           = GG_Data_Table_Prefix_Resolver::runtime_prefix() . 'gg_sync_metadata_entities';
 		$this->logger             = new GG_Data_Logger();
 		$this->connection_manager = new GG_Data_Connection_Manager();
 

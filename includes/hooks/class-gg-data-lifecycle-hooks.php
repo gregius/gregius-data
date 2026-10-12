@@ -690,7 +690,7 @@ class GG_Data_Lifecycle_Hooks {
 					$this->logger->log( "PostgREST provider unavailable for meta sync on connection '{$connection_name}'", 'error', 'sync', $connection_name );
 					return false;
 				}
-				$result = $provider->upsert_post_meta( $post_id, $meta_key, $meta_value, 1, $connection_name );
+				$result = $provider->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
 				if ( $result ) {
 					$this->logger->log(
 						"Successfully {$operation} post meta {$meta_id} (key: {$meta_key}) for post {$post_id} via PostgREST",
@@ -741,7 +741,7 @@ class GG_Data_Lifecycle_Hooks {
 
 			try {
 				// Sync meta to PostgreSQL using existing infrastructure.
-				$result = $db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, 1, $connection_name );
+				$result = $db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
 			} catch ( Exception $e ) {
 				$this->logger->log(
 					'Exception during meta sync: ' . $e->getMessage(),
@@ -1148,7 +1148,7 @@ class GG_Data_Lifecycle_Hooks {
 			}
 
 			// Store ORIGINAL content in wp_posts (true WordPress mirror).
-			$result = $db->upsert_post( $post, 1, $connection_name );           if ( ! $result ) {
+			$result = $db->upsert_post( $post, $connection_name );           if ( ! $result ) {
 				$this->logger->log( "Failed to sync post {$post->ID} to PostgreSQL (WordPress save unaffected)", 'error', 'sync', $connection_name, array( 'post_id' => $post->ID ) );
 				return false;
 			}
@@ -1604,17 +1604,16 @@ class GG_Data_Lifecycle_Hooks {
 			$active_connections = $this->settings_manager->get_active_connections();
 
 			foreach ( $active_connections as $connection_name => $connection_config ) {
-				$db      = new GG_Data_DB();
-				$site_id = 1; // Default site ID for single site or main site.
+				$db = new GG_Data_DB();
 
 				// Delete term relationships first (due to foreign key constraints).
-				$relationships_result = $db->delete_term_relationships_by_taxonomy_id( $tt_id, $site_id );
+				$relationships_result = $db->delete_term_relationships_by_taxonomy_id( $tt_id );
 
 				// Delete term taxonomy.
-				$taxonomy_result = $db->delete_term_taxonomy( $tt_id, $site_id );
+				$taxonomy_result = $db->delete_term_taxonomy( $tt_id );
 
 				// Delete term (only if no other taxonomies reference it).
-				$term_result = $db->delete_term_if_unused( $term_id, $site_id );
+				$term_result = $db->delete_term_if_unused( $term_id );
 
 				if ( $relationships_result && $taxonomy_result ) {
 					$this->logger->log(

@@ -291,8 +291,9 @@ class GG_Data_Orphan_Manager {
 			if ( $result['success'] ) {
 				$deleted = $result['count'];
 
-				// Skip individual metadata cleanup - wp_gg_sync_metadata_entities table doesn't exist in PostgreSQL.
-				// Individual entity tracking is not needed; only aggregate stats are maintained.
+				// Skip individual metadata cleanup - individual entity tracking in the
+				// PostgreSQL metadata table (gg_sync_metadata_entities) is not needed for
+				// orphan detection; only aggregate stats are maintained.
 
 				$this->logger->log(
 					sprintf( 'Successfully deleted %d orphans from PostgreSQL', $deleted ),
