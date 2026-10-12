@@ -89,13 +89,9 @@ class GG_Data_Search_Integration {
 	private function get_default_postgresql_diagnostics() {
 		// phpcs:disable WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned -- Long telemetry keys make strict alignment noisy.
 		return array(
-			'latency_pg_extension_checks_ms' => 0.0,
-			'latency_pg_vector_readiness_ms' => 0.0,
-			'latency_pg_execute_ms'          => 0.0,
-			'latency_pg_fetch_ms'            => 0.0,
-			'latency_pg_total_ms'            => 0.0,
-			'observability_expensive_probes_enabled' => false,
-			'observability_expensive_probe_executed' => false,
+			'latency_pg_execute_ms' => 0.0,
+			'latency_pg_fetch_ms'   => 0.0,
+			'latency_pg_total_ms'   => 0.0,
 		);
 		// phpcs:enable WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned
 	}
@@ -313,10 +309,9 @@ class GG_Data_Search_Integration {
 		$final_ids           = array_merge( $pg_ids, $mysql_ids );
 		$latency_total_ms    = round( ( microtime( true ) - $search_start ) * 1000, 2 );
 		$degraded            = $postgresql_failed;
-		$slow_threshold_ms   = (float) apply_filters( 'gg_data_search_slow_log_ms', 400, $search_term, $connection_name, $retrieval_mode );
+		$slow_threshold_ms   = (float) apply_filters( 'gg_data_search_slow_log_ms', 1000, $search_term, $connection_name, $retrieval_mode );
 		$is_slow             = $latency_total_ms >= $slow_threshold_ms;
 		$execution_log_level = ( $degraded || $is_slow ) ? 'warning' : 'debug';
-		$observability_mode  = ! empty( $pg_diagnostics['observability_expensive_probes_enabled'] ) ? 'enhanced' : 'baseline';
 
 		// Log the combined search results.
 		$this->logger->log(
@@ -348,21 +343,15 @@ class GG_Data_Search_Integration {
 				'latency_total_ms'      => $latency_total_ms,
 				'latency_postgresql_ms' => $latency_pg_ms,
 				'latency_mysql_ms'      => $latency_mysql_ms,
-				'latency_pg_extension_checks_ms' => $pg_diagnostics['latency_pg_extension_checks_ms'],
-				'latency_pg_vector_readiness_ms' => $pg_diagnostics['latency_pg_vector_readiness_ms'],
 				'latency_pg_execute_ms'          => $pg_diagnostics['latency_pg_execute_ms'],
 				'latency_pg_fetch_ms'            => $pg_diagnostics['latency_pg_fetch_ms'],
 				'latency_pg_total_ms'            => $pg_diagnostics['latency_pg_total_ms'],
-				'observability_expensive_probes_enabled' => $pg_diagnostics['observability_expensive_probes_enabled'],
-				'observability_expensive_probe_executed' => $pg_diagnostics['observability_expensive_probe_executed'],
-				'observability_mode'   => $observability_mode,
 				'dedup_removed_count'   => $dedup_removed_count,
 				'retrieval_mode'        => $retrieval_mode,
 				'source_type'           => $source_type,
 				'degraded'              => $degraded,
 				'fallback_reason'       => $fallback_reason,
 				'is_slow'               => $is_slow,
-				'slow_threshold_ms'     => $slow_threshold_ms,
 				'log_level'             => $execution_log_level,
 				'postgresql_failed'     => $postgresql_failed,
 				'post_types_pg'         => $pg_post_types,
@@ -392,8 +381,6 @@ class GG_Data_Search_Integration {
 		 *     @type float  $latency_total_ms End-to-end search latency in milliseconds.
 		 *     @type float  $latency_postgresql_ms PostgreSQL phase latency in milliseconds.
 		 *     @type float  $latency_mysql_ms MySQL phase latency in milliseconds.
-		 *     @type float  $latency_pg_extension_checks_ms PostgreSQL extension checks phase latency in milliseconds.
-		 *     @type float  $latency_pg_vector_readiness_ms PostgreSQL vector readiness phase latency in milliseconds.
 		 *     @type float  $latency_pg_execute_ms PostgreSQL SQL prepare+execute phase latency in milliseconds.
 		 *     @type float  $latency_pg_fetch_ms PostgreSQL SQL fetch phase latency in milliseconds.
 		 *     @type float  $latency_pg_total_ms PostgreSQL total method latency in milliseconds.
@@ -402,8 +389,6 @@ class GG_Data_Search_Integration {
 		 *     @type string $dominant_signal Dominant signal for PostgreSQL results.
 		 *     @type bool   $mysql_merge_applied Whether MySQL merge step executed.
 		 *     @type bool   $mysql_merge_contributed Whether MySQL contributed final results.
-		 *     @type bool   $observability_expensive_probes_enabled Whether expensive telemetry probes are enabled.
-		 *     @type bool   $observability_expensive_probe_executed Whether an expensive telemetry probe ran for this request.
 		 *     @type int    $dedup_removed_count Number of MySQL candidates removed during dedupe.
 		 *     @type bool   $degraded True when fallback/degradation occurred.
 		 *     @type string $fallback_reason Diagnostic fallback reason code.
@@ -431,14 +416,9 @@ class GG_Data_Search_Integration {
 				'latency_total_ms'      => $latency_total_ms,
 				'latency_postgresql_ms' => $latency_pg_ms,
 				'latency_mysql_ms'      => $latency_mysql_ms,
-				'latency_pg_extension_checks_ms' => $pg_diagnostics['latency_pg_extension_checks_ms'],
-				'latency_pg_vector_readiness_ms' => $pg_diagnostics['latency_pg_vector_readiness_ms'],
 				'latency_pg_execute_ms'          => $pg_diagnostics['latency_pg_execute_ms'],
 				'latency_pg_fetch_ms'            => $pg_diagnostics['latency_pg_fetch_ms'],
 				'latency_pg_total_ms'            => $pg_diagnostics['latency_pg_total_ms'],
-				'observability_expensive_probes_enabled' => $pg_diagnostics['observability_expensive_probes_enabled'],
-				'observability_expensive_probe_executed' => $pg_diagnostics['observability_expensive_probe_executed'],
-				'observability_mode'   => $observability_mode,
 				'dedup_removed_count'   => $dedup_removed_count,
 				'degraded'              => $degraded,
 				'fallback_reason'       => $fallback_reason,
@@ -551,13 +531,8 @@ class GG_Data_Search_Integration {
 	 * @throws Exception If no active connection is available or database query fails.
 	 */
 	private function execute_postgresql_search( $search_term, $post_types, $connection_name = null, $embedding_model = null ) {
-		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
-		$pg_total_start               = microtime( true );
-		$pg_diagnostics               = $this->get_default_postgresql_diagnostics();
-		$expensive_probes_enabled  = $this->is_observability_enabled();
-		$expensive_probe_executed  = false;
-		$pg_diagnostics['observability_expensive_probes_enabled'] = $expensive_probes_enabled;
-		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
+		$pg_total_start = microtime( true );
+		$pg_diagnostics = $this->get_default_postgresql_diagnostics();
 
 		// Get active connection name if not provided.
 		if ( empty( $connection_name ) ) {
@@ -592,52 +567,17 @@ class GG_Data_Search_Integration {
 		$trigram_supported = false;
 		$has_pgvector      = false;
 
-		if ( $expensive_probes_enabled ) {
-			$extension_checks_start = microtime( true );
-
-			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
-			try {
-				$extension_check   = $connection->query( "SELECT COUNT(*) FROM pg_extension WHERE extname = 'pg_trgm'" );
-				$has_extension     = $extension_check && $extension_check->fetchColumn() > 0;
-				$trigram_supported = $has_extension;
-			} catch ( Exception $e ) {
-				$trigram_supported = false;
-				$this->logger->log(
-					'pg_trgm extension check failed; continuing search with trigram disabled',
-					'debug',
-					'search',
-					$connection_name,
-					array(
-						'exception' => $e->getMessage(),
-					)
-				);
-			}
-
-			try {
-				$extension_check = $connection->query( "SELECT COUNT(*) FROM pg_extension WHERE extname = 'vector'" );
-				$has_pgvector    = $extension_check && $extension_check->fetchColumn() > 0;
-			} catch ( Exception $e ) {
-				$has_pgvector = false;
-			}
-
-			$this->persist_search_capabilities( $connection_name, $trigram_supported, $has_pgvector );
-			$pg_diagnostics['latency_pg_extension_checks_ms'] = round( ( microtime( true ) - $extension_checks_start ) * 1000, 2 );
-			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
-		} else {
-			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
-			$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
-			$trigram_supported = ! empty( $capabilities['trigram_supported'] );
-			$has_pgvector      = ! empty( $capabilities['vector_supported'] );
-			$pg_diagnostics['latency_pg_extension_checks_ms'] = 0.0;
-			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
-		}
+		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
+		$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
+		$trigram_supported = ! empty( $capabilities['trigram_supported'] );
+		$has_pgvector      = ! empty( $capabilities['vector_supported'] );
+		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
 		// Vector search is automatically enabled when enhanced search is on (if pgvector extension + vectors are available).
 		// Requirements: pgvector extension installed AND vectors exist.
 		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
 		$vector_search = false;
-		$has_vectors = false;
-		$vector_table = '';
+		$vector_table  = '';
 		$vector_column = '';
 		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
@@ -652,36 +592,8 @@ class GG_Data_Search_Integration {
 			$vector_column = $vector_config['content_column'];
 		}
 
-		// Base capability path: extension + table config enables vector path even when observability is OFF.
+		// Base capability path: extension + table config enables the vector path.
 		$vector_search = $has_pgvector && ! empty( $vector_table );
-
-		if ( $expensive_probes_enabled ) {
-			$vector_readiness_start = microtime( true );
-
-			try {
-				if ( $vector_search ) {
-					// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
-					$vector_check = $connection->query( "SELECT COUNT(*) FROM {$vector_table} WHERE embedding IS NOT NULL" );
-					$vector_count = $vector_check ? (int) $vector_check->fetchColumn() : 0;
-					$has_vectors  = $vector_count > 0;
-					// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
-					$expensive_probe_executed = true;
-
-					// Keep vector search true only when vectors exist once readiness probe is enabled.
-					$vector_search = $has_vectors;
-				}
-			} catch ( Exception $e ) {
-				// Vector search disabled if table probe fails while observability readiness checks are enabled.
-				$vector_search = false;
-			}
-
-			$pg_diagnostics['latency_pg_vector_readiness_ms'] = round( ( microtime( true ) - $vector_readiness_start ) * 1000, 2 );
-		} else {
-			$pg_diagnostics['latency_pg_vector_readiness_ms'] = 0.0;
-		}
-
-		$pg_diagnostics['observability_expensive_probe_executed'] = $expensive_probe_executed;
-		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
 		// Build post types array for PostgreSQL.
 		// Use ARRAY constructor in SQL instead of parameter binding for array.
@@ -919,13 +831,8 @@ class GG_Data_Search_Integration {
 	 * @throws Exception If Supabase API call fails.
 	 */
 	private function execute_postgresql_search_supabase( $search_term, $post_types, $connection_name, $config, $embedding_model = null ) {
-		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
-		$pg_total_start               = microtime( true );
-		$pg_diagnostics               = $this->get_default_postgresql_diagnostics();
-		$expensive_probes_enabled  = $this->is_observability_enabled();
-		$expensive_probe_executed  = false;
-		$pg_diagnostics['observability_expensive_probes_enabled'] = $expensive_probes_enabled;
-		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
+		$pg_total_start = microtime( true );
+		$pg_diagnostics = $this->get_default_postgresql_diagnostics();
 
 		if ( ! class_exists( 'GG_Data_PostgREST_Provider' ) ) {
 			require_once __DIR__ . '/../providers/class-gg-postgrest-provider.php';
@@ -945,26 +852,14 @@ class GG_Data_Search_Integration {
 		$trigram_supported = false;
 		$has_pgvector      = false;
 		$vector_search     = false;
-		$has_vectors       = false;
 		$vector_table      = '';
 		$vector_column     = '';
 
-		if ( $expensive_probes_enabled ) {
-			$extension_checks_start = microtime( true );
-			$capabilities           = $this->get_supabase_extension_capabilities( $runtime_config );
-			$trigram_supported      = ! empty( $capabilities['trigram_supported'] );
-			$has_pgvector           = ! empty( $capabilities['vector_supported'] );
-			$this->persist_search_capabilities( $connection_name, $trigram_supported, $has_pgvector );
-			$pg_diagnostics['latency_pg_extension_checks_ms'] = round( ( microtime( true ) - $extension_checks_start ) * 1000, 2 );
-		} else {
-			// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
-			$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
-			$trigram_supported = ! empty( $capabilities['trigram_supported'] );
-			$has_pgvector      = ! empty( $capabilities['vector_supported'] );
-			$pg_diagnostics['latency_pg_extension_checks_ms'] = 0.0;
-			// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
-		}
-		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep assignment formatting compact in telemetry block.
+		// phpcs:disable Generic.Formatting.MultipleStatementAlignment.NotSameWarning -- Keep OFF-branch assignments compact and readable.
+		$capabilities      = $this->get_persisted_search_capabilities( $connection_name );
+		$trigram_supported = ! empty( $capabilities['trigram_supported'] );
+		$has_pgvector      = ! empty( $capabilities['vector_supported'] );
+		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
 		// Determine which embedding model to use.
 		$model_key = $this->get_embedding_model_for_search( $connection_name, $embedding_model );
@@ -977,46 +872,8 @@ class GG_Data_Search_Integration {
 			$vector_column = $vector_config['content_column'];
 		}
 
-		// Base capability path: extension + table config enables vector path even when observability is OFF.
+		// Base capability path: extension + table config enables the vector path.
 		$vector_search = $has_pgvector && ! empty( $vector_table );
-
-		if ( $expensive_probes_enabled ) {
-			$vector_readiness_start = microtime( true );
-
-			// Check for pgvector extension + vectors.
-			if ( $vector_search ) {
-				// Exact row counts require Supabase to evaluate full cardinality and are therefore opt-in.
-				$vectors_url = rtrim( $runtime_config['project_url'], '/' ) . '/rest/v1/' . $vector_table;
-				$args        = array(
-					'method'  => 'HEAD',
-					'headers' => array_merge(
-						GG_Data_PostgREST_Provider::build_supabase_headers( $runtime_config['publishable_key'], $runtime_config['secret_key'], false ),
-						array(
-							'Prefer' => 'count=exact',
-						)
-					),
-				);
-
-				$response = wp_remote_request( $vectors_url, $args );
-				if ( ! is_wp_error( $response ) ) {
-					$content_range = wp_remote_retrieve_header( $response, 'content-range' );
-					if ( ! empty( $content_range ) && preg_match( '/\/(\d+)$/', $content_range, $matches ) ) {
-						$has_vectors = (int) $matches[1] > 0;
-					}
-					$expensive_probe_executed = true;
-				}
-
-				$vector_search = $has_pgvector && $has_vectors;
-			}
-
-			$pg_diagnostics['latency_pg_vector_readiness_ms'] = round( ( microtime( true ) - $vector_readiness_start ) * 1000, 2 );
-		} else {
-			$pg_diagnostics['latency_pg_vector_readiness_ms'] = 0.0;
-		}
-		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
-
-		$pg_diagnostics['observability_expensive_probe_executed'] = $expensive_probe_executed;
-		// phpcs:enable Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 
 		// Build RPC request payload.
 		$is_hashingtf   = ( false !== strpos( strtolower( (string) $model_key ), 'hashingtf' ) );
@@ -1084,49 +941,6 @@ class GG_Data_Search_Integration {
 		$results['vector_table']    = $vector_table;
 
 		return $results;
-	}
-
-	/**
-	 * Get Supabase extension capability map from the canonical schema-status RPC.
-	 *
-	 * @param array $runtime_config Canonical Supabase runtime config.
-	 * @return array {
-	 *     Capability map.
-	 *
-	 *     @type bool $trigram_supported True when pg_trgm support is reported.
-	 *     @type bool $vector_supported  True when vector support is reported.
-	 * }
-	 */
-	private function get_supabase_extension_capabilities( $runtime_config ) {
-		$capabilities = array(
-			'trigram_supported' => false,
-			'vector_supported'  => false,
-		);
-
-		$rpc_url = rtrim( $runtime_config['project_url'], '/' ) . '/rest/v1/rpc/get_schema_status';
-		$args    = array(
-			'method'  => 'POST',
-			'headers' => GG_Data_PostgREST_Provider::build_supabase_headers( $runtime_config['publishable_key'], $runtime_config['secret_key'], false ),
-			'body'    => '{}',
-		);
-
-		$response = wp_remote_request( $rpc_url, $args );
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return $capabilities;
-		}
-
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
-
-		if ( ! is_array( $data ) || empty( $data['extensions'] ) || ! is_array( $data['extensions'] ) ) {
-			return $capabilities;
-		}
-
-		$capabilities['trigram_supported'] = ! empty( $data['extensions']['pg_trgm'] );
-		$capabilities['vector_supported']  = ! empty( $data['extensions']['vector'] );
-
-		return $capabilities;
 	}
 
 	/**
@@ -1265,21 +1079,6 @@ class GG_Data_Search_Integration {
 	}
 
 	/**
-	 * Determine whether observability probes are enabled.
-	 *
-	 * @return bool
-	 */
-	private function is_observability_enabled() {
-		$enabled = $this->settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
-
-		if ( is_string( $enabled ) ) {
-			return in_array( $enabled, array( '1', 'true' ), true );
-		}
-
-		return (bool) $enabled;
-	}
-
-	/**
 	 * Get persisted search capabilities for a connection.
 	 *
 	 * OFF mode relies on persisted capability truth and does not perform live checks.
@@ -1333,22 +1132,36 @@ class GG_Data_Search_Integration {
 		);
 
 		foreach ( $results as $row ) {
-			$match_type = isset( $row['match_type'] ) ? sanitize_key( (string) $row['match_type'] ) : '';
-
-			if ( false !== strpos( $match_type, 'fts' ) ) {
+			if ( $this->is_db_truthy( $row['has_fts'] ?? null ) ) {
 				++$signal_counts['fts'];
 			}
 
-			if ( false !== strpos( $match_type, 'trigram' ) ) {
+			if ( $this->is_db_truthy( $row['has_trigram'] ?? null ) ) {
 				++$signal_counts['trigram'];
 			}
 
-			if ( false !== strpos( $match_type, 'vector' ) ) {
+			if ( $this->is_db_truthy( $row['has_vector'] ?? null ) ) {
 				++$signal_counts['vector'];
 			}
 		}
 
 		return $signal_counts;
+	}
+
+	/**
+	 * Normalize a database boolean to a PHP bool.
+	 *
+	 * PostgREST returns JSON booleans; PDO (pgsql) may return 't'/'f' strings.
+	 *
+	 * @param mixed $value Raw column value.
+	 * @return bool
+	 */
+	private function is_db_truthy( $value ) {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		return in_array( strtolower( (string) $value ), array( '1', 't', 'true' ), true );
 	}
 
 	/**

@@ -34,7 +34,6 @@ function gg_data_get_default_search_settings() {
 		'connection'                      => '',    // Database connection to use for search queries.
 		'embedding_model'                 => 'hashingtf-murmur3-1024', // Default to the free stateless HashingTF embeddings.
 		'retrieval_mode'                  => 'hybrid_default', // PostgreSQL + MySQL merge by default.
-		'observability_enabled'           => false, // Full observability probes are opt-in.
 		'description'                     => 'Enable PostgreSQL full-text search with field weighting and stemming',
 	);
 	// phpcs:enable WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned
@@ -58,7 +57,6 @@ function gg_data_init_search_settings() {
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'connection', '' );
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
 	}
 
 	// Backfill retrieval mode for existing installs that predate this setting.
@@ -67,13 +65,7 @@ function gg_data_init_search_settings() {
 		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 	}
 
-	// Backfill expensive telemetry toggle for existing installs.
-	$observability_toggle = $settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', null );
-	if ( null === $observability_toggle ) {
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
-	}
-
-	// Backfill persisted per-connection capability keys used when observability is OFF.
+	// Backfill persisted per-connection capability keys.
 	$connections = $settings->get_all_connections();
 	foreach ( array_keys( $connections ) as $connection_name ) {
 		$trigram_supported = $settings->get_with_category( 'search', $connection_name, 'trigram_supported', null );

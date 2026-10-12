@@ -737,6 +737,46 @@ Keep reason concise. Do not add extra keys or text.',
 		}
 
 		/**
+		 * Remove the obsolete `observability_enabled` search setting on existing installs.
+		 *
+		 * The "Enhance Observability" expensive-probe toggle was removed; its setting
+		 * is no longer read. Runs once, guarded by a site option.
+		 *
+		 * @since 1.0.0
+		 */
+		public static function migrate_remove_observability_setting() {
+			if ( get_option( 'gg_data_observability_setting_removed' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_remove_observability_setting_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_remove_observability_setting_for_current_site();
+		}
+
+		/**
+		 * Delete the obsolete observability setting for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function migrate_remove_observability_setting_for_current_site() {
+			$settings = new GG_Data_Settings_Manager();
+			$settings->delete_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled' );
+
+			update_option( 'gg_data_observability_setting_removed', true );
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -761,6 +801,7 @@ Keep reason concise. Do not add extra keys or text.',
 			self::migrate_search_vector_language();
 			self::migrate_search_rag_precomputed_query_vector();
 			self::migrate_remove_typo_tolerance_settings();
+			self::migrate_remove_observability_setting();
 		}
 
 		/**

@@ -900,7 +900,10 @@ RETURNS TABLE (
     post_excerpt text,
     post_type varchar(20),
     post_status varchar(20),
-    match_type text
+    match_type text,
+    has_fts boolean,
+    has_trigram boolean,
+    has_vector boolean
 )
 LANGUAGE plpgsql
 SET search_path = public, extensions, pg_temp
@@ -1037,7 +1040,10 @@ BEGIN
             WHEN f.has_vector THEN 'vector'
             WHEN f.has_trigram THEN 'trigram'
             ELSE 'fts'
-        END AS match_type
+        END AS match_type,
+        f.has_fts,
+        f.has_trigram,
+        f.has_vector
     FROM fused f
     ORDER BY f.fused_score DESC
     LIMIT limit_count;
@@ -1074,7 +1080,10 @@ RETURNS TABLE (
     post_excerpt text,
     post_type varchar(20),
     post_status varchar(20),
-    match_type text
+    match_type text,
+    has_fts boolean,
+    has_trigram boolean,
+    has_vector boolean
 )
 LANGUAGE plpgsql
 SET search_path = public, extensions, pg_temp
@@ -1247,7 +1256,10 @@ BEGIN
             WHEN f.has_vector THEN 'vector'
             WHEN f.has_trigram THEN 'trigram'
             ELSE 'fts'
-        END AS match_type
+        END AS match_type,
+        f.has_fts,
+        f.has_trigram,
+        f.has_vector
     FROM fused f
     ORDER BY f.fused_score DESC
     LIMIT limit_count;

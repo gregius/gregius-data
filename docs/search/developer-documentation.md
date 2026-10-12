@@ -126,13 +126,13 @@ Both functions use **GiST-optimized trigram matching** via the `<<->` distance o
 Supporting helpers:
 - `search_core_fuse_rrf(integer, integer)` — reciprocal rank fusion scoring
 - `search_core_vector_candidates(...)` — retrieves vector candidates from the configured embedding table
-- `gg_generate_search_vector(text, text, text, text, text, integer)` — generates a tsvector from concatenated title + content fields with configurable weights per search configuration
+- `gg_generate_search_vector(text, text, text, text)` — generates the query vector for semantic search by averaging matching document embeddings
 
 **PostgREST-only functions** (in `includes/sql/postgrest-schema.sql`, not auto-deployed):
 - `get_schema_status()` — returns extension availability and schema table presence for `pg_trgm`, `vector`, and vector table. Used by the integration class to populate per-connection capability state without auto-deploy.
-- `get_posts_needing_vectors(integer, text, text)` — identifies posts whose clean-content rows lack vector embeddings, returning post IDs and their clean content for upstream vector generation.
-- `search_rag_get_context(text, text[], integer, text, boolean, real, boolean, text, text, jsonb, integer)` — PostgREST-specific RPC variant of `search_rag_orchestrate` with identical parameter semantics.
-- `wp_posts_clean_search_vector_update()` — trigger function that recomputes the `search_vector` column on `wp_posts_clean` rows when title or content changes.
+- `get_posts_needing_vectors(text, integer)` — identifies posts whose clean-content rows lack vector embeddings, returning post IDs and their clean content for upstream vector generation.
+- `search_rag_get_context(vector, integer, integer, text, text[])` — retrieves RAG context chunks from the configured vector table for a query vector.
+- `wp_posts_clean_search_vector_update()` — trigger function that recomputes the `search_vector_weighted` column on `wp_posts_clean` rows when title or content changes.
 
 Expected output shape from all orchestrators:
 - `post_id`
@@ -178,7 +178,6 @@ Core keys (default values in parentheses):
 | `search.embedding_model` | `hashingtf-murmur3-1024` | Resolves to a vector table name for semantic search. |
 | `search.retrieval_mode` | `hybrid_default` | PostgreSQL + MySQL merge or PostgreSQL-only. |
 | `search.language` | `english` | PostgreSQL text search configuration. |
-| `search.observability_enabled` | `false` | Opt-in expensive probe toggle. |
 
 Behavior notes:
 - Search enablement is opt-in.
@@ -188,15 +187,9 @@ Behavior notes:
     - `hybrid_default`: merge PostgreSQL results with MySQL matches for broader coverage.
     - `postgresql_only`: skip merge path and return PostgreSQL-native results.
 - PostgreSQL execution failure always allows internal MySQL fallback regardless of retrieval mode.
-- `search.observability_enabled` defaults to `false` and is the single runtime control for observability probes.
-- `search.observability_enabled` controls probe mode only; it does not directly toggle trigram/vector flags.
-- When `search.observability_enabled` is `false`, PDO and PostgREST runtime paths perform no live extension checks and no expensive readiness probes.
-- When `search.observability_enabled` is `false`, trigram/vector eligibility is determined only from persisted per-connection capability state.
-- When `search.observability_enabled` is `false`, both `latency_pg_extension_checks_ms` and `latency_pg_vector_readiness_ms` remain `0`.
-- When `search.observability_enabled` is `true`, PDO and PostgREST paths run the full observability probe set.
-- Trigram eligibility is derived from `pg_trgm` extension presence: live checks (when observability is enabled) or persisted per-connection `trigram_supported` state (baseline mode).
+- Trigram/vector eligibility is derived from persisted per-connection capability state (`trigram_supported` / `vector_supported`), refreshed by the trigram status endpoint and schema provisioning.
 
-### 6.1 Observability Field Interpretation
+### 6.1 Telemetry Field Interpretation
 
 The `search_strategy` field classifies the active retrieval strategy based on signal counts and merge state. All 9 possible values:
 
@@ -219,12 +212,13 @@ Key telemetry interpretations:
 - `postgresql_count = 0` with non-zero `mysql_count` indicates PostgreSQL contribution was unavailable in that request.
 - When MySQL and PostgreSQL results are merged, dedup uses `array_diff` to remove duplicate post IDs. **PostgreSQL entries take precedence** — MySQL duplicates are discarded (`dedup_removed_count` reports how many).
 
+Signal attribution:
+- `signal_counts` (fts/trigram/vector) counts how many results each leg contributed to, derived from the fusion's per-result `has_fts`/`has_trigram`/`has_vector` flags. A blended result counts toward multiple legs, so the three counts may sum to more than the result total.
+
 Vector-readiness interpretation:
 - `signal_counts.vector = 0` is expected when vectors are not generated or not eligible for the active request.
-- `latency_pg_vector_readiness_ms = 0` and `latency_pg_extension_checks_ms = 0` with `observability_mode = baseline` indicate expensive probes are disabled, not necessarily that capability is absent.
-- In baseline mode (`search.observability_enabled = false`), capability checks come from persisted settings state and probe latency fields remain zero.
 
-Model observability:
+Model resolution:
 - `embedding_model` — the model key resolved from the model registry for the active search (e.g. `hashingtf-murmur3-1024`). Confirms which embedding model the vector path queried.
 - `vector_table` — the database table name corresponding to the resolved model (e.g. `wp_posts_hashingtf_murmur3_1024`). Useful for diagnosing table-level configuration mismatches.
 
@@ -356,17 +350,13 @@ Note:
             - `dominant_signal`
             - `mysql_merge_applied`
             - `mysql_merge_contributed`
-    - Includes diagnostic telemetry fields for logging/observability:
+    - Includes diagnostic telemetry fields for logging:
       - `latency_total_ms`
       - `latency_postgresql_ms`
       - `latency_mysql_ms`
-            - `latency_pg_extension_checks_ms`
-            - `latency_pg_vector_readiness_ms`
             - `latency_pg_execute_ms`
             - `latency_pg_fetch_ms`
             - `latency_pg_total_ms`
-            - `observability_expensive_probes_enabled`
-            - `observability_expensive_probe_executed`
       - `dedup_removed_count`
       - `degraded`
       - `fallback_reason`
@@ -376,12 +366,6 @@ Note:
       - `vector_table` — database table queried for vector candidates
 
 ### 8.3 PostgreSQL Timing Field Semantics
-
-- `latency_pg_extension_checks_ms`
-    - Time spent checking PostgreSQL extension availability needed by the search runtime (for example `pg_trgm`, `vector`).
-
-- `latency_pg_vector_readiness_ms`
-    - Time spent preparing vector-search readiness state (model table resolution, vector presence checks, related setup probes).
 
 - `latency_pg_execute_ms`
     - Time spent in PostgreSQL statement prepare+execute for the primary search function call.
@@ -488,7 +472,7 @@ Expected behavior:
     - `warning` when degraded/slow
     - `debug` otherwise
 
-If debug logging is enabled, both entries can be visible; this is normal and provides layered observability.
+If debug logging is enabled, both entries can be visible; this is normal.
 
 ### 11.5 Health Status Remains Degraded
 

@@ -577,13 +577,6 @@ class GG_Data_REST_Search_Controller extends WP_REST_Controller {
 				$values['search.retrieval_mode'] = 'hybrid_default';
 			}
 
-			$stored_observability_toggle = $this->settings->get_with_category( 'search', $settings_scope, 'observability_enabled', null );
-			if ( null === $stored_observability_toggle ) {
-				$this->settings->set_with_category_public( 'search', $settings_scope, 'observability_enabled', false );
-				$fixed[]                                = 'search.observability_enabled';
-				$values['search.observability_enabled'] = false;
-			}
-
 			$stored_trigram_supported = $this->settings->get_with_category( 'search', $connection_name, 'trigram_supported', null );
 			if ( null === $stored_trigram_supported ) {
 				$trigram_key = 'search.' . $connection_name . '.trigram_supported';

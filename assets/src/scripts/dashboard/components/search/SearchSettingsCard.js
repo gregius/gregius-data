@@ -41,7 +41,6 @@ const SearchSettingsCard = ({ connections = [] }) => {
 	const [isUpdatingLanguage, setIsUpdatingLanguage] = useState(false);
 
 	const [retrievalMode, setRetrievalMode] = useState('hybrid_default');
-	const [telemetryExpensiveProbesEnabled, setTelemetryExpensiveProbesEnabled] = useState(false);
 	const [extensionStatus, setExtensionStatus] = useState(null);
 	const [savingTypoSettings, setSavingTypoSettings] = useState(false);
 
@@ -78,12 +77,11 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setError(null);
 
 			// Load global search settings in parallel.
-			const [enabledRes, connectionRes, modelRes, retrievalModeRes, observabilityRes] = await Promise.all([
+			const [enabledRes, connectionRes, modelRes, retrievalModeRes] = await Promise.all([
 				apiFetch({ path: `/gg-data/v1/settings/search/enabled?connection=${SEARCH_SETTINGS_CONNECTION}` }),
 				apiFetch({ path: `/gg-data/v1/settings/search/connection?connection=${SEARCH_SETTINGS_CONNECTION}` }),
 				apiFetch({ path: `/gg-data/v1/settings/search/embedding_model?connection=${SEARCH_SETTINGS_CONNECTION}` }),
 				apiFetch({ path: `/gg-data/v1/settings/search/retrieval_mode?connection=${SEARCH_SETTINGS_CONNECTION}` }),
-				apiFetch({ path: `/gg-data/v1/settings/search/observability_enabled?connection=${SEARCH_SETTINGS_CONNECTION}` }),
 			]);
 
 			if (enabledRes) {
@@ -98,42 +96,10 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			if (retrievalModeRes && retrievalModeRes.value) {
 				setRetrievalMode(retrievalModeRes.value);
 			}
-			if (observabilityRes) {
-				const observabilityEnabled = observabilityRes.value === '1' || observabilityRes.value === true || observabilityRes.value === 1;
-				setTelemetryExpensiveProbesEnabled(observabilityEnabled);
-			}
 		} catch (err) {
 			setError(err.message);
 		} finally {
 			setLoading(false);
-		}
-	};
-
-	// Handle expensive telemetry probe toggle (global setting)
-	const handleTelemetryToggle = async (newValue) => {
-		try {
-			setSaving(true);
-			setError(null);
-			setSuccess(null);
-
-			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/observability_enabled`,
-				method: 'POST',
-				data: {
-					connection: SEARCH_SETTINGS_CONNECTION,
-					value: newValue,
-				},
-			});
-
-			if (response && response.updated) {
-				setTelemetryExpensiveProbesEnabled(newValue);
-				setSuccess(__('Observability settings updated successfully!', 'gregius-data'));
-			}
-		} catch (err) {
-			setError(__('Failed to update observability setting: ', 'gregius-data') + err.message);
-			setTelemetryExpensiveProbesEnabled(!newValue);
-		} finally {
-			setSaving(false);
 		}
 	};
 
@@ -519,17 +485,6 @@ const SearchSettingsCard = ({ connections = [] }) => {
 					/>
 					{searchEnabled && (
 						<>
-							<div style={{ marginTop: '16px' }} />
-							<ToggleControl
-								label={__('Enhance Observability', 'gregius-data')}
-								help={telemetryExpensiveProbesEnabled
-									? __('Detailed observability values are enabled. Calculations can increase response latency.', 'gregius-data')
-									: __('Detailed observability values are disabled by default to keep response latency low.', 'gregius-data')}
-								checked={telemetryExpensiveProbesEnabled}
-								onChange={handleTelemetryToggle}
-								disabled={loading || saving}
-								__nextHasNoMarginBottom={true}
-							/>
 							<div style={{ marginTop: '16px' }} />
 							<ToggleControl
 								label={__('Dual Retrieval', 'gregius-data')}

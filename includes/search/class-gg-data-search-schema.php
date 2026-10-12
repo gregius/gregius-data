@@ -90,7 +90,6 @@ class GG_Data_Search_Schema {
 			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'language', $site_language );
 
 			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
-			$settings_manager->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'observability_enabled', false );
 
 			if ( $connection_name ) {
 				$trigram_supported = false;
@@ -129,7 +128,6 @@ class GG_Data_Search_Schema {
 					'language'             => $site_language,
 					'locale'               => get_locale(),
 					'retrieval_mode'       => 'hybrid_default',
-					'observability_enabled' => false,
 					'connection'           => $connection_name,
 				)
 				// phpcs:enable WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned
