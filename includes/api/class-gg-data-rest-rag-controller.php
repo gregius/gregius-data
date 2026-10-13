@@ -175,7 +175,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		$connection_name     = $request->get_param( 'connection_name' );
 		$embedding_model_key = $request->get_param( 'embedding_model_key' );
 		$llm_model_id        = $request->get_param( 'llm_model_id' );
-		$rewrite_model       = $request->get_param( 'rewrite_model' );
+		$agentic_model       = $request->get_param( 'agentic_model' );
 		$rerank_model_id     = $request->get_param( 'rerank_model_id' );
 		$conversation_id     = $request->get_param( 'conversation_id' );
 		$messages            = $request->get_param( 'messages' );
@@ -250,7 +250,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		$options = array(
 			'num_chunks'         => $num_chunks,
 			'temperature'        => $temperature,
-			'rewrite_model'      => ! empty( $rewrite_model ) ? $rewrite_model : '',
+			'agentic_model'      => ! empty( $agentic_model ) ? $agentic_model : '',
 			'rerank_model_id'    => ! empty( $rerank_model_id ) ? $rerank_model_id : '',
 			'metadata_filter'    => is_array( $metadata_filter ) ? $metadata_filter : array(),
 			'metadata_manifest'  => is_array( $metadata_manifest ) ? $metadata_manifest : array(),
@@ -519,7 +519,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 					return floatval( $value );
 				},
 			),
-			'rewrite_model'       => array(
+			'agentic_model'       => array(
 				'required'          => false,
 				'type'              => 'string',
 				'default'           => '',

@@ -29,7 +29,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
         connectionId,
         embeddingModelKey,
         llmModelId,
-        rewriteModelId,
+        agenticModelId,
         rerankModelId,
         promptId,
         securityPromptId,
@@ -242,7 +242,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 
                             <SelectControl
                                 label={__('Agentic Model', 'gregius-data')}
-                                value={rewriteModelId}
+                                value={agenticModelId}
                                 options={[
                                     { label: __('Select a model...', 'gregius-data'), value: '' },
                                     ...llmModels.map((model) => ({
@@ -250,7 +250,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                                         value: model.id,
                                     })),
                                 ]}
-                                onChange={(value) => setAttributes({ rewriteModelId: value })}
+                                onChange={(value) => setAttributes({ agenticModelId: value })}
                                 help={__('Routes queries and resolves conversational references. Use a fast, cheap model.', 'gregius-data')}
                                 __next40pxDefaultSize={true}
                                 __nextHasNoMarginBottom={true}
@@ -330,7 +330,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                     connectionId={connectionId}
                     embeddingModelKey={embeddingModelKey}
                     llmModelId={llmModelId}
-                    rewriteModelId={rewriteModelId}
+                    agenticModelId={agenticModelId}
                     rerankModelId={rerankModelId}
                     promptId={promptId}
                     securityPromptId={securityPromptId}

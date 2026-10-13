@@ -232,7 +232,7 @@ class GG_Data_SSE_Handler {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$llm_model_id = isset( $_POST['llm_model_id'] ) ? sanitize_text_field( wp_unslash( $_POST['llm_model_id'] ) ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
-		$rewrite_model = isset( $_POST['rewrite_model'] ) ? sanitize_text_field( wp_unslash( $_POST['rewrite_model'] ) ) : '';
+		$agentic_model = isset( $_POST['agentic_model'] ) ? sanitize_text_field( wp_unslash( $_POST['agentic_model'] ) ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$rerank_model_id = isset( $_POST['rerank_model_id'] ) ? sanitize_text_field( wp_unslash( $_POST['rerank_model_id'] ) ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
@@ -335,7 +335,7 @@ class GG_Data_SSE_Handler {
 		$options = array(
 			'num_chunks'         => 5,
 			'temperature'        => 0.7,
-			'rewrite_model'      => $rewrite_model,
+			'agentic_model'      => $agentic_model,
 			'rerank_model_id'    => $rerank_model_id,
 			'metadata_filter'    => $metadata_filter,
 			'metadata_manifest'  => $metadata_manifest,

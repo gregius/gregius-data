@@ -204,7 +204,7 @@ class GG_Data_Interaction {
 			'citation_sources'    => $meta['citation_sources'] ?? array(),
 			'tool'                => $meta['tool_selected'] ?? null,
 			'models'              => array(
-				'agentic'   => $meta['rewrite_model'] ?? null,
+				'agentic'   => $meta['agentic_model'] ?? null,
 				'embedding' => $meta['embedding_model'] ?? null,
 				'rerank'    => $meta['rerank_model'] ?? null,
 				'answer'    => $meta['llm_model'] ?? null,

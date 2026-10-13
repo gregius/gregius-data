@@ -32,7 +32,7 @@ const PROGRESS_STAGES = {
  * @param {string} props.connectionId PostgreSQL connection ID.
  * @param {string} props.embeddingModelKey Embedding model key (e.g., 'hashingtf-murmur3-1024').
  * @param {string} props.llmModelId LLM model ID for answer generation.
- * @param {string} props.rewriteModelId LLM model ID for query rewriting (optional).
+ * @param {string} props.agenticModelId LLM model ID for query routing and tool selection (optional).
  * @param {string} props.rerankModelId Rerank model ID for result reranking (optional).
  * @param {number} props.promptId Prompt post ID (0 = active/default prompt).
  * @param {number} props.securityPromptId Security prompt post ID (0 = active/default security prompt).
@@ -44,7 +44,7 @@ export default function ChatInterface({
     connectionId,
     embeddingModelKey,
     llmModelId,
-    rewriteModelId,
+    agenticModelId,
     rerankModelId,
     promptId = 0,
     securityPromptId = 0,
@@ -543,7 +543,7 @@ export default function ChatInterface({
                         connection_name: connectionId,
                         embedding_model_key: embeddingModelKey,
                         llm_model_id: llmModelId,
-                        rewrite_model: rewriteModelId || '',
+                        agentic_model: agenticModelId || '',
                         rerank_model_id: rerankModelId || '',
                         prompt_id: parseInt(promptId, 10) || 0,
                         security_prompt_id: parseInt(securityPromptId, 10) || 0,
@@ -572,7 +572,7 @@ export default function ChatInterface({
             conversationId,
             embeddingModelKey,
             llmModelId,
-            rewriteModelId,
+            agenticModelId,
             rerankModelId,
             promptId,
             securityPromptId,
@@ -669,7 +669,7 @@ export default function ChatInterface({
             formData.append('connection_name', connectionId);
             formData.append('embedding_model_key', embeddingModelKey);
             formData.append('llm_model_id', llmModelId);
-            formData.append('rewrite_model', rewriteModelId || '');
+            formData.append('agentic_model', agenticModelId || '');
             formData.append('rerank_model_id', rerankModelId || '');
             formData.append('prompt_id', (parseInt(promptId, 10) || 0).toString());
             formData.append('security_prompt_id', (parseInt(securityPromptId, 10) || 0).toString());
@@ -789,7 +789,7 @@ export default function ChatInterface({
             connectionId,
             embeddingModelKey,
             llmModelId,
-            rewriteModelId,
+            agenticModelId,
             rerankModelId,
             promptId,
             conversationId,

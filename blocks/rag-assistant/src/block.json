@@ -82,7 +82,7 @@
       "type": "string",
       "default": ""
     },
-    "rewriteModelId": {
+    "agenticModelId": {
       "type": "string",
       "default": ""
     },

@@ -1200,7 +1200,7 @@ class GG_Data_RAG_Service {
 			'num_chunks'        => 5,
 			'post_types'        => $this->get_synced_post_types(),
 			'temperature'       => 0.7,
-			'rewrite_model'     => '',
+			'agentic_model'     => '',
 			'rerank_model_id'   => '',
 			'metadata_filter'   => array(),
 			'manifest'          => array(),
@@ -1353,12 +1353,12 @@ class GG_Data_RAG_Service {
 
 		// Step 0b: Tool selection - determine how to handle this query.
 		// This is "Agentic RAG" - the LLM decides whether to search, summarize conversation, or respond directly.
-		if ( ! empty( $options['rewrite_model'] ) ) {
-			$tool_selection = $this->select_tool( $query, $options['messages'], $options['rewrite_model'] );
+		if ( ! empty( $options['agentic_model'] ) ) {
+			$tool_selection = $this->select_tool( $query, $options['messages'], $options['agentic_model'] );
 
 			if ( ! is_wp_error( $tool_selection ) ) {
 				// Get agentic model info for logging.
-				$agentic_model_id   = $options['rewrite_model'];
+				$agentic_model_id   = $options['agentic_model'];
 				$agentic_model_info = ( new GG_Data_Model_Registry() )->get_model( 'gregius-data', $agentic_model_id );
 				$agentic_provider   = $agentic_model_info['provider'] ?? 'unknown';
 				$agentic_model_name = $agentic_model_info['config']['provider_model_id'] ?? $agentic_model_id;
@@ -1599,7 +1599,7 @@ class GG_Data_RAG_Service {
 		 * @since 1.0.0
 		 * @param string $search_query The query to search with (possibly rewritten).
 		 * @param string $query        The original user query.
-		 * @param array  $options      RAG options including messages and rewrite_model.
+		 * @param array  $options      RAG options including messages and agentic_model.
 		 */
 		$search_query = apply_filters( 'gg_data_rag_search_query', $search_query, $query, $options );
 
@@ -1838,7 +1838,7 @@ class GG_Data_RAG_Service {
 				$single_reason_code,
 				$single_profile['id'],
 				array(
-					'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+					'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 					'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 					'lexical_active'         => ! empty( $retrieval_policy['lexical_active'] ),
 					'retrieval_query_class'  => $retrieval_policy['query_class'] ?? 'general',
@@ -1880,7 +1880,7 @@ class GG_Data_RAG_Service {
 					'original_query'    => $query,
 					'search_query'      => $search_query ?? $query,
 					'post_types'        => $options['post_types'] ?? array(),
-					'rewrite_model'     => $options['rewrite_model'] ?? null,
+					'agentic_model'     => $options['agentic_model'] ?? null,
 					'rerank_model'      => $options['rerank_model_id'] ?? null,
 					'citation_sources'  => array(),
 					'tool_selected'     => 'search_content',
@@ -1918,7 +1918,7 @@ class GG_Data_RAG_Service {
 					'tool'         => 'search_content',
 					'search_query' => $search_query ?? $query,
 				),
-				'trigger'         => isset( $options['rewrite_model'] ) && ! empty( $options['rewrite_model'] ) ? 'llm' : 'direct',
+				'trigger'         => isset( $options['agentic_model'] ) && ! empty( $options['agentic_model'] ) ? 'llm' : 'direct',
 				'connection_name' => $this->connection_name,
 			);
 
@@ -2201,7 +2201,7 @@ class GG_Data_RAG_Service {
 			'search_query'        => $search_query ?? $query,
 			'post_types'          => $options['post_types'] ?? array(),
 			'metadata_filter'     => $options['metadata_filter'] ?? array(),
-			'rewrite_model'       => $options['rewrite_model'] ?? null,
+			'agentic_model'       => $options['agentic_model'] ?? null,
 			'rerank_model'        => $options['rerank_model_id'] ?? null,
 			'citation_sources'    => $citation_sources,
 			'tool_selected'       => 'search_content', // Tool used for this flow.
@@ -2222,7 +2222,7 @@ class GG_Data_RAG_Service {
 				$single_reason_code,
 				$single_profile['id'],
 				array(
-					'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+					'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 					'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 					'lexical_active'         => ! empty( $retrieval_policy['lexical_active'] ),
 					'retrieval_query_class'  => $retrieval_policy['query_class'] ?? 'general',
@@ -2287,7 +2287,7 @@ class GG_Data_RAG_Service {
 				'tool'         => 'search_content',
 				'search_query' => $search_query ?? $query,
 			),
-			'trigger'         => isset( $options['rewrite_model'] ) && ! empty( $options['rewrite_model'] ) ? 'llm' : 'direct',
+			'trigger'         => isset( $options['agentic_model'] ) && ! empty( $options['agentic_model'] ) ? 'llm' : 'direct',
 			'connection_name' => $this->connection_name,
 		);
 
@@ -2895,7 +2895,7 @@ class GG_Data_RAG_Service {
 					'conversation_id' => $options['conversation_id'] ?? null,
 					'source'          => $options['source'] ?? array( 'type' => 'rest' ),
 					'connection'      => $this->connection_name,
-					'rewrite_model'   => $options['rewrite_model'] ?? null,
+					'agentic_model'   => $options['agentic_model'] ?? null,
 					'embedding_model' => $this->embedding_model_key,
 					'execution_time'  => round( ( microtime( true ) - $start_time ) * 1000 ),
 					'security_check'  => $options['security_check'] ?? array(),
@@ -2933,7 +2933,7 @@ class GG_Data_RAG_Service {
 				'conversation_id'   => $options['conversation_id'] ?? null,
 				'source'            => $options['source'] ?? array( 'type' => 'rest' ),
 				'connection'        => $this->connection_name,
-				'rewrite_model'     => $options['rewrite_model'] ?? null,
+				'agentic_model'     => $options['agentic_model'] ?? null,
 				'embedding_model'   => $this->embedding_model_key,
 				'llm_model'         => $llm_model_id,
 				'execution_time'    => round( $execution_time ),
@@ -3023,7 +3023,7 @@ class GG_Data_RAG_Service {
 			),
 			'execution'         => array(
 				'models'     => array(
-					'agentic'   => $metadata['rewrite_model'] ?? null,
+					'agentic'   => $metadata['agentic_model'] ?? null,
 					'embedding' => $metadata['embedding_model'] ?? null,
 					'rerank'    => $metadata['rerank_model'] ?? null,
 					'answer'    => $metadata['llm_model'] ?? null,
@@ -3647,7 +3647,7 @@ class GG_Data_RAG_Service {
 				'source'            => $options['source'] ?? array( 'type' => 'rest' ),
 				'connection'        => $this->connection_name,
 				'prompt'            => $prompt_resolution['metadata'] ?? array(),
-				'rewrite_model'     => $options['rewrite_model'] ?? null,
+				'agentic_model'     => $options['agentic_model'] ?? null,
 				'embedding_model'   => $this->embedding_model_key,
 				'llm_model'         => $llm_model_id,
 				'execution_time'    => round( $execution_time ),
@@ -3821,7 +3821,7 @@ class GG_Data_RAG_Service {
 			'security_blocked',
 			'policy_security_gatekeeper',
 			array(
-				'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+				'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 				'embedding_model_active' => ! empty( $this->embedding_model_key ),
 				'lexical_active'         => true,
 			)
@@ -3844,7 +3844,7 @@ class GG_Data_RAG_Service {
 				'original_query'    => $query,
 				'search_query'      => $search_query,
 				'post_types'        => $options['post_types'] ?? array(),
-				'rewrite_model'     => $options['rewrite_model'] ?? null,
+				'agentic_model'     => $options['agentic_model'] ?? null,
 				'rerank_model'      => $options['rerank_model_id'] ?? null,
 				'citation_sources'  => array(),
 				'tool_selected'     => $tool_selection['tool'] ?? 'search_content',
@@ -3901,7 +3901,7 @@ class GG_Data_RAG_Service {
 					'conversation_id' => $options['conversation_id'] ?? null,
 					'source'          => $options['source'] ?? array( 'type' => 'rest' ),
 					'connection'      => $this->connection_name,
-					'rewrite_model'   => $options['rewrite_model'] ?? null,
+					'agentic_model'   => $options['agentic_model'] ?? null,
 					'embedding_model' => $this->embedding_model_key,
 					'execution_time'  => round( ( microtime( true ) - $start_time ) * 1000 ),
 					'security_check'  => $options['security_check'] ?? array(),
@@ -3953,7 +3953,7 @@ class GG_Data_RAG_Service {
 				'conversation_id'   => $options['conversation_id'] ?? null,
 				'source'            => $options['source'] ?? array( 'type' => 'rest' ),
 				'connection'        => $this->connection_name,
-				'rewrite_model'     => $options['rewrite_model'] ?? null,
+				'agentic_model'     => $options['agentic_model'] ?? null,
 				'embedding_model'   => $this->embedding_model_key,
 				'llm_model'         => $llm_model_id,
 				'execution_time'    => round( $execution_time ),
@@ -4541,7 +4541,7 @@ class GG_Data_RAG_Service {
 	 * @return array Planner metadata and subqueries.
 	 */
 	private function build_lightweight_query_plan( $query, $search_query, $tool_selection, $options ) {
-		$agentic_active = ! empty( $options['rewrite_model'] );
+		$agentic_active = ! empty( $options['agentic_model'] );
 		$intent         = ( isset( $tool_selection['tool'] ) && 'compare_content' === $tool_selection['tool'] ) ? 'compare' : 'single';
 
 		$entities = array();
@@ -6068,7 +6068,7 @@ class GG_Data_RAG_Service {
 			'conversation_id'     => $options['conversation_id'] ?? null,
 			'source'              => $options['source'] ?? array( 'type' => 'rest' ),
 			'connection'          => $this->connection_name,
-			'rewrite_model'       => $options['rewrite_model'] ?? null,
+			'agentic_model'       => $options['agentic_model'] ?? null,
 			'rerank_model'        => $options['rerank_model_id'] ?? null,
 			'rerank_model_active' => ! empty( $options['rerank_model_id'] ),
 			'post_types'          => $normalized_post_types,
@@ -6440,7 +6440,7 @@ class GG_Data_RAG_Service {
 								$compare_reason_code,
 								$compare_profile['id'],
 								array(
-									'agentic_model_active' => ! empty( $options['rewrite_model'] ),
+									'agentic_model_active' => ! empty( $options['agentic_model'] ),
 									'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 									'lexical_active'       => ! empty( $retrieval_policy['lexical_active'] ),
 									'retrieval_query_class' => $retrieval_policy['query_class'] ?? 'compare',
@@ -6538,7 +6538,7 @@ class GG_Data_RAG_Service {
 								$compare_reason_code,
 								$compare_profile['id'],
 								array(
-									'agentic_model_active' => ! empty( $options['rewrite_model'] ),
+									'agentic_model_active' => ! empty( $options['agentic_model'] ),
 									'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 									'lexical_active'       => ! empty( $retrieval_policy['lexical_active'] ),
 									'retrieval_query_class' => $retrieval_policy['query_class'] ?? 'compare',
@@ -6589,7 +6589,7 @@ class GG_Data_RAG_Service {
 							$compare_reason_code,
 							$compare_profile['id'],
 							array(
-								'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+								'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 								'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 								'lexical_active'         => ! empty( $retrieval_policy['lexical_active'] ),
 								'retrieval_query_class'  => $retrieval_policy['query_class'] ?? 'compare',
@@ -6732,7 +6732,7 @@ class GG_Data_RAG_Service {
 				'no_relevant_context',
 				$single_profile['id'],
 				array(
-					'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+					'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 					'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 					'lexical_active'         => ! empty( $retrieval_policy['lexical_active'] ),
 					'retrieval_query_class'  => $retrieval_policy['query_class'] ?? 'general',
@@ -6763,7 +6763,7 @@ class GG_Data_RAG_Service {
 						'conversation_id'   => $options['conversation_id'] ?? null,
 						'source'            => $options['source'] ?? array( 'type' => 'rest' ),
 						'connection'        => $this->connection_name,
-						'rewrite_model'     => $options['rewrite_model'] ?? null,
+						'agentic_model'     => $options['agentic_model'] ?? null,
 						'post_types'        => $post_types,
 						'embedding_model'   => $this->embedding_model_key,
 						'llm_model'         => $llm_model_id,
@@ -6839,7 +6839,7 @@ class GG_Data_RAG_Service {
 					'conversation_id'   => $options['conversation_id'] ?? null,
 					'source'            => $options['source'] ?? array( 'type' => 'rest' ),
 					'connection'        => $this->connection_name,
-					'rewrite_model'     => $options['rewrite_model'] ?? null,
+					'agentic_model'     => $options['agentic_model'] ?? null,
 					'post_types'        => $post_types,
 					'embedding_model'   => $this->embedding_model_key,
 					'llm_model'         => $llm_model_id,
@@ -6862,7 +6862,7 @@ class GG_Data_RAG_Service {
 						$single_reason_code,
 						$single_profile['id'],
 						array(
-							'agentic_model_active'   => ! empty( $options['rewrite_model'] ),
+							'agentic_model_active'   => ! empty( $options['agentic_model'] ),
 							'embedding_model_active' => ! empty( $retrieval_policy['embedding_model_active'] ),
 							'lexical_active'         => ! empty( $retrieval_policy['lexical_active'] ),
 							'retrieval_query_class'  => $retrieval_policy['query_class'] ?? 'general',

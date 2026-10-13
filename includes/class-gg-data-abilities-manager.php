@@ -412,7 +412,7 @@ class GG_Data_Abilities_Manager {
 
 		// Build options for RAG pipeline.
 		$options = array(
-			'rewrite_model'   => $agentic_model,   // Internal name is still rewrite_model.
+			'agentic_model'   => $agentic_model,
 			'rerank_model_id' => $rerank_model,
 			'prompt_id'       => $prompt_id,
 			'conversation_id' => $conversation_id,
