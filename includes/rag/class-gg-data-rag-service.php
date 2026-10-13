@@ -7467,6 +7467,13 @@ class GG_Data_RAG_Service {
 		$result = $strategy->select_tool( $context_query, array(), $tools, $agentic_model_id );
 		remove_filter( 'gg_data_rag_tool_selection_system_prompt', $replace_prompt, 99 );
 
+		$this->logger->log(
+			sprintf( 'RAG Service: Corrective decision for "%s" → %s', $search_query, wp_json_encode( $result ) ),
+			'info',
+			'rag',
+			$this->connection_name
+		);
+
 		if ( is_wp_error( $result ) ) {
 			return null;
 		}
@@ -7541,7 +7548,17 @@ class GG_Data_RAG_Service {
 			$tools_text .= '- ' . $name . ': ' . ( $tool['description'] ?? '' ) . "\n";
 		}
 
-		return 'You decide whether to rewrite a failed search query. If the search returned no relevant content, rewrite with different or fused keywords. If the content is adequate or nothing more can help, stop.
+		return 'You decide whether to rewrite a search query that did not produce a useful answer.
+
+Rewrite with corrected keywords ONLY when:
+- The query contains an obvious misspelling of a common word (e.g. "confgure" → "configure"), OR
+- The search returned no relevant content at all.
+
+Do NOT rewrite:
+- Proper nouns, brand names, or product names (e.g. "Gregius", "WordPress") — treat them as spelled correctly.
+- Queries whose retrieved content already addresses the question.
+
+Stop when the content genuinely answers the question, or when the question is clearly about something this website does not cover.
 
 Available tools:
 ' . $tools_text . '
