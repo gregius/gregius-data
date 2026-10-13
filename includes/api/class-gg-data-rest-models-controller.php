@@ -89,7 +89,7 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 						'type'            => array(
 							'required'          => false,
 							'type'              => 'string',
-							'enum'              => array( 'embeddings', 'llm', 'rerank' ),
+							'enum'              => array( 'embeddings', 'llm', 'rerank', 'evaluator' ),
 							'sanitize_callback' => 'sanitize_text_field',
 						),
 						'provider'        => array(
@@ -351,6 +351,15 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 				}
 			}
 
+			// Include evaluator (decision) models if available.
+			$evaluator_models = array();
+			if ( method_exists( $provider, 'get_evaluator_models' ) ) {
+				foreach ( $provider->get_evaluator_models() as $model_id => $model_config ) {
+					$name                          = isset( $model_config['name'] ) ? $model_config['name'] : $model_id;
+					$evaluator_models[ $model_id ] = $name;
+				}
+			}
+
 			$data[] = array(
 				'id'               => $provider->get_id(),
 				'name'             => $provider->get_name(),
@@ -358,6 +367,7 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 				'llm_models'       => $models,
 				'embedding_models' => $embedding_models,
 				'rerank_models'    => $rerank_models,
+				'evaluator_models' => $evaluator_models,
 			);
 		}
 
@@ -858,6 +868,21 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 					array(
 						'success' => true,
 						'message' => __( 'Connection successful! Cohere API key is valid.', 'gregius-data' ),
+					),
+					200
+				);
+			} elseif ( 'typesafe' === $provider ) {
+				$typesafe_provider = new GG_Data_Typesafe_Provider();
+				$result            = $typesafe_provider->validate_api_key( $api_key );
+
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+
+				return new WP_REST_Response(
+					array(
+						'success' => true,
+						'message' => __( 'Connection successful! TypeSafe API key is valid.', 'gregius-data' ),
 					),
 					200
 				);

@@ -379,7 +379,7 @@ class GG_Data_REST_Prompts_Controller extends WP_REST_Controller {
 			'prompt_type' => array(
 				'required'          => false,
 				'type'              => 'string',
-				'enum'              => array( 'system', 'security' ),
+				'enum'              => array( 'system', 'security', 'evaluation' ),
 				'sanitize_callback' => 'sanitize_key',
 			),
 		);
@@ -489,7 +489,7 @@ class GG_Data_REST_Prompts_Controller extends WP_REST_Controller {
 	private function normalize_prompt_type( $prompt_type ) {
 		$prompt_type = sanitize_key( (string) $prompt_type );
 
-		if ( ! in_array( $prompt_type, array( 'system', 'security' ), true ) ) {
+		if ( ! in_array( $prompt_type, array( 'system', 'security', 'evaluation' ), true ) ) {
 			$prompt_type = 'system';
 		}
 

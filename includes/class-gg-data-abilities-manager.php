@@ -291,8 +291,8 @@ class GG_Data_Abilities_Manager {
 					'properties' => array(
 						'type' => array(
 							'type'        => 'string',
-							'description' => __( 'Filter by model type: "embeddings", "llm", or "rerank". Leave empty for all types.', 'gregius-data' ),
-							'enum'        => array( '', 'embeddings', 'llm', 'rerank' ),
+							'description' => __( 'Filter by model type: "embeddings", "llm", "rerank", or "evaluator". Leave empty for all types.', 'gregius-data' ),
+							'enum'        => array( '', 'embeddings', 'llm', 'rerank', 'evaluator' ),
 							'default'     => '',
 						),
 					),
@@ -312,8 +312,8 @@ class GG_Data_Abilities_Manager {
 									),
 									'type'        => array(
 										'type'        => 'string',
-										'description' => __( 'Model type: embeddings, llm, or rerank.', 'gregius-data' ),
-										'enum'        => array( 'embeddings', 'llm', 'rerank' ),
+										'description' => __( 'Model type: embeddings, llm, rerank, or evaluator.', 'gregius-data' ),
+										'enum'        => array( 'embeddings', 'llm', 'rerank', 'evaluator' ),
 									),
 									'provider'    => array(
 										'type'        => 'string',
@@ -623,7 +623,7 @@ class GG_Data_Abilities_Manager {
 
 		$registry = new GG_Data_Model_Registry();
 
-		$allowed_types = array( 'embeddings', 'llm', 'rerank' );
+		$allowed_types = array( 'embeddings', 'llm', 'rerank', 'evaluator' );
 		$model_type    = ! empty( $type_filter ) && in_array( $type_filter, $allowed_types, true ) ? $type_filter : null;
 		$models        = $registry->get_models( GG_Data_Model_Registry::MODEL_SCOPE_GLOBAL, $model_type );
 		$result        = array();

@@ -40,7 +40,7 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 		 *
 		 * Each model entry accepts:
 		 *   name             (string) Display name.
-		 *   kind             (string) 'llm' | 'embedding' | 'rerank'.
+		 *   kind             (string) 'llm' | 'embedding' | 'rerank' | 'evaluator'.
 		 *   vision           (bool)   LLM only: accepts image / PDF input.
 		 *   dimensions       (int)    Embedding only: vector dimensions.
 		 *   max_input_tokens (int)    Embedding only: max input tokens.
@@ -202,6 +202,18 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 							'description'      => 'Free stateless local embeddings via feature hashing. No vocabulary required.',
 						),
 					),
+					'typesafe'  => array(
+						'jev-1.13.0' => array(
+							'name'        => 'Jev 1.13.0',
+							'kind'        => 'evaluator',
+							'description' => 'TypeSafe System One decision model for fast, calibrated judgments (e.g., retrieval sufficiency).',
+						),
+						'jev-latest' => array(
+							'name'        => 'Jev (latest)',
+							'kind'        => 'evaluator',
+							'description' => 'TypeSafe System One decision model alias — resolves to the current stable release.',
+						),
+					),
 				);
 			}
 
@@ -298,6 +310,28 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 					$models[ $id ] = array(
 						'name'        => isset( $model['name'] ) ? $model['name'] : $id,
 						'max_context' => isset( $model['max_context'] ) ? $model['max_context'] : 0,
+						'description' => isset( $model['description'] ) ? $model['description'] : '',
+					);
+				}
+			}
+
+			return $models;
+		}
+
+		/**
+		 * Evaluator (decision) models as a model-id => config map.
+		 *
+		 * @since 1.0.0
+		 * @param string $provider Provider id.
+		 * @return array
+		 */
+		public static function evaluator_models( string $provider ): array {
+			$models = array();
+
+			foreach ( self::models( $provider ) as $id => $model ) {
+				if ( isset( $model['kind'] ) && 'evaluator' === $model['kind'] ) {
+					$models[ $id ] = array(
+						'name'        => isset( $model['name'] ) ? $model['name'] : $id,
 						'description' => isset( $model['description'] ) ? $model['description'] : '',
 					);
 				}

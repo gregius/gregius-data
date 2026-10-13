@@ -122,8 +122,9 @@ if ( ! class_exists( 'GG_Data_Activator' ) ) {
 			self::ensure_prompt_infrastructure();
 
 			$terms = array(
-				'system'   => __( 'System Prompt', 'gregius-data' ),
-				'security' => __( 'Security Prompt', 'gregius-data' ),
+				'system'     => __( 'System Prompt', 'gregius-data' ),
+				'security'   => __( 'Security Prompt', 'gregius-data' ),
+				'evaluation' => __( 'Evaluation Prompt', 'gregius-data' ),
 			);
 
 			$all_present = true;
@@ -183,6 +184,18 @@ Respond with this exact JSON shape only:
 {"status":"SAFE|UNSAFE","reason":"short reason"}
 
 Keep reason concise. Do not add extra keys or text.',
+				true
+			);
+
+			self::seed_prompt_post(
+				'gg_data_evaluation_prompt_seeded',
+				__( 'Evaluation Default', 'gregius-data' ),
+				'evaluation',
+				'You are a retrieval quality evaluator. The user\'s query and the retrieved context are provided in the state. Judge whether the retrieved context is sufficient to answer the query accurately and completely.
+
+Answer "yes" (sufficient) only when the context covers the query\'s subject with specific, supporting detail. Answer "no" (insufficient) when the context is too thin, off-topic, stale, or missing key facts needed for a grounded answer.
+
+Be strict: prefer "no" when the context does not clearly support a grounded answer.',
 				true
 			);
 		}
@@ -802,6 +815,11 @@ Keep reason concise. Do not add extra keys or text.',
 			self::migrate_search_rag_precomputed_query_vector();
 			self::migrate_remove_typo_tolerance_settings();
 			self::migrate_remove_observability_setting();
+
+			// Seed factory prompts idempotently (each guarded by its own option) so
+			// a new prompt type (e.g. evaluation) lands on existing installs without
+			// a version bump.
+			self::seed_default_prompts();
 		}
 
 		/**

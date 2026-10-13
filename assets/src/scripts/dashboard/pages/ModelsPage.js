@@ -183,6 +183,8 @@ const ModelsPage = () => {
       modelsList = provider.embedding_models;
     } else if (formData.type === "rerank") {
       modelsList = provider.rerank_models;
+    } else if (formData.type === "evaluator") {
+      modelsList = provider.evaluator_models;
     } else {
       modelsList = provider.llm_models;
     }
@@ -238,6 +240,8 @@ const ModelsPage = () => {
     if (formData.type === "embeddings") {
       // If no model selected (empty string), clear dimensions
       newDimensions = modelName ? getDimensionsForModel(modelName) : "";
+    } else if (formData.type === "evaluator") {
+      // Decision models have no dimensions, context window, or token limits.
     } else {
       // For LLM models, auto-set context_window and max_tokens based on model
       newContextWindow = getDefaultContextWindow(modelName);
@@ -266,6 +270,9 @@ const ModelsPage = () => {
       }
       if (type === "rerank") {
         return p.capabilities && p.capabilities.includes("rerank");
+      }
+      if (type === "evaluator") {
+        return p.capabilities && p.capabilities.includes("evaluator");
       }
       return !p.capabilities || p.capabilities.includes("llm");
     });
@@ -375,6 +382,8 @@ const ModelsPage = () => {
 
       if (formData.type === "embeddings") {
         config.dimensions = parseInt(formData.dimensions);
+      } else if (formData.type === "evaluator") {
+        // Evaluator (decision) models carry no dimensions or token limits.
       } else {
         const parsedMaxTokens = parseInt(formData.max_tokens, 10);
         const parsedContextWindow = parseInt(formData.context_window, 10);
@@ -460,10 +469,12 @@ const ModelsPage = () => {
       model.context_window ||
       (model.config && model.config.context_window) ||
       defaultContextWindow;
-    // Determine type: rerank, embeddings, or llm
+    // Determine type: rerank, evaluator, embeddings, or llm
     let type = "llm";
     if (model.model_type === "rerank") {
       type = "rerank";
+    } else if (model.model_type === "evaluator") {
+      type = "evaluator";
     } else if (model.model_type === "embeddings" || model.dimensions) {
       type = "embeddings";
     }
@@ -757,6 +768,7 @@ const ModelsPage = () => {
                 { label: "LLM (Chat)", value: "llm" },
                 { label: "Embeddings (Vector)", value: "embeddings" },
                 { label: "Rerank", value: "rerank" },
+                { label: "Evaluator (Decision)", value: "evaluator" },
               ]}
               onChange={handleTypeChange}
               __next40pxDefaultSize={true}

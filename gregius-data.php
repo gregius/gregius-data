@@ -144,6 +144,7 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-voyage-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-cohere-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-internal-provider.php',
+	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-typesafe-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-ai-request.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-ai-client.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/class-gg-data-document-extractor.php',
@@ -302,6 +303,9 @@ function gg_data_register_providers( $providers ) {
 
 	// Register Internal provider (HashingTF Embeddings - Free Tier).
 	$providers['internal'] = new GG_Data_Internal_Provider();
+
+	// Register TypeSafe provider (Evaluator/Decision models - Jev).
+	$providers['typesafe'] = new GG_Data_Typesafe_Provider();
 
 	return $providers;
 }

@@ -87,6 +87,8 @@ class GG_Data_Model_Registry {
 		// Determine model type based on model_type field or dimensions field.
 		if ( isset( $model_config['model_type'] ) && 'rerank' === $model_config['model_type'] ) {
 			$model_type = 'rerank_model';
+		} elseif ( isset( $model_config['model_type'] ) && 'evaluator' === $model_config['model_type'] ) {
+			$model_type = 'evaluator_model';
 		} elseif ( isset( $model_config['dimensions'] ) ) {
 			$model_type = 'embeddings_model';
 		} else {
@@ -174,6 +176,15 @@ class GG_Data_Model_Registry {
 		}
 
 		if ( ! $setting ) {
+			// Try evaluator models.
+			$setting = $this->settings_manager->get_with_category(
+				'evaluator_model',
+				self::MODEL_SCOPE_GLOBAL,
+				$model_key
+			);
+		}
+
+		if ( ! $setting ) {
 			return null;
 		}
 
@@ -215,12 +226,16 @@ class GG_Data_Model_Registry {
 		if ( 'rerank' === $model_type || null === $model_type ) {
 			$categories[] = 'rerank_model';
 		}
+		if ( 'evaluator' === $model_type || null === $model_type ) {
+			$categories[] = 'evaluator_model';
+		}
 
 		// Map category names to model types.
 		$category_type_map = array(
 			'embeddings_model' => 'embeddings',
 			'llm_model'        => 'llm',
 			'rerank_model'     => 'rerank',
+			'evaluator_model'  => 'evaluator',
 		);
 
 		foreach ( $categories as $category ) {
