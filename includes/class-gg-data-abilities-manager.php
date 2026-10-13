@@ -46,7 +46,6 @@ class GG_Data_Abilities_Manager {
 				'description' => __( 'Artificial Intelligence and machine learning capabilities', 'gregius-data' ),
 			)
 		);
-
 	}
 
 	/**
@@ -73,37 +72,47 @@ class GG_Data_Abilities_Manager {
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
-						'query'           => array(
+						'query'                => array(
 							'type'        => 'string',
 							'description' => __( 'The question to answer.', 'gregius-data' ),
 							'required'    => true,
 						),
-						'connection_name' => array(
+						'connection_name'      => array(
 							'type'        => 'string',
 							'description' => __( 'Required. The PostgreSQL connection to use. Use "list-connections" to see available connections.', 'gregius-data' ),
 							'required'    => true,
 						),
-						'embedding_model' => array(
+						'embedding_model'      => array(
 							'type'        => 'string',
 							'description' => __( 'Required. The embedding model for semantic search. Use "list-models" with type "embeddings" to see options.', 'gregius-data' ),
 							'required'    => true,
 						),
-						'agentic_model'   => array(
+						'agentic_model'        => array(
 							'type'        => 'string',
 							'description' => __( 'Optional. Model for query routing and tool selection. Use a fast, cheap LLM. Use "list-models" with type "llm" to see options.', 'gregius-data' ),
 							'default'     => '',
 						),
-						'rerank_model'    => array(
+						'rerank_model'         => array(
 							'type'        => 'string',
 							'description' => __( 'Optional. Reranks retrieved documents for better relevance. Use "list-models" with type "rerank" to see options.', 'gregius-data' ),
 							'default'     => '',
 						),
-						'answer_model'    => array(
+						'evaluator_model'      => array(
+							'type'        => 'string',
+							'description' => __( 'Optional. Grades retrieved context sufficiency (observe-only) and drives the corrective query rewrite. Use "list-models" with type "evaluator" to see options.', 'gregius-data' ),
+							'default'     => '',
+						),
+						'evaluation_prompt_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Optional. gg_prompt post ID for the evaluation criteria. Uses the active evaluation prompt when 0.', 'gregius-data' ),
+							'default'     => 0,
+						),
+						'answer_model'         => array(
 							'type'        => 'string',
 							'description' => __( 'Required. The LLM model for generating the final response. Use "list-models" with type "llm" to see options.', 'gregius-data' ),
 							'required'    => true,
 						),
-						'messages'        => array(
+						'messages'             => array(
 							'type'        => 'array',
 							'description' => __( 'Optional conversation history for context. Array of {role: "user"|"assistant", content: string}.', 'gregius-data' ),
 							'default'     => array(),
@@ -359,22 +368,24 @@ class GG_Data_Abilities_Manager {
 	/**
 	 * Execute RAG Answer ability.
 	 *
-	 * @param array                   $args       Arguments from the ability call.
+	 * @param array                    $args       Arguments from the ability call.
 	 * @param GG_Data_RAG_Service|null $rag_service Optional pre-built RAG service instance for reuse.
 	 * @return array Response data.
 	 */
 	public function execute_rag_answer( $args, $rag_service = null ) {
-		$query           = isset( $args['query'] ) ? $args['query'] : '';
-		$connection_name = isset( $args['connection_name'] ) ? $args['connection_name'] : '';
-		$embedding_model = isset( $args['embedding_model'] ) ? $args['embedding_model'] : '';
-		$agentic_model   = isset( $args['agentic_model'] ) ? $args['agentic_model'] : '';
-		$rerank_model    = isset( $args['rerank_model'] ) ? $args['rerank_model'] : '';
-		$answer_model    = isset( $args['answer_model'] ) ? $args['answer_model'] : '';
-		$prompt_id       = isset( $args['prompt_id'] ) ? absint( $args['prompt_id'] ) : 0;
-		$prompt          = isset( $args['prompt'] ) ? sanitize_text_field( (string) $args['prompt'] ) : '';
-		$conversation_id = isset( $args['conversation_id'] ) ? sanitize_text_field( (string) $args['conversation_id'] ) : '';
-		$source          = isset( $args['source'] ) && is_array( $args['source'] ) ? $args['source'] : array();
-		$messages        = isset( $args['messages'] ) && is_array( $args['messages'] ) ? $args['messages'] : array();
+		$query                = isset( $args['query'] ) ? $args['query'] : '';
+		$connection_name      = isset( $args['connection_name'] ) ? $args['connection_name'] : '';
+		$embedding_model      = isset( $args['embedding_model'] ) ? $args['embedding_model'] : '';
+		$agentic_model        = isset( $args['agentic_model'] ) ? $args['agentic_model'] : '';
+		$rerank_model         = isset( $args['rerank_model'] ) ? $args['rerank_model'] : '';
+		$evaluator_model      = isset( $args['evaluator_model'] ) ? sanitize_text_field( (string) $args['evaluator_model'] ) : '';
+		$evaluation_prompt_id = isset( $args['evaluation_prompt_id'] ) ? absint( $args['evaluation_prompt_id'] ) : 0;
+		$answer_model         = isset( $args['answer_model'] ) ? $args['answer_model'] : '';
+		$prompt_id            = isset( $args['prompt_id'] ) ? absint( $args['prompt_id'] ) : 0;
+		$prompt               = isset( $args['prompt'] ) ? sanitize_text_field( (string) $args['prompt'] ) : '';
+		$conversation_id      = isset( $args['conversation_id'] ) ? sanitize_text_field( (string) $args['conversation_id'] ) : '';
+		$source               = isset( $args['source'] ) && is_array( $args['source'] ) ? $args['source'] : array();
+		$messages             = isset( $args['messages'] ) && is_array( $args['messages'] ) ? $args['messages'] : array();
 
 		if ( '' === $conversation_id || ! wp_is_uuid( $conversation_id ) ) {
 			$conversation_id = wp_generate_uuid4();
@@ -412,12 +423,14 @@ class GG_Data_Abilities_Manager {
 
 		// Build options for RAG pipeline.
 		$options = array(
-			'agentic_model'   => $agentic_model,
-			'rerank_model_id' => $rerank_model,
-			'prompt_id'       => $prompt_id,
-			'conversation_id' => $conversation_id,
-			'source'          => $source,
-			'messages'        => $messages,
+			'agentic_model'        => $agentic_model,
+			'rerank_model_id'      => $rerank_model,
+			'evaluator_model'      => $evaluator_model,
+			'evaluation_prompt_id' => $evaluation_prompt_id,
+			'prompt_id'            => $prompt_id,
+			'conversation_id'      => $conversation_id,
+			'source'               => $source,
+			'messages'             => $messages,
 		);
 
 		if ( $rag_service instanceof GG_Data_RAG_Service ) {
