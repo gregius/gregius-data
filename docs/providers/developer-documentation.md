@@ -156,6 +156,12 @@ Required methods:
 
 Optional capability method:
 - Streaming is optional and checked via `method_exists( $provider, 'generate_text_stream' )`.
+- `evaluate( string $state, array $questions, array $options = array() ): array|WP_Error` and `get_evaluator_models(): array` are optional, checked via `method_exists()` — only the TypeSafe provider implements them. A provider advertises the capability via `get_capabilities()` returning `'evaluator'`.
+
+TypeSafe (Jev):
+- `includes/ai/providers/class-gg-data-typesafe-provider.php` — decision model (TypeSafe System One) that returns typed judgments, not prose.
+- `evaluate()` sends `POST https://api.typesafe.ai/v1/systemone` with `state` + `questions` (Noul/Choice/Score) and returns `answers` keyed by question id. The RAG service thresholds the `noul` probability into `correct | insufficient`.
+- Jev is English-primary, text-only; the versioned model `jev-1.13.0` is pinned by default.
 
 Traceability:
 - PA-FR-11 to PA-FR-17

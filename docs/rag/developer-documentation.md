@@ -181,6 +181,26 @@ Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg
 
 [SRS: RAG-FR-05 to RAG-FR-17]
 
+### 4.4 Evaluator Model + Corrective Loop
+
+Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
+
+An optional **evaluator model** (TypeSafe Jev, model type `evaluator`) grades whether the retrieved context is sufficient, and drives a bounded corrective step. Configure it per block via `evaluatorModelId` + `evaluationPromptId` (or per request via `evaluator_model` + `evaluation_prompt_id`).
+
+Behavior:
+
+- **Observe-only evaluator.** Jev answers a single `Noul` question ("does the context sufficiently answer the query?") returning a probability; thresholded by `gg_data_rag_evaluator_threshold` (default `0.5`) into `correct | insufficient`. The verdict is recorded in `metadata.retrieval.evaluation` (`final_verdict`, `score`, `reformulations`, `passes`) but **never gates generation** — the general-model evaluator is intentionally telemetry, not a quality gate.
+- **Model-selected corrective step.** When retrieval returns no chunks, or the evaluator grades `insufficient`, the agentic model chooses between `rewrite_query` (search again with new keywords + a reason) and `respond_directly` (stop and finalize), via a narrow tool surface. Rewrites are bounded by `gg_data_rag_evaluator_max_reformulations` (default `1`).
+- **Grounded negation terminal.** When no answer is found, the terminal response states honestly what was (and was not) found — it never invents, never asks a follow-up question. Under-specified queries still clarify at the initial routing gate (`is_under_specified_query` → `respond_directly`).
+- **Fails open.** Evaluator timeout/rate-limit/malformed response never blocks the answer.
+
+Relevant filters: `gg_data_rag_evaluator_threshold` (float, default 0.5), `gg_data_rag_evaluator_max_reformulations` (int, default 1), `gg_data_rag_evaluator_retry_attempts` (int, default 1).
+
+**Disambiguation:**
+
+- **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gg-data evaluation` / `gg-data benchmark` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation` and `docs/rag-benchmark`).
+- **Rerank** (a ranking model scoring candidate relevance) is distinct from the **evaluator** (a go/no-go sufficiency judgment). Both are optional and independent.
+
 ## 5. REST API Entry Points
 
 ### 5.1 `POST /wp-json/gg-data/v1/rag/chat`

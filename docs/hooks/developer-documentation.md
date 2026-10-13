@@ -363,6 +363,39 @@ add_filter( 'gg_data_rag_journey_allowed_block_id_prefixes', function ( array $p
 
 ---
 
+### 2.11 RAG Evaluator Hooks
+
+These filters tune the observe-only evaluator and its corrective rewrite loop.
+
+#### `gg_data_rag_evaluator_threshold`
+- Type: Filter
+- Signature: `(float $threshold, string $connection_name, string $query, array $options): float`
+- Default: `0.5`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php`
+- Use case: tune the Noul probability above which the retrieved context is graded `correct` vs `insufficient`.
+
+#### `gg_data_rag_evaluator_max_reformulations`
+- Type: Filter
+- Signature: `(int $max, string $connection_name, string $query, array $options): int`
+- Default: `1`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php`
+- Use case: bound how many times the agentic model may rewrite the search query after a failed retrieval.
+
+#### `gg_data_rag_evaluator_retry_attempts`
+- Type: Filter
+- Signature: `(int $retries, string $connection_name): int`
+- Default: `1`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php`
+- Use case: retry transient evaluator failures (rate-limit / transport) before failing open.
+
+#### `gg_data_rag_abstain_message`
+- Type: Filter
+- Signature: `(string $message, string $query, array $policy, array $retrieval, array $options, string $connection_name): string`
+- Emitted in: `includes/rag/class-gg-data-rag-service.php`
+- Use case: override the static fallback message used when the grounded-negation terminal has no agentic model.
+
+---
+
 ## 3. Tier 2 Semi-Public Hooks (Documented with Caveats)
 
 These hooks are in active code and useful for advanced integrations, but should be treated with tighter compatibility caution than Tier 1.
