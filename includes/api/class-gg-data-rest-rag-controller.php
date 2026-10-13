@@ -171,21 +171,23 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 			return $rate_limited;
 		}
 
-		$query               = $request->get_param( 'query' );
-		$connection_name     = $request->get_param( 'connection_name' );
-		$embedding_model_key = $request->get_param( 'embedding_model_key' );
-		$llm_model_id        = $request->get_param( 'llm_model_id' );
-		$agentic_model       = $request->get_param( 'agentic_model' );
-		$rerank_model_id     = $request->get_param( 'rerank_model_id' );
-		$conversation_id     = $request->get_param( 'conversation_id' );
-		$messages            = $request->get_param( 'messages' );
-		$prompt_id           = $request->get_param( 'prompt_id' );
-		$security_prompt_id  = $request->get_param( 'security_prompt_id' );
-		$source_turn_index   = absint( $request->get_param( 'source_turn_index' ) );
-		$metadata_filter     = $request->get_param( 'metadata_filter' );
-		$metadata_manifest   = $request->get_param( 'metadata_manifest' );
-		$manifest            = $request->get_param( 'manifest' );
-		$forced_tool         = $request->get_param( 'forced_tool' );
+		$query                = $request->get_param( 'query' );
+		$connection_name      = $request->get_param( 'connection_name' );
+		$embedding_model_key  = $request->get_param( 'embedding_model_key' );
+		$llm_model_id         = $request->get_param( 'llm_model_id' );
+		$agentic_model        = $request->get_param( 'agentic_model' );
+		$rerank_model_id      = $request->get_param( 'rerank_model_id' );
+		$evaluator_model      = $request->get_param( 'evaluator_model' );
+		$evaluation_prompt_id = $request->get_param( 'evaluation_prompt_id' );
+		$conversation_id      = $request->get_param( 'conversation_id' );
+		$messages             = $request->get_param( 'messages' );
+		$prompt_id            = $request->get_param( 'prompt_id' );
+		$security_prompt_id   = $request->get_param( 'security_prompt_id' );
+		$source_turn_index    = absint( $request->get_param( 'source_turn_index' ) );
+		$metadata_filter      = $request->get_param( 'metadata_filter' );
+		$metadata_manifest    = $request->get_param( 'metadata_manifest' );
+		$manifest             = $request->get_param( 'manifest' );
+		$forced_tool          = $request->get_param( 'forced_tool' );
 
 		// Validate required parameters.
 		if ( empty( $query ) ) {
@@ -248,20 +250,22 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		);
 
 		$options = array(
-			'num_chunks'         => $num_chunks,
-			'temperature'        => $temperature,
-			'agentic_model'      => ! empty( $agentic_model ) ? $agentic_model : '',
-			'rerank_model_id'    => ! empty( $rerank_model_id ) ? $rerank_model_id : '',
-			'metadata_filter'    => is_array( $metadata_filter ) ? $metadata_filter : array(),
-			'metadata_manifest'  => is_array( $metadata_manifest ) ? $metadata_manifest : array(),
-			'manifest'           => is_array( $manifest ) ? $manifest : array(),
-			'forced_tool'        => ! empty( $forced_tool ) ? sanitize_key( (string) $forced_tool ) : '',
-			'conversation_id'    => ! empty( $conversation_id ) ? $conversation_id : '',
-			'prompt_id'          => absint( $prompt_id ),
-			'security_prompt_id' => absint( $security_prompt_id ),
-			'source_turn_index'  => $source_turn_index,
-			'source'             => $source_payload,
-			'messages'           => is_array( $messages ) ? $messages : array(),
+			'num_chunks'           => $num_chunks,
+			'temperature'          => $temperature,
+			'agentic_model'        => ! empty( $agentic_model ) ? $agentic_model : '',
+			'rerank_model_id'      => ! empty( $rerank_model_id ) ? $rerank_model_id : '',
+			'evaluator_model'      => ! empty( $evaluator_model ) ? $evaluator_model : '',
+			'evaluation_prompt_id' => absint( $evaluation_prompt_id ),
+			'metadata_filter'      => is_array( $metadata_filter ) ? $metadata_filter : array(),
+			'metadata_manifest'    => is_array( $metadata_manifest ) ? $metadata_manifest : array(),
+			'manifest'             => is_array( $manifest ) ? $manifest : array(),
+			'forced_tool'          => ! empty( $forced_tool ) ? sanitize_key( (string) $forced_tool ) : '',
+			'conversation_id'      => ! empty( $conversation_id ) ? $conversation_id : '',
+			'prompt_id'            => absint( $prompt_id ),
+			'security_prompt_id'   => absint( $security_prompt_id ),
+			'source_turn_index'    => $source_turn_index,
+			'source'               => $source_payload,
+			'messages'             => is_array( $messages ) ? $messages : array(),
 		);
 
 		// Check if post_types was explicitly provided in the request (not just the default).
@@ -471,38 +475,38 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 	 */
 	private function get_chat_params() {
 		return array(
-			'query'               => array(
+			'query'                => array(
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'User query/question.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'connection_name'     => array(
+			'connection_name'      => array(
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'PostgreSQL connection name.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'embedding_model_key' => array(
+			'embedding_model_key'  => array(
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'Embedding model key (e.g., hashingtf-murmur3-1024, text-embedding-3-small).', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'llm_model_id'        => array(
+			'llm_model_id'         => array(
 				'required'          => true,
 				'type'              => 'string',
 				'description'       => __( 'LLM model ID for answer generation.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'num_chunks'          => array(
+			'num_chunks'           => array(
 				'required'          => false,
 				'type'              => 'integer',
 				'default'           => 5,
 				'description'       => __( 'Number of content chunks to retrieve.', 'gregius-data' ),
 				'sanitize_callback' => 'absint',
 			),
-			'post_types'          => array(
+			'post_types'           => array(
 				'required'    => false,
 				'type'        => 'array',
 				'description' => __( 'Post types to search. If not provided, uses connection synced types.', 'gregius-data' ),
@@ -510,7 +514,7 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 					'type' => 'string',
 				),
 			),
-			'temperature'         => array(
+			'temperature'          => array(
 				'required'          => false,
 				'type'              => 'number',
 				'default'           => 0.7,
@@ -519,49 +523,63 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 					return floatval( $value );
 				},
 			),
-			'agentic_model'       => array(
+			'agentic_model'        => array(
 				'required'          => false,
 				'type'              => 'string',
 				'default'           => '',
 				'description'       => __( 'LLM model ID for query rewriting. Empty to disable.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'rerank_model_id'     => array(
+			'rerank_model_id'      => array(
 				'required'          => false,
 				'type'              => 'string',
 				'default'           => '',
 				'description'       => __( 'Rerank model ID for result reranking. Empty to disable.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'conversation_id'     => array(
+			'evaluator_model'      => array(
+				'required'          => false,
+				'type'              => 'string',
+				'default'           => '',
+				'description'       => __( 'Evaluator model ID for retrieval-sufficiency grading. Empty to disable.', 'gregius-data' ),
+				'sanitize_callback' => 'sanitize_text_field',
+			),
+			'conversation_id'      => array(
 				'required'          => false,
 				'type'              => 'string',
 				'default'           => '',
 				'description'       => __( 'Unique conversation ID for interaction tracking.', 'gregius-data' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'prompt_id'           => array(
+			'prompt_id'            => array(
 				'required'          => false,
 				'type'              => 'integer',
 				'default'           => 0,
 				'description'       => __( 'Selected prompt post ID.', 'gregius-data' ),
 				'sanitize_callback' => 'absint',
 			),
-			'security_prompt_id'  => array(
+			'security_prompt_id'   => array(
 				'required'          => false,
 				'type'              => 'integer',
 				'default'           => 0,
 				'description'       => __( 'Selected security prompt post ID.', 'gregius-data' ),
 				'sanitize_callback' => 'absint',
 			),
-			'source_turn_index'   => array(
+			'evaluation_prompt_id' => array(
+				'required'          => false,
+				'type'              => 'integer',
+				'default'           => 0,
+				'description'       => __( 'Selected evaluation prompt post ID.', 'gregius-data' ),
+				'sanitize_callback' => 'absint',
+			),
+			'source_turn_index'    => array(
 				'required'          => false,
 				'type'              => 'integer',
 				'default'           => 0,
 				'description'       => __( 'User turn index used for deterministic tool-context routing.', 'gregius-data' ),
 				'sanitize_callback' => 'absint',
 			),
-			'messages'            => array(
+			'messages'             => array(
 				'required'          => false,
 				'type'              => 'array',
 				'default'           => array(),
@@ -580,35 +598,35 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 					),
 				),
 			),
-			'source'              => array(
+			'source'               => array(
 				'required'          => false,
 				'type'              => 'object',
 				'default'           => array(),
 				'description'       => __( 'Optional request source metadata.', 'gregius-data' ),
 				'sanitize_callback' => array( $this, 'sanitize_source' ),
 			),
-			'metadata_filter'     => array(
+			'metadata_filter'      => array(
 				'required'          => false,
 				'type'              => 'object',
 				'default'           => array(),
 				'description'       => __( 'Optional structured metadata filter for deterministic retrieval narrowing.', 'gregius-data' ),
 				'sanitize_callback' => array( $this, 'sanitize_metadata_filter' ),
 			),
-			'metadata_manifest'   => array(
+			'metadata_manifest'    => array(
 				'required'          => false,
 				'type'              => 'array',
 				'default'           => array(),
 				'description'       => __( 'Optional context manifest emitted by premium clients for safety-gated filtering.', 'gregius-data' ),
 				'sanitize_callback' => array( $this, 'sanitize_metadata_manifest' ),
 			),
-			'manifest'            => array(
+			'manifest'             => array(
 				'required'          => false,
 				'type'              => 'object',
 				'default'           => array(),
 				'description'       => __( 'Optional full request manifest used for deterministic context handling.', 'gregius-data' ),
 				'sanitize_callback' => array( $this, 'sanitize_manifest' ),
 			),
-			'forced_tool'         => array(
+			'forced_tool'          => array(
 				'required'          => false,
 				'type'              => 'string',
 				'default'           => '',

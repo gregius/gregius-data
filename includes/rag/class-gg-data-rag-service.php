@@ -1197,17 +1197,19 @@ class GG_Data_RAG_Service {
 
 		// Use connection's synced post types as default.
 		$defaults = array(
-			'num_chunks'        => 5,
-			'post_types'        => $this->get_synced_post_types(),
-			'temperature'       => 0.7,
-			'agentic_model'     => '',
-			'rerank_model_id'   => '',
-			'metadata_filter'   => array(),
-			'manifest'          => array(),
-			'messages'          => array(),
-			'forced_tool'       => '',
-			'source_turn_index' => 0,
-			'progress_callback' => null,
+			'num_chunks'           => 5,
+			'post_types'           => $this->get_synced_post_types(),
+			'temperature'          => 0.7,
+			'agentic_model'        => '',
+			'rerank_model_id'      => '',
+			'evaluator_model'      => '',
+			'evaluation_prompt_id' => 0,
+			'metadata_filter'      => array(),
+			'manifest'             => array(),
+			'messages'             => array(),
+			'forced_tool'          => '',
+			'source_turn_index'    => 0,
+			'progress_callback'    => null,
 		);
 
 		$options                      = wp_parse_args( $options, $defaults );
@@ -1622,201 +1624,19 @@ class GG_Data_RAG_Service {
 			$options['retrieval_filters'] = $retrieval_filters;
 		}
 
-		$query_plan       = $this->build_lightweight_query_plan( $query, $search_query, $tool_selection, $options );
-		$retrieval_policy = $this->resolve_hybrid_retrieval_policy( $query_plan['intent'] ?? 'single', $options, $search_query );
+		$retrieval_result = $this->retrieve_single_path_with_evaluation( $query, $search_query, $tool_selection, $options, $progress_callback );
 
-		$this->logger->log(
-			sprintf(
-				'RAG Service: Query planner %s (%d subqueries)',
-				! empty( $query_plan['active'] ) ? 'active' : 'skipped',
-				count( $query_plan['subqueries'] ?? array() )
-			),
-			'debug',
-			'rag',
-			$this->connection_name,
-			array(
-				'planner' => $query_plan,
-			)
-		);
-
-		// Emit: Searching knowledge base.
-		$this->emit_progress( $progress_callback, 'searching', __( 'Searching knowledge base...', 'gregius-data' ) );
-
-		// Step 2: Retrieve candidate posts using hybrid FTS/vector search.
-		// Always retrieve 6 post candidates for passage-level expansion.
-		$planned_retrieval = $this->retrieve_post_candidates_from_plan( $query_plan, $options, $retrieval_policy );
-		$post_candidates   = $planned_retrieval['candidates'];
-
-		if ( empty( $post_candidates ) ) {
-			$error = new WP_Error(
-				'no_chunks_found',
-				__( 'No relevant content found for your question.', 'gregius-data' )
-			);
-
-			/**
-			 * Fires when RAG encounters an error.
-			 *
-			 * @since 1.0.0
-			 * @param WP_Error $error   Error object.
-			 * @param string   $query   User query.
-			 * @param array    $context Additional context.
-			 */
-			do_action( 'gg_data_rag_error', $error, $query, array( 'step' => 'retrieval' ) );
-
-			return $error;
+		if ( is_wp_error( $retrieval_result ) ) {
+			return $retrieval_result;
 		}
 
-		// Emit: Found sources.
-		$this->emit_progress(
-			$progress_callback,
-			'found',
-			array(
-				'count'   => count( $post_candidates ),
-				/* translators: %d: number of sources found */
-				'message' => sprintf( __( 'Found %d relevant sources', 'gregius-data' ), count( $post_candidates ) ),
-			)
-		);
-
-		// Step 2.5: Passage retrieval — expand post candidates to chunk-level context.
-		// Fetches actual chunk text from wp_posts_chunks and selects the best passages
-		// for context assembly. Falls back to full post content when unavailable.
-		$connection_config = $this->get_connection_config();
-		$chunks_by_post    = array();
-
-		if ( ! is_wp_error( $connection_config ) ) {
-			$post_ids       = array_unique( array_column( $post_candidates, 'post_id' ) );
-			$chunks_by_post = $this->fetch_chunks_for_posts( $post_ids, $connection_config );
-		}
-
-		// Retrieval funnel stats — populated during passage retrieval; included in interaction metadata.
-		$retrieval_stats = array(
-			'mode'                               => 'hybrid_post_to_chunk',
-			'posts_retrieved'                    => count( $post_candidates ),
-			'chunk_candidates_total'             => 0,
-			'chunk_candidates_prefiltered'       => 0,
-			'chunks_final'                       => 0,
-			'rerank_enabled'                     => ! empty( $options['rerank_model_id'] ),
-			'neighbor_expansion_used'            => false,
-			'planner_active'                     => ! empty( $query_plan['active'] ),
-			'planner_source'                     => $query_plan['planner_source'] ?? 'none',
-			'planner_intent'                     => $query_plan['intent'] ?? 'single',
-			'planner_subqueries'                 => $query_plan['subqueries'] ?? array(),
-			'planner_subqueries_total'           => count( $query_plan['subqueries'] ?? array() ),
-			'planner_subqueries_executed'        => (int) ( $planned_retrieval['metrics']['subqueries_executed'] ?? 0 ),
-			'planner_candidate_counts'           => $planned_retrieval['metrics']['candidate_counts'] ?? array(),
-			'planner_unique_candidates_total'    => (int) ( $planned_retrieval['metrics']['unique_candidates_total'] ?? 0 ),
-			'planner_duplicate_candidates_total' => (int) ( $planned_retrieval['metrics']['duplicate_candidates_total'] ?? 0 ),
-			'retrieval_policy'                   => $retrieval_policy,
-			'mode_contribution'                  => $this->build_retrieval_mode_contribution( $post_candidates ),
-			'query_vector_source'                => $this->query_vector_source,
-		);
-
-		if ( ! empty( $chunks_by_post ) ) {
-			// Build normalized chunk candidates from chunk rows + post scores.
-			$chunk_candidates                          = $this->build_chunk_candidates( $post_candidates, $chunks_by_post );
-			$retrieval_stats['chunk_candidates_total'] = count( $chunk_candidates );
-
-			// Prefilter: cap to 2 chunks per post, 12 total before scoring.
-			$chunk_candidates                                = $this->prefilter_chunk_candidates( $chunk_candidates, 2, 12, $search_query );
-			$retrieval_stats['chunk_candidates_prefiltered'] = count( $chunk_candidates );
-			$rerank_policy                                   = $this->resolve_formal_rerank_policy( 'single', count( $chunk_candidates ), $options, $query );
-			$rerank_applied                                  = false;
-
-			// Score chunk candidates: rerank when configured, heuristic otherwise.
-			if ( ! empty( $rerank_policy['should_run'] ) ) {
-				$this->emit_progress( $progress_callback, 'reranking', __( 'Reranking results...', 'gregius-data' ) );
-				$reranked = $this->rerank_chunks( $chunk_candidates, $search_query, $options['rerank_model_id'] );
-				if ( ! is_wp_error( $reranked ) ) {
-					$chunk_candidates = $reranked;
-					$rerank_applied   = true;
-				} else {
-					// Reranking failed — fall back to heuristic scoring.
-					$chunk_candidates = $this->heuristic_score_chunks( $chunk_candidates, $search_query );
-				}
-			} else {
-				$chunk_candidates = $this->heuristic_score_chunks( $chunk_candidates, $search_query );
-			}
-
-			$ranked_single_candidates = $chunk_candidates;
-			$acceptance               = $this->apply_candidate_acceptance_policy( $ranked_single_candidates, 'single', $rerank_policy, $rerank_applied );
-			$chunk_candidates         = $acceptance['candidates'];
-			if ( empty( $chunk_candidates ) && ! empty( $acceptance['metrics']['input_count'] ) ) {
-				$recovered_chunks = $this->recover_single_block_lookup_candidates( $ranked_single_candidates, $search_query );
-				if ( ! empty( $recovered_chunks ) ) {
-					$chunk_candidates                         = $recovered_chunks;
-					$acceptance['metrics']['accepted_count']  = count( $chunk_candidates );
-					$acceptance['metrics']['acceptance_mode'] = 'post_rerank_block_lookup_recovery';
-				}
-			}
-			$retrieval_stats['rerank_policy']  = $rerank_policy;
-			$retrieval_stats['rerank_applied'] = $rerank_applied;
-			$retrieval_stats['acceptance']     = $acceptance['metrics'];
-
-			// Finalize: enforce diversity (max 2 per post) and keep top 6.
-			$chunks = $this->finalize_context_chunks( $chunk_candidates );
-
-			// Selective neighbor expansion for top 2 incomplete passages.
-			$chunks_before_expansion = count( $chunks );
-			$chunks                  = $this->expand_neighbor_chunks_if_needed( $chunks, $chunks_by_post );
-
-			$retrieval_stats['chunks_final']            = count( $chunks );
-			$retrieval_stats['neighbor_expansion_used'] = count( $chunks ) > $chunks_before_expansion;
-
-			$this->logger->log(
-				sprintf(
-					'RAG Service: Passage retrieval selected %d chunks from %d post candidates',
-					count( $chunks ),
-					count( $post_candidates )
-				),
-				'info',
-				'rag',
-				$this->connection_name,
-				$retrieval_stats
-			);
-		} else {
-			// Fallback: chunk table not populated or connection unavailable.
-			// Use post-level retrieval with full post content (existing behavior).
-			$chunks                          = $post_candidates;
-			$retrieval_stats['mode']         = 'document_level';
-			$retrieval_stats['chunks_final'] = count( $chunks );
-
-			$this->logger->log(
-				'RAG Service: No chunk data available; using document-level context assembly',
-				'info',
-				'rag',
-				$this->connection_name
-			);
-
-			// Apply reranking to post-level chunks as before.
-			$rerank_policy  = $this->resolve_formal_rerank_policy( 'single', count( $chunks ), $options, $query );
-			$rerank_applied = false;
-			if ( ! empty( $rerank_policy['should_run'] ) ) {
-				$this->emit_progress( $progress_callback, 'reranking', __( 'Reranking results...', 'gregius-data' ) );
-				$reranked = $this->rerank_chunks( $chunks, $search_query, $options['rerank_model_id'] );
-				if ( ! is_wp_error( $reranked ) ) {
-					$chunks         = $reranked;
-					$rerank_applied = true;
-				}
-				// If reranking fails, continue with original chunks (graceful degradation).
-			}
-
-			$ranked_single_candidates = $chunks;
-			$acceptance               = $this->apply_candidate_acceptance_policy( $ranked_single_candidates, 'single', $rerank_policy, $rerank_applied );
-			$chunks                   = $acceptance['candidates'];
-			if ( empty( $chunks ) && ! empty( $acceptance['metrics']['input_count'] ) ) {
-				$recovered_chunks = $this->recover_single_block_lookup_candidates( $ranked_single_candidates, $search_query );
-				if ( ! empty( $recovered_chunks ) ) {
-					$chunks                                   = $recovered_chunks;
-					$acceptance['metrics']['accepted_count']  = count( $chunks );
-					$acceptance['metrics']['acceptance_mode'] = 'post_rerank_block_lookup_recovery';
-				}
-			}
-			$retrieval_stats['rerank_policy']  = $rerank_policy;
-			$retrieval_stats['rerank_applied'] = $rerank_applied;
-			$retrieval_stats['acceptance']     = $acceptance['metrics'];
-
-			$retrieval_stats['chunks_final'] = count( $chunks );
-		}
+		$chunks           = $retrieval_result['chunks'];
+		$post_candidates  = $retrieval_result['post_candidates'];
+		$chunks_by_post   = $retrieval_result['chunks_by_post'];
+		$retrieval_stats  = $retrieval_result['retrieval_stats'];
+		$query_plan       = $retrieval_result['query_plan'];
+		$retrieval_policy = $retrieval_result['retrieval_policy'];
+		$search_query     = $retrieval_result['search_query'];
 
 		if ( empty( $chunks ) ) {
 			$single_profile         = $this->get_policy_threshold_profile( 'single', $query, $options );
@@ -1855,13 +1675,19 @@ class GG_Data_RAG_Service {
 				)
 			);
 
-			$response_text = $this->build_abstain_message(
-				__( 'I could not find relevant information in the website content to answer that question.', 'gregius-data' ),
-				$query,
-				$policy_metadata,
-				$retrieval_metadata,
-				$options
-			);
+			$negation = $this->generate_grounded_negation( $query, $search_query, $retrieval_stats, $options );
+
+			if ( null !== $negation ) {
+				$response_text = $negation['text'];
+			} else {
+				$response_text = $this->build_abstain_message(
+					__( 'I could not find relevant information in the website content to answer that question.', 'gregius-data' ),
+					$query,
+					$policy_metadata,
+					$retrieval_metadata,
+					$options
+				);
+			}
 
 			$metadata = $this->ensure_policy_retrieval_contract(
 				array(
@@ -1871,9 +1697,10 @@ class GG_Data_RAG_Service {
 					'connection'        => $this->connection_name,
 					'execution_time'    => round( ( microtime( true ) - $start_time ) * 1000 ),
 					'reasoning_content' => '',
-					'usage'             => array(),
-					'provider'          => '',
-					'model_used'        => '',
+					'usage'             => null !== $negation ? $negation['usage'] : array(),
+					'provider'          => null !== $negation ? $negation['provider'] : '',
+					'model_used'        => null !== $negation ? $negation['model'] : '',
+					'grounded_negation' => null !== $negation,
 					'raw_response'      => array(),
 					'conversation_id'   => $options['conversation_id'] ?? null,
 					'source'            => $options['source'] ?? array( 'type' => 'rest' ),
@@ -1882,6 +1709,7 @@ class GG_Data_RAG_Service {
 					'post_types'        => $options['post_types'] ?? array(),
 					'agentic_model'     => $options['agentic_model'] ?? null,
 					'rerank_model'      => $options['rerank_model_id'] ?? null,
+					'evaluator_model'   => $options['evaluator_model'] ?? null,
 					'citation_sources'  => array(),
 					'tool_selected'     => 'search_content',
 					'prompt'            => array(),
@@ -2203,6 +2031,7 @@ class GG_Data_RAG_Service {
 			'metadata_filter'     => $options['metadata_filter'] ?? array(),
 			'agentic_model'       => $options['agentic_model'] ?? null,
 			'rerank_model'        => $options['rerank_model_id'] ?? null,
+			'evaluator_model'     => $options['evaluator_model'] ?? null,
 			'citation_sources'    => $citation_sources,
 			'tool_selected'       => 'search_content', // Tool used for this flow.
 			'prompt'              => $prompt_resolution['metadata'] ?? array(),
@@ -3026,6 +2855,7 @@ class GG_Data_RAG_Service {
 					'agentic'   => $metadata['agentic_model'] ?? null,
 					'embedding' => $metadata['embedding_model'] ?? null,
 					'rerank'    => $metadata['rerank_model'] ?? null,
+					'evaluator' => $metadata['evaluator_model'] ?? null,
 					'answer'    => $metadata['llm_model'] ?? null,
 				),
 				'provider'   => isset( $metadata['provider'] ) ? sanitize_key( (string) $metadata['provider'] ) : '',
@@ -3152,6 +2982,36 @@ class GG_Data_RAG_Service {
 			'posts_retrieved' => isset( $retrieval['posts_retrieved'] ) ? (int) $retrieval['posts_retrieved'] : 0,
 			'chunks_final'    => isset( $retrieval['chunks_final'] ) ? (int) $retrieval['chunks_final'] : 0,
 			'rerank_applied'  => ! empty( $retrieval['rerank_applied'] ),
+			'evaluation'      => $this->build_retrieval_evaluation_summary( $retrieval['evaluation'] ?? null ),
+		);
+	}
+
+	/**
+	 * Build a compact evaluator summary for the retrieval summary section.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $evaluation Evaluation telemetry (or null when disabled).
+	 * @return array
+	 */
+	private function build_retrieval_evaluation_summary( $evaluation ) {
+		if ( ! is_array( $evaluation ) || empty( $evaluation['enabled'] ) ) {
+			return array( 'enabled' => false );
+		}
+
+		$latest_score = null;
+		$passes       = isset( $evaluation['passes'] ) && is_array( $evaluation['passes'] ) ? $evaluation['passes'] : array();
+		$last_pass    = end( $passes );
+		if ( is_array( $last_pass ) && isset( $last_pass['score'] ) ) {
+			$latest_score = (float) $last_pass['score'];
+		}
+		reset( $passes );
+
+		return array(
+			'enabled'        => true,
+			'final_verdict'  => isset( $evaluation['final_verdict'] ) ? sanitize_key( (string) $evaluation['final_verdict'] ) : null,
+			'score'          => $latest_score,
+			'reformulations' => isset( $evaluation['reformulations'] ) ? (int) $evaluation['reformulations'] : 0,
+			'passes'         => count( $passes ),
 		);
 	}
 
@@ -4887,10 +4747,11 @@ class GG_Data_RAG_Service {
 	 * }
 	 */
 	private function apply_candidate_acceptance_policy( $candidates, $intent, $rerank_policy, $rerank_applied ) {
-		$profile         = $this->get_policy_threshold_profile( $intent );
-		$threshold       = $rerank_applied
+		$profile   = $this->get_policy_threshold_profile( $intent );
+		$threshold = $rerank_applied
 			? (float) ( $rerank_policy['acceptance_threshold'] ?? 0.35 )
 			: (float) ( $profile['min_relevance'] ?? 0.0 );
+
 		$acceptance_mode = $rerank_applied ? 'post_rerank' : 'first_stage';
 
 		$accepted = array();
@@ -6886,6 +6747,841 @@ class GG_Data_RAG_Service {
 		$this->emit_governance_decision( $query, $result['metadata']['policy'], $result['metadata']['retrieval'], $options );
 
 		return $result;
+	}
+
+	/**
+	 * Retrieve the single-path context, wrapping the retrieval funnel in a
+	 * corrective decision step when an evaluator model is configured.
+	 *
+	 * When retrieval returns no relevant chunks, or chunks the evaluator grades
+	 * insufficient, the agentic model selects the corrective action via a narrow
+	 * tool surface — `rewrite_query` (search again with new keywords) or
+	 * `respond_directly` (stop and finalize). The evaluator verdict is recorded
+	 * for telemetry and informs the decision, but never blocks generation.
+	 * Bounded by {@see gg_data_rag_evaluator_max_reformulations}; fails open on
+	 * evaluator errors (timeout, rate-limit, malformed response).
+	 *
+	 * @since 1.0.0
+	 * @param string   $query             Original user query.
+	 * @param string   $search_query      Search query (possibly rewritten).
+	 * @param array    $tool_selection    Tool selection metadata.
+	 * @param array    $options           RAG options.
+	 * @param callable $progress_callback SSE progress callback.
+	 * @return array|WP_Error {
+	 *     @type array  $chunks           Finalized context chunks.
+	 *     @type array  $post_candidates  Retrieved post candidates.
+	 *     @type array  $chunks_by_post   Chunk rows keyed by post id.
+	 *     @type array  $retrieval_stats  Retrieval funnel statistics (incl. evaluation).
+	 *     @type array  $query_plan       Final query plan.
+	 *     @type array  $retrieval_policy Final retrieval policy.
+	 *     @type string $search_query     Final search query (post reformulation).
+	 *     @type array  $evaluation       Evaluation telemetry, or null when disabled.
+	 * }
+	 */
+	private function retrieve_single_path_with_evaluation( $query, $search_query, $tool_selection, $options, $progress_callback ) {
+		$evaluator = $this->resolve_evaluator( $options );
+
+		$max_reformulations = (int) apply_filters( 'gg_data_rag_evaluator_max_reformulations', 1, $this->connection_name, $query, $options );
+		$max_reformulations = max( 0, $max_reformulations );
+
+		$evaluation = array(
+			'enabled'        => null !== $evaluator,
+			'final_verdict'  => null,
+			'reformulations' => 0,
+			'passes'         => array(),
+		);
+
+		$final_search_query = (string) $search_query;
+		$context            = null;
+
+		for ( $pass = 0; $pass <= $max_reformulations; $pass++ ) {
+			$context = $this->retrieve_single_path_context( $query, $final_search_query, $tool_selection, $options, $progress_callback );
+
+			if ( is_wp_error( $context ) ) {
+				return $context;
+			}
+
+			if ( null === $evaluator ) {
+				break;
+			}
+
+			if ( empty( $context['chunks'] ) ) {
+				$retrieval_outcome = ! empty( $context['post_candidates'] )
+					? __( 'returned pages, but none contained a relevant answer', 'gregius-data' )
+					: __( 'returned no relevant content', 'gregius-data' );
+			} else {
+				$verdict                     = $this->evaluate_retrieval_sufficiency( $query, $context['chunks'], $evaluator, $options );
+				$evaluation['passes'][]      = $verdict;
+				$evaluation['final_verdict'] = $verdict['verdict'];
+
+				if ( 'insufficient' !== $verdict['verdict'] ) {
+					break;
+				}
+
+				$retrieval_outcome = __( 'returned content that does not fully answer the question', 'gregius-data' );
+			}
+
+			if ( $pass >= $max_reformulations || empty( $options['agentic_model'] ) ) {
+				break;
+			}
+
+			$action = $this->select_corrective_action( $final_search_query, $retrieval_outcome, $options );
+			if ( null === $action || 'rewrite' !== ( $action['action'] ?? '' ) ) {
+				break;
+			}
+
+			$new_query = $this->normalize_search_query( (string) ( $action['search_query'] ?? '' ) );
+			if ( '' === $new_query || $new_query === $final_search_query ) {
+				break;
+			}
+
+			$this->emit_progress( $progress_callback, 'reformulating', __( 'Refining search...', 'gregius-data' ) );
+			$this->log_reformulation( $final_search_query, $new_query, $pass + 1, (string) ( $action['reason'] ?? '' ) );
+			$final_search_query = $this->normalize_retrieval_query( $new_query );
+			++$evaluation['reformulations'];
+		}
+
+		$context['search_query'] = $final_search_query;
+		$context['evaluation']   = null;
+
+		if ( $evaluation['enabled'] ) {
+			$context['retrieval_stats']['evaluation'] = $evaluation;
+			$context['evaluation']                    = $evaluation;
+
+			$last_pass   = end( $evaluation['passes'] );
+			$final_score = is_array( $last_pass ) && isset( $last_pass['score'] ) ? (float) $last_pass['score'] : null;
+			reset( $evaluation['passes'] );
+
+			$this->logger->log(
+				sprintf(
+					'RAG Service: Evaluator verdict "%s" (score %s, %d reformulations)',
+					$evaluation['final_verdict'] ?? 'n/a',
+					null === $final_score ? 'n/a' : number_format( $final_score, 3 ),
+					(int) $evaluation['reformulations']
+				),
+				'info',
+				'rag',
+				$this->connection_name
+			);
+		}
+
+		return $context;
+	}
+
+	/**
+	 * Log a corrective search-query reformulation.
+	 *
+	 * @since 1.0.0
+	 * @param string $from_query Query before reformulation.
+	 * @param string $to_query   Query after reformulation.
+	 * @param int    $pass       One-indexed corrective pass number.
+	 * @param string $reason     Why the model rewrote the query.
+	 * @return void
+	 */
+	private function log_reformulation( $from_query, $to_query, $pass, $reason = '' ) {
+		$message = sprintf( 'RAG Service: Reformulated search query "%s" -> "%s" (pass %d)', $from_query, $to_query, $pass );
+		if ( '' !== trim( (string) $reason ) ) {
+			$message .= sprintf( ' — reason: %s', trim( (string) $reason ) );
+		}
+
+		$this->logger->log( $message, 'info', 'rag', $this->connection_name );
+	}
+
+	/**
+	 * Generate a grounded negation for an unanswerable query.
+	 *
+	 * Uses the agentic model to state honestly what retrieval found versus what
+	 * it could not answer, grounded in the retrieval signal (pages found, chunks
+	 * kept). Returns null when no agentic model is configured or generation
+	 * fails, so callers fall back to a static message.
+	 *
+	 * @since 1.0.0
+	 * @param string $query          Original user query.
+	 * @param string $search_query   Resolved search query.
+	 * @param array  $retrieval_stats Retrieval funnel statistics.
+	 * @param array  $options        RAG options.
+	 * @return array|null {
+	 *     @type string $text     Negation text.
+	 *     @type array  $usage    Token usage.
+	 *     @type string $provider Provider id.
+	 *     @type string $model    Model that answered.
+	 * }
+	 */
+	private function generate_grounded_negation( $query, $search_query, $retrieval_stats, $options ) {
+		$agentic_model_id = isset( $options['agentic_model'] ) ? trim( (string) $options['agentic_model'] ) : '';
+		if ( '' === $agentic_model_id ) {
+			return null;
+		}
+
+		$model_registry = new GG_Data_Model_Registry();
+		$model_data     = $model_registry->get_model( 'gregius-data', $agentic_model_id );
+		if ( ! $model_data || is_wp_error( $model_data ) ) {
+			return null;
+		}
+
+		$model_config = is_array( $model_data['config'] ) ? $model_data['config'] : array();
+		$model_name   = $model_config['provider_model_id'] ?? $model_data['provider_model_id'] ?? $agentic_model_id;
+		$provider_id  = $model_data['provider'] ?? $model_config['provider'] ?? 'openai';
+
+		$posts_retrieved = isset( $retrieval_stats['posts_retrieved'] ) ? (int) $retrieval_stats['posts_retrieved'] : 0;
+		$chunks_final    = isset( $retrieval_stats['chunks_final'] ) ? (int) $retrieval_stats['chunks_final'] : 0;
+
+		if ( $posts_retrieved > 0 ) {
+			$found_summary = $chunks_final > 0
+				? 'the retrieved content did not fully answer the question'
+				: 'none of the pages contained a relevant answer';
+		} else {
+			$found_summary = 'no matching content was found';
+		}
+
+		$prompt = sprintf(
+			"The user asked: %s\nWe searched the site for: %s\nRetrieval found %d page(s); %s. State honestly in one sentence what you found and that you cannot answer. Never invent an answer and never ask a follow-up question.",
+			$query,
+			$search_query,
+			$posts_retrieved,
+			$found_summary
+		);
+
+		$ai_request = GG_Data_Ai_Client::prompt( $prompt )
+			->setSystemMessage( __( 'You are a search assistant. When the website content does not answer a question, honestly state that you could not find an answer. Never invent an answer and never ask a follow-up question.', 'gregius-data' ) )
+			->usingProvider( $provider_id )
+			->usingModel( $model_name )
+			->usingConnection( 'gregius-data' )
+			->withMaxTokens( 80 );
+
+		$response = $ai_request->generateTextWithMetadata();
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		$text = is_array( $response ) ? trim( (string) ( $response['text'] ?? '' ) ) : trim( (string) $response );
+		if ( '' === $text ) {
+			return null;
+		}
+
+		return array(
+			'text'     => $text,
+			'usage'    => is_array( $response ) ? ( $response['usage'] ?? array() ) : array(),
+			'provider' => is_array( $response ) ? ( $response['provider'] ?? '' ) : '',
+			'model'    => is_array( $response ) ? ( $response['model'] ?? '' ) : '',
+		);
+	}
+
+	/**
+	 * Run a single pass of the single-path retrieval funnel: plan → post
+	 * candidates → passage retrieval → rerank → acceptance → recovery →
+	 * finalize. Extracted from generate_answer() to support the evaluator
+	 * corrective loop re-running retrieval with a reformulated query.
+	 *
+	 * @since 1.0.0
+	 * @param string   $query             Original user query.
+	 * @param string   $search_query      Search query.
+	 * @param array    $tool_selection    Tool selection metadata.
+	 * @param array    $options           RAG options.
+	 * @param callable $progress_callback SSE progress callback.
+	 * @return array|WP_Error {
+	 *     @type array $chunks           Finalized context chunks.
+	 *     @type array $post_candidates  Retrieved post candidates.
+	 *     @type array $chunks_by_post   Chunk rows keyed by post id.
+	 *     @type array $retrieval_stats  Retrieval funnel statistics.
+	 *     @type array $query_plan       Query plan.
+	 *     @type array $retrieval_policy Resolved retrieval policy.
+	 * }
+	 */
+	private function retrieve_single_path_context( $query, $search_query, $tool_selection, $options, $progress_callback ) {
+		$query_plan       = $this->build_lightweight_query_plan( $query, $search_query, $tool_selection, $options );
+		$retrieval_policy = $this->resolve_hybrid_retrieval_policy( $query_plan['intent'] ?? 'single', $options, $search_query );
+
+		$this->logger->log(
+			sprintf(
+				'RAG Service: Query planner %s (%d subqueries)',
+				! empty( $query_plan['active'] ) ? 'active' : 'skipped',
+				count( $query_plan['subqueries'] ?? array() )
+			),
+			'debug',
+			'rag',
+			$this->connection_name,
+			array(
+				'planner' => $query_plan,
+			)
+		);
+
+		// Emit: Searching knowledge base.
+		$this->emit_progress( $progress_callback, 'searching', __( 'Searching knowledge base...', 'gregius-data' ) );
+
+		// Step 2: Retrieve candidate posts using hybrid FTS/vector search.
+		// Always retrieve 6 post candidates for passage-level expansion.
+		$planned_retrieval = $this->retrieve_post_candidates_from_plan( $query_plan, $options, $retrieval_policy );
+		$post_candidates   = $planned_retrieval['candidates'];
+
+		if ( empty( $post_candidates ) ) {
+			$error = new WP_Error(
+				'no_chunks_found',
+				__( 'No relevant content found for your question.', 'gregius-data' )
+			);
+
+			/**
+			 * Fires when RAG encounters an error.
+			 *
+			 * @since 1.0.0
+			 * @param WP_Error $error   Error object.
+			 * @param string   $query   User query.
+			 * @param array    $context Additional context.
+			 */
+			do_action( 'gg_data_rag_error', $error, $query, array( 'step' => 'retrieval' ) );
+
+			return $error;
+		}
+
+		// Emit: Found sources.
+		$this->emit_progress(
+			$progress_callback,
+			'found',
+			array(
+				'count'   => count( $post_candidates ),
+				/* translators: %d: number of sources found */
+				'message' => sprintf( __( 'Found %d relevant sources', 'gregius-data' ), count( $post_candidates ) ),
+			)
+		);
+
+		// Step 2.5: Passage retrieval — expand post candidates to chunk-level context.
+		// Fetches actual chunk text from wp_posts_chunks and selects the best passages
+		// for context assembly. Falls back to full post content when unavailable.
+		$connection_config = $this->get_connection_config();
+		$chunks_by_post    = array();
+
+		if ( ! is_wp_error( $connection_config ) ) {
+			$post_ids       = array_unique( array_column( $post_candidates, 'post_id' ) );
+			$chunks_by_post = $this->fetch_chunks_for_posts( $post_ids, $connection_config );
+		}
+
+		// Retrieval funnel stats — populated during passage retrieval; included in interaction metadata.
+		$retrieval_stats = array(
+			'mode'                               => 'hybrid_post_to_chunk',
+			'posts_retrieved'                    => count( $post_candidates ),
+			'chunk_candidates_total'             => 0,
+			'chunk_candidates_prefiltered'       => 0,
+			'chunks_final'                       => 0,
+			'rerank_enabled'                     => ! empty( $options['rerank_model_id'] ),
+			'neighbor_expansion_used'            => false,
+			'planner_active'                     => ! empty( $query_plan['active'] ),
+			'planner_source'                     => $query_plan['planner_source'] ?? 'none',
+			'planner_intent'                     => $query_plan['intent'] ?? 'single',
+			'planner_subqueries'                 => $query_plan['subqueries'] ?? array(),
+			'planner_subqueries_total'           => count( $query_plan['subqueries'] ?? array() ),
+			'planner_subqueries_executed'        => (int) ( $planned_retrieval['metrics']['subqueries_executed'] ?? 0 ),
+			'planner_candidate_counts'           => $planned_retrieval['metrics']['candidate_counts'] ?? array(),
+			'planner_unique_candidates_total'    => (int) ( $planned_retrieval['metrics']['unique_candidates_total'] ?? 0 ),
+			'planner_duplicate_candidates_total' => (int) ( $planned_retrieval['metrics']['duplicate_candidates_total'] ?? 0 ),
+			'retrieval_policy'                   => $retrieval_policy,
+			'mode_contribution'                  => $this->build_retrieval_mode_contribution( $post_candidates ),
+			'query_vector_source'                => $this->query_vector_source,
+		);
+
+		if ( ! empty( $chunks_by_post ) ) {
+			// Build normalized chunk candidates from chunk rows + post scores.
+			$chunk_candidates                          = $this->build_chunk_candidates( $post_candidates, $chunks_by_post );
+			$retrieval_stats['chunk_candidates_total'] = count( $chunk_candidates );
+
+			// Prefilter: cap to 2 chunks per post, 12 total before scoring.
+			$chunk_candidates                                = $this->prefilter_chunk_candidates( $chunk_candidates, 2, 12, $search_query );
+			$retrieval_stats['chunk_candidates_prefiltered'] = count( $chunk_candidates );
+			$rerank_policy                                   = $this->resolve_formal_rerank_policy( 'single', count( $chunk_candidates ), $options, $query );
+			$rerank_applied                                  = false;
+
+			// Score chunk candidates: rerank when configured, heuristic otherwise.
+			if ( ! empty( $rerank_policy['should_run'] ) ) {
+				$this->emit_progress( $progress_callback, 'reranking', __( 'Reranking results...', 'gregius-data' ) );
+				$reranked = $this->rerank_chunks( $chunk_candidates, $search_query, $options['rerank_model_id'] );
+				if ( ! is_wp_error( $reranked ) ) {
+					$chunk_candidates = $reranked;
+					$rerank_applied   = true;
+				} else {
+					// Reranking failed — fall back to heuristic scoring.
+					$chunk_candidates = $this->heuristic_score_chunks( $chunk_candidates, $search_query );
+				}
+			} else {
+				$chunk_candidates = $this->heuristic_score_chunks( $chunk_candidates, $search_query );
+			}
+
+			$ranked_single_candidates = $chunk_candidates;
+			$acceptance               = $this->apply_candidate_acceptance_policy( $ranked_single_candidates, 'single', $rerank_policy, $rerank_applied );
+			$chunk_candidates         = $acceptance['candidates'];
+			if ( empty( $chunk_candidates ) && ! empty( $acceptance['metrics']['input_count'] ) ) {
+				$recovered_chunks = $this->recover_single_block_lookup_candidates( $ranked_single_candidates, $search_query );
+				if ( ! empty( $recovered_chunks ) ) {
+					$chunk_candidates                         = $recovered_chunks;
+					$acceptance['metrics']['accepted_count']  = count( $chunk_candidates );
+					$acceptance['metrics']['acceptance_mode'] = 'post_rerank_block_lookup_recovery';
+				}
+			}
+			$retrieval_stats['rerank_policy']  = $rerank_policy;
+			$retrieval_stats['rerank_applied'] = $rerank_applied;
+			$retrieval_stats['acceptance']     = $acceptance['metrics'];
+
+			// Finalize: enforce diversity (max 2 per post) and keep top 6.
+			$chunks = $this->finalize_context_chunks( $chunk_candidates );
+
+			// Selective neighbor expansion for top 2 incomplete passages.
+			$chunks_before_expansion = count( $chunks );
+			$chunks                  = $this->expand_neighbor_chunks_if_needed( $chunks, $chunks_by_post );
+
+			$retrieval_stats['chunks_final']            = count( $chunks );
+			$retrieval_stats['neighbor_expansion_used'] = count( $chunks ) > $chunks_before_expansion;
+
+			$this->logger->log(
+				sprintf(
+					'RAG Service: Passage retrieval selected %d chunks from %d post candidates',
+					count( $chunks ),
+					count( $post_candidates )
+				),
+				'info',
+				'rag',
+				$this->connection_name,
+				$retrieval_stats
+			);
+		} else {
+			// Fallback: chunk table not populated or connection unavailable.
+			// Use post-level retrieval with full post content (existing behavior).
+			$chunks                          = $post_candidates;
+			$retrieval_stats['mode']         = 'document_level';
+			$retrieval_stats['chunks_final'] = count( $chunks );
+
+			$this->logger->log(
+				'RAG Service: No chunk data available; using document-level context assembly',
+				'info',
+				'rag',
+				$this->connection_name
+			);
+
+			// Apply reranking to post-level chunks as before.
+			$rerank_policy  = $this->resolve_formal_rerank_policy( 'single', count( $chunks ), $options, $query );
+			$rerank_applied = false;
+			if ( ! empty( $rerank_policy['should_run'] ) ) {
+				$this->emit_progress( $progress_callback, 'reranking', __( 'Reranking results...', 'gregius-data' ) );
+				$reranked = $this->rerank_chunks( $chunks, $search_query, $options['rerank_model_id'] );
+				if ( ! is_wp_error( $reranked ) ) {
+					$chunks         = $reranked;
+					$rerank_applied = true;
+				}
+				// If reranking fails, continue with original chunks (graceful degradation).
+			}
+
+			$ranked_single_candidates = $chunks;
+			$acceptance               = $this->apply_candidate_acceptance_policy( $ranked_single_candidates, 'single', $rerank_policy, $rerank_applied );
+			$chunks                   = $acceptance['candidates'];
+			if ( empty( $chunks ) && ! empty( $acceptance['metrics']['input_count'] ) ) {
+				$recovered_chunks = $this->recover_single_block_lookup_candidates( $ranked_single_candidates, $search_query );
+				if ( ! empty( $recovered_chunks ) ) {
+					$chunks                                   = $recovered_chunks;
+					$acceptance['metrics']['accepted_count']  = count( $chunks );
+					$acceptance['metrics']['acceptance_mode'] = 'post_rerank_block_lookup_recovery';
+				}
+			}
+			$retrieval_stats['rerank_policy']  = $rerank_policy;
+			$retrieval_stats['rerank_applied'] = $rerank_applied;
+			$retrieval_stats['acceptance']     = $acceptance['metrics'];
+
+			$retrieval_stats['chunks_final'] = count( $chunks );
+		}
+
+		return array(
+			'chunks'           => $chunks,
+			'post_candidates'  => $post_candidates,
+			'chunks_by_post'   => $chunks_by_post,
+			'retrieval_stats'  => $retrieval_stats,
+			'query_plan'       => $query_plan,
+			'retrieval_policy' => $retrieval_policy,
+		);
+	}
+
+	/**
+	 * Resolve the configured evaluator model into a usable provider contract.
+	 *
+	 * Returns null when no evaluator is configured, the model cannot be
+	 * resolved, or the provider lacks the `evaluator` capability (or the
+	 * `evaluate()` method).
+	 *
+	 * @since 1.0.0
+	 * @param array $options RAG options.
+	 * @return array|null {
+	 *     @type object $provider     Evaluator provider instance.
+	 *     @type string $model        Provider model id (e.g. jev-latest).
+	 *     @type string $api_key      API key for the provider.
+	 *     @type string $instructions Evaluation question instructions.
+	 * }
+	 */
+	private function resolve_evaluator( $options ) {
+		$evaluator_model_id = isset( $options['evaluator_model'] ) ? trim( (string) $options['evaluator_model'] ) : '';
+		if ( '' === $evaluator_model_id ) {
+			return null;
+		}
+
+		$model_registry = new GG_Data_Model_Registry();
+		$model_data     = $model_registry->get_model( 'gregius-data', $evaluator_model_id );
+		if ( ! $model_data || is_wp_error( $model_data ) || empty( $model_data['provider'] ) ) {
+			return null;
+		}
+
+		$provider_id = $model_data['provider'];
+		$provider    = GG_Data_LLM_Registry::get_provider( $provider_id );
+		if ( is_wp_error( $provider ) || ! in_array( 'evaluator', $provider->get_capabilities(), true ) || ! method_exists( $provider, 'evaluate' ) ) {
+			return null;
+		}
+
+		$model_config      = is_array( $model_data['config'] ) ? $model_data['config'] : array();
+		$provider_model_id = $model_config['provider_model_id'] ?? $model_data['provider_model_id'] ?? 'jev-latest';
+		$api_key           = $model_config['api_key'] ?? $model_data['api_key'] ?? '';
+
+		return array(
+			'provider'     => $provider,
+			'model'        => $provider_model_id,
+			'api_key'      => $api_key,
+			'instructions' => $this->resolve_evaluation_instructions( $options ),
+		);
+	}
+
+	/**
+	 * Resolve the evaluation prompt instructions, falling back to a default
+	 * yes/no instruction when no evaluation prompt is configured or resolvable.
+	 *
+	 * @since 1.0.0
+	 * @param array $options RAG options.
+	 * @return string Evaluation question instructions.
+	 */
+	private function resolve_evaluation_instructions( $options ) {
+		$default = __( 'Does the retrieved context contain enough relevant information to fully and accurately answer the user\'s question?', 'gregius-data' );
+
+		$evaluation_prompt_id = isset( $options['evaluation_prompt_id'] ) ? absint( $options['evaluation_prompt_id'] ) : 0;
+		if ( empty( $evaluation_prompt_id ) ) {
+			return $default;
+		}
+
+		$prompt_options                = $options;
+		$prompt_options['prompt_type'] = 'evaluation';
+		$prompt_options['prompt_id']   = $evaluation_prompt_id;
+
+		$resolution = $this->resolve_system_prompt( $prompt_options );
+		if ( is_wp_error( $resolution ) ) {
+			return $default;
+		}
+
+		$content = trim( (string) ( $resolution['content'] ?? '' ) );
+
+		return '' !== $content ? $content : $default;
+	}
+
+	/**
+	 * Grade the retrieved context against the query using the evaluator.
+	 *
+	 * Sends a single Noul ("sufficient?") question and thresholds the returned
+	 * probability into a verdict. Any evaluator failure fails open (verdict
+	 * 'error'), so a broken evaluator never blocks answering.
+	 *
+	 * @since 1.0.0
+	 * @param string $query     Original user query.
+	 * @param array  $chunks    Finalized context chunks.
+	 * @param array  $evaluator Evaluator contract from resolve_evaluator().
+	 * @param array  $options   RAG options.
+	 * @return array {
+	 *     @type string     $verdict 'correct'|'insufficient'|'error'.
+	 *     @type float|null $score   Noul probability (null on error).
+	 *     @type string     $reason  Error code (on error) or empty.
+	 *     @type array      $usage   Token usage from the evaluation.
+	 *     @type string     $model   Model that answered.
+	 * }
+	 */
+	private function evaluate_retrieval_sufficiency( $query, $chunks, $evaluator, $options ) {
+		$threshold = (float) apply_filters( 'gg_data_rag_evaluator_threshold', 0.5, $this->connection_name, $query, $options );
+
+		$chunk_texts = array();
+		foreach ( $chunks as $chunk ) {
+			$text = $chunk['content'] ?? $chunk['chunk_text'] ?? $chunk['text'] ?? '';
+			if ( '' !== trim( (string) $text ) ) {
+				$chunk_texts[] = (string) $text;
+			}
+		}
+
+		$state = $this->build_evaluation_state( $query, $chunk_texts );
+
+		$questions = array(
+			'sufficient' => array(
+				'type'         => 'noul',
+				'instructions' => $evaluator['instructions'],
+				'criteria'     => array(
+					'true'  => __( 'The retrieved context contains enough relevant information to answer the user\'s question.', 'gregius-data' ),
+					'false' => __( 'The retrieved context is missing key information needed to answer the user\'s question.', 'gregius-data' ),
+				),
+			),
+		);
+
+		$result = $this->call_evaluator_with_retry( $evaluator, $state, $questions );
+
+		if ( is_wp_error( $result ) ) {
+			$this->logger->log(
+				sprintf( 'RAG Service: Evaluator unavailable (%s); failing open', $result->get_error_code() ),
+				'warning',
+				'rag',
+				$this->connection_name
+			);
+
+			return array(
+				'verdict' => 'error',
+				'score'   => null,
+				'reason'  => $result->get_error_code(),
+				'usage'   => array(),
+				'model'   => $evaluator['model'],
+			);
+		}
+
+		$answer = $result['answers']['sufficient'] ?? array();
+		$score  = isset( $answer['noul'] ) ? (float) $answer['noul'] : null;
+
+		if ( null === $score ) {
+			return array(
+				'verdict' => 'error',
+				'score'   => null,
+				'reason'  => 'missing_noul',
+				'usage'   => $result['usage'] ?? array(),
+				'model'   => $result['model'] ?? $evaluator['model'],
+			);
+		}
+
+		return array(
+			'verdict' => $score >= $threshold ? 'correct' : 'insufficient',
+			'score'   => $score,
+			'reason'  => '',
+			'usage'   => $result['usage'] ?? array(),
+			'model'   => $result['model'] ?? $evaluator['model'],
+		);
+	}
+
+	/**
+	 * Call the evaluator provider, retrying transient failures once.
+	 *
+	 * Non-transient errors (invalid key, malformed request, empty response)
+	 * are returned immediately so they fail open without delay.
+	 *
+	 * @since 1.0.0
+	 * @param array  $evaluator Evaluator contract from resolve_evaluator().
+	 * @param string $state     State to evaluate.
+	 * @param array  $questions Typed question map.
+	 * @return array|WP_Error
+	 */
+	private function call_evaluator_with_retry( $evaluator, $state, $questions ) {
+		$retries = (int) apply_filters( 'gg_data_rag_evaluator_retry_attempts', 1, $this->connection_name );
+		$retries = max( 0, $retries );
+
+		$options = array(
+			'model'   => $evaluator['model'],
+			'api_key' => $evaluator['api_key'],
+		);
+
+		$result   = $evaluator['provider']->evaluate( $state, $questions, $options );
+		$attempts = 0;
+
+		while ( $attempts < $retries && is_wp_error( $result ) && $this->is_transient_evaluator_error( $result ) ) {
+			usleep( 300000 ); // 300ms backoff.
+			$result = $evaluator['provider']->evaluate( $state, $questions, $options );
+			++$attempts;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Determine whether an evaluator error is transient and worth retrying.
+	 *
+	 * @since 1.0.0
+	 * @param WP_Error $error Evaluator error.
+	 * @return bool True when the error is likely transient.
+	 */
+	private function is_transient_evaluator_error( $error ) {
+		if ( 'gg_data_typesafe_rate_limited' === $error->get_error_code() ) {
+			return true;
+		}
+
+		// Transport errors from wp_safe_remote_post (timeouts, network) are transient.
+		return 0 === strpos( $error->get_error_code(), 'http_' );
+	}
+
+	/**
+	 * Build the evaluation state string from the query and chunk excerpts.
+	 *
+	 * @since 1.0.0
+	 * @param string $query       Original user query.
+	 * @param array  $chunk_texts Retrieved chunk text excerpts.
+	 * @return string State string.
+	 */
+	private function build_evaluation_state( $query, $chunk_texts ) {
+		$lines = array( 'User question: ' . $query, '', 'Retrieved context:' );
+
+		foreach ( $chunk_texts as $index => $text ) {
+			$lines[] = sprintf( '[Chunk %d] %s', $index + 1, $text );
+		}
+
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Ask the agentic model to decide the corrective action after a failed retrieval.
+	 *
+	 * Presents a narrow tool surface — `rewrite_query` (search again with new
+	 * keywords) or `respond_directly` (stop and finalize) — and returns the
+	 * model's decision. Anything that is not an explicit rewrite resolves to
+	 * "stop", so a parse failure or unknown tool never loops.
+	 *
+	 * @since 1.0.0
+	 * @param string $search_query      Query that was just searched.
+	 * @param string $retrieval_outcome Human-readable outcome of that search.
+	 * @param array  $options           RAG options.
+	 * @return array|null {
+	 *     @type string $action       'rewrite' or 'stop'.
+	 *     @type string $search_query New keywords (on rewrite).
+	 *     @type string $reason       Why the model chose this action.
+	 * }
+	 */
+	private function select_corrective_action( $search_query, $retrieval_outcome, $options ) {
+		$agentic_model_id = isset( $options['agentic_model'] ) ? trim( (string) $options['agentic_model'] ) : '';
+		if ( '' === $agentic_model_id ) {
+			return null;
+		}
+
+		$strategy = GG_Data_Tool_Strategy_Factory::create_for_model( $agentic_model_id );
+		$tools    = $this->get_corrective_tool_definitions();
+
+		$context_query = sprintf(
+			'The search for "%s" %s. Decide your next step.',
+			$search_query,
+			$retrieval_outcome
+		);
+
+		$system_prompt  = $this->build_corrective_system_prompt();
+		$replace_prompt = static function ( $default_prompt ) use ( $system_prompt ) {
+			unset( $default_prompt );
+			return $system_prompt;
+		};
+
+		add_filter( 'gg_data_rag_tool_selection_system_prompt', $replace_prompt, 99 );
+		$result = $strategy->select_tool( $context_query, array(), $tools, $agentic_model_id );
+		remove_filter( 'gg_data_rag_tool_selection_system_prompt', $replace_prompt, 99 );
+
+		if ( is_wp_error( $result ) ) {
+			return null;
+		}
+
+		$tool = isset( $result['tool'] ) ? (string) $result['tool'] : '';
+
+		if ( 'rewrite_query' !== $tool ) {
+			return array(
+				'action' => 'stop',
+				'reason' => isset( $result['reason'] ) ? (string) $result['reason'] : '',
+			);
+		}
+
+		return array(
+			'action'       => 'rewrite',
+			'search_query' => isset( $result['search_query'] ) ? (string) $result['search_query'] : '',
+			'reason'       => isset( $result['reason'] ) ? (string) $result['reason'] : '',
+		);
+	}
+
+	/**
+	 * Return the corrective tool set exposed to the agentic model after a failed search.
+	 *
+	 * @since 1.0.0
+	 * @return array Corrective tool definitions keyed by tool name.
+	 */
+	private function get_corrective_tool_definitions(): array {
+		return array(
+			'rewrite_query'    => array(
+				'name'        => 'rewrite_query',
+				'description' => 'Rewrite the search query when the previous search returned no relevant content, or content that does not answer the question. Produce different or fused keywords, fixing scope or spelling.',
+				'parameters'  => array(
+					'type'       => 'object',
+					'properties' => array(
+						'search_query' => array(
+							'type'        => 'string',
+							'description' => 'The rewritten search keywords.',
+						),
+						'reason'       => array(
+							'type'        => 'string',
+							'description' => 'Why the rewrite is needed.',
+						),
+					),
+					'required'   => array( 'search_query', 'reason' ),
+				),
+			),
+			'respond_directly' => array(
+				'name'        => 'respond_directly',
+				'description' => 'Stop searching and produce the final response from the content already found, or state that no answer was found.',
+				'parameters'  => array(
+					'type'       => 'object',
+					'properties' => array(
+						'reason' => array(
+							'type'        => 'string',
+							'description' => 'Why you are stopping the search.',
+						),
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Build the corrective tool-selection system prompt.
+	 *
+	 * @since 1.0.0
+	 * @return string Corrective selection system prompt.
+	 */
+	private function build_corrective_system_prompt() {
+		$tools_text = '';
+		foreach ( $this->get_corrective_tool_definitions() as $name => $tool ) {
+			$tools_text .= '- ' . $name . ': ' . ( $tool['description'] ?? '' ) . "\n";
+		}
+
+		return 'You decide whether to rewrite a failed search query. If the search returned no relevant content, rewrite with different or fused keywords. If the content is adequate or nothing more can help, stop.
+
+Available tools:
+' . $tools_text . '
+Respond in JSON:
+{"tool": "rewrite_query", "search_query": "<new keywords>", "reason": "<why>"}
+or
+{"tool": "respond_directly", "reason": "<why>"}
+
+Output only JSON.';
+	}
+
+	/**
+	 * Normalize a model-produced search query into a clean, single-line query.
+	 *
+	 * @since 1.0.0
+	 * @param string $text Raw model output.
+	 * @return string Normalized query (possibly empty).
+	 */
+	private function normalize_search_query( $text ) {
+		$text = trim( (string) $text );
+
+		// Keep only the first non-empty line.
+		$lines = preg_split( '/\r\n|\r|\n/', $text );
+		$text  = '';
+		foreach ( $lines as $line ) {
+			$line = trim( $line );
+			if ( '' !== $line ) {
+				$text = $line;
+				break;
+			}
+		}
+
+		// Strip leading labels ("Search query:", "Keywords:").
+		$text = preg_replace( '/^(search\s*query|query|keywords)\s*[:\-]\s*/i', '', $text );
+
+		// Strip surrounding quotes.
+		$text = trim( $text, " \t\"'`" );
+
+		// Cap to a short keyword phrase.
+		return trim( wp_trim_words( $text, 12, '' ) );
 	}
 
 				/**

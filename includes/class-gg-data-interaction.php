@@ -207,6 +207,7 @@ class GG_Data_Interaction {
 				'agentic'   => $meta['agentic_model'] ?? null,
 				'embedding' => $meta['embedding_model'] ?? null,
 				'rerank'    => $meta['rerank_model'] ?? null,
+				'evaluator' => $meta['evaluator_model'] ?? null,
 				'answer'    => $meta['llm_model'] ?? null,
 			),
 			'search'              => array(
@@ -373,6 +374,7 @@ class GG_Data_Interaction {
 			'agentic'   => $args['models']['agentic'] ?? null,
 			'embedding' => $args['models']['embedding'] ?? null,
 			'rerank'    => $args['models']['rerank'] ?? null,
+			'evaluator' => $args['models']['evaluator'] ?? null,
 			'answer'    => $args['models']['answer'] ?? null,
 		);
 
@@ -477,6 +479,36 @@ class GG_Data_Interaction {
 			'posts_retrieved' => isset( $retrieval['posts_retrieved'] ) ? (int) $retrieval['posts_retrieved'] : 0,
 			'chunks_final'    => isset( $retrieval['chunks_final'] ) ? (int) $retrieval['chunks_final'] : 0,
 			'rerank_applied'  => ! empty( $retrieval['rerank_applied'] ),
+			'evaluation'      => self::build_rag_evaluation_summary( $retrieval['evaluation'] ?? null ),
+		);
+	}
+
+	/**
+	 * Build a compact evaluator summary for the retrieval summary payload.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $evaluation Evaluation telemetry (or null when disabled).
+	 * @return array
+	 */
+	private static function build_rag_evaluation_summary( $evaluation ) {
+		if ( ! is_array( $evaluation ) || empty( $evaluation['enabled'] ) ) {
+			return array( 'enabled' => false );
+		}
+
+		$latest_score = null;
+		$passes       = isset( $evaluation['passes'] ) && is_array( $evaluation['passes'] ) ? $evaluation['passes'] : array();
+		$last_pass    = end( $passes );
+		if ( is_array( $last_pass ) && isset( $last_pass['score'] ) ) {
+			$latest_score = (float) $last_pass['score'];
+		}
+		reset( $passes );
+
+		return array(
+			'enabled'        => true,
+			'final_verdict'  => isset( $evaluation['final_verdict'] ) ? sanitize_key( (string) $evaluation['final_verdict'] ) : null,
+			'score'          => $latest_score,
+			'reformulations' => isset( $evaluation['reformulations'] ) ? (int) $evaluation['reformulations'] : 0,
+			'passes'         => count( $passes ),
 		);
 	}
 

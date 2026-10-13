@@ -236,6 +236,10 @@ class GG_Data_SSE_Handler {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$rerank_model_id = isset( $_POST['rerank_model_id'] ) ? sanitize_text_field( wp_unslash( $_POST['rerank_model_id'] ) ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
+		$evaluator_model = isset( $_POST['evaluator_model'] ) ? sanitize_text_field( wp_unslash( $_POST['evaluator_model'] ) ) : '';
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
+		$evaluation_prompt_id = isset( $_POST['evaluation_prompt_id'] ) ? absint( wp_unslash( $_POST['evaluation_prompt_id'] ) ) : 0;
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$security_prompt_id = isset( $_POST['security_prompt_id'] ) ? absint( wp_unslash( $_POST['security_prompt_id'] ) ) : 0;
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$source_turn_index = isset( $_POST['source_turn_index'] ) ? absint( wp_unslash( $_POST['source_turn_index'] ) ) : 0;
@@ -333,20 +337,22 @@ class GG_Data_SSE_Handler {
 
 		// Build options.
 		$options = array(
-			'num_chunks'         => 5,
-			'temperature'        => 0.7,
-			'agentic_model'      => $agentic_model,
-			'rerank_model_id'    => $rerank_model_id,
-			'metadata_filter'    => $metadata_filter,
-			'metadata_manifest'  => $metadata_manifest,
-			'manifest'           => $manifest,
-			'forced_tool'        => $forced_tool,
-			'security_prompt_id' => $security_prompt_id,
-			'source_turn_index'  => $source_turn_index,
-			'conversation_id'    => $conversation_id,
-			'source'             => $source_payload,
-			'messages'           => $messages,
-			'progress_callback'  => $progress_callback,
+			'num_chunks'           => 5,
+			'temperature'          => 0.7,
+			'agentic_model'        => $agentic_model,
+			'rerank_model_id'      => $rerank_model_id,
+			'evaluator_model'      => $evaluator_model,
+			'evaluation_prompt_id' => $evaluation_prompt_id,
+			'metadata_filter'      => $metadata_filter,
+			'metadata_manifest'    => $metadata_manifest,
+			'manifest'             => $manifest,
+			'forced_tool'          => $forced_tool,
+			'security_prompt_id'   => $security_prompt_id,
+			'source_turn_index'    => $source_turn_index,
+			'conversation_id'      => $conversation_id,
+			'source'               => $source_payload,
+			'messages'             => $messages,
+			'progress_callback'    => $progress_callback,
 		);
 
 		$precomputed_result = apply_filters(
