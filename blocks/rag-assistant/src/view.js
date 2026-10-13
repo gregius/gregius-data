@@ -26,8 +26,10 @@ window.addEventListener('DOMContentLoaded', () => {
 		const llmModelId = container.getAttribute('data-llm-model-id');
 		const agenticModelId = container.getAttribute('data-agentic-model-id') || '';
 		const rerankModelId = container.getAttribute('data-rerank-model-id') || '';
+		const evaluatorModelId = container.getAttribute('data-evaluator-model-id') || '';
 		const promptId = parseInt(container.getAttribute('data-prompt-id'), 10) || 0;
 		const securityPromptId = parseInt(container.getAttribute('data-security-prompt-id'), 10) || 0;
+		const evaluationPromptId = parseInt(container.getAttribute('data-evaluation-prompt-id'), 10) || 0;
 		const placeholder = container.getAttribute('data-placeholder');
 		const enableStreaming = container.getAttribute('data-enable-streaming') !== 'false';
 		const guestAccessNonce = container.getAttribute('data-gg-guest-access-nonce') || '';
@@ -42,8 +44,10 @@ window.addEventListener('DOMContentLoaded', () => {
 				llmModelId={llmModelId}
 				agenticModelId={agenticModelId}
 				rerankModelId={rerankModelId}
+				evaluatorModelId={evaluatorModelId}
 				promptId={promptId}
 				securityPromptId={securityPromptId}
+				evaluationPromptId={evaluationPromptId}
 
 				placeholder={placeholder}
 				useSSE={enableStreaming}

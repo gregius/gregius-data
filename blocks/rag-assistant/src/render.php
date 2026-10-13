@@ -14,17 +14,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Get attributes with defaults.
-$block_id            = isset( $attributes['blockId'] ) ? $attributes['blockId'] : 'gregius-rag-assistant-' . wp_unique_id();
-$connection_id       = isset( $attributes['connectionId'] ) ? $attributes['connectionId'] : '';
-$embedding_model_key = isset( $attributes['embeddingModelKey'] ) ? $attributes['embeddingModelKey'] : 'hashingtf-murmur3-1024';
-$llm_model_id        = isset( $attributes['llmModelId'] ) ? $attributes['llmModelId'] : '';
-$agentic_model       = isset( $attributes['agenticModelId'] ) ? $attributes['agenticModelId'] : '';
-$rerank_model        = isset( $attributes['rerankModelId'] ) ? $attributes['rerankModelId'] : '';
-$prompt_id           = isset( $attributes['promptId'] ) ? absint( $attributes['promptId'] ) : 0;
-$security_prompt_id  = isset( $attributes['securityPromptId'] ) ? absint( $attributes['securityPromptId'] ) : 0;
-$placeholder         = isset( $attributes['placeholder'] ) ? $attributes['placeholder'] : __( 'Ask a question...', 'gregius-data' );
-$enable_streaming    = isset( $attributes['enableStreaming'] ) ? (bool) $attributes['enableStreaming'] : true;
-$require_login = isset( $attributes['requireLogin'] ) ? wp_validate_boolean( $attributes['requireLogin'] ) : true;
+$block_id             = isset( $attributes['blockId'] ) ? $attributes['blockId'] : 'gregius-rag-assistant-' . wp_unique_id();
+$connection_id        = isset( $attributes['connectionId'] ) ? $attributes['connectionId'] : '';
+$embedding_model_key  = isset( $attributes['embeddingModelKey'] ) ? $attributes['embeddingModelKey'] : 'hashingtf-murmur3-1024';
+$llm_model_id         = isset( $attributes['llmModelId'] ) ? $attributes['llmModelId'] : '';
+$agentic_model        = isset( $attributes['agenticModelId'] ) ? $attributes['agenticModelId'] : '';
+$rerank_model         = isset( $attributes['rerankModelId'] ) ? $attributes['rerankModelId'] : '';
+$evaluator_model      = isset( $attributes['evaluatorModelId'] ) ? $attributes['evaluatorModelId'] : '';
+$prompt_id            = isset( $attributes['promptId'] ) ? absint( $attributes['promptId'] ) : 0;
+$security_prompt_id   = isset( $attributes['securityPromptId'] ) ? absint( $attributes['securityPromptId'] ) : 0;
+$evaluation_prompt_id = isset( $attributes['evaluationPromptId'] ) ? absint( $attributes['evaluationPromptId'] ) : 0;
+$placeholder          = isset( $attributes['placeholder'] ) ? $attributes['placeholder'] : __( 'Ask a question...', 'gregius-data' );
+$enable_streaming     = isset( $attributes['enableStreaming'] ) ? (bool) $attributes['enableStreaming'] : true;
+$require_login        = isset( $attributes['requireLogin'] ) ? wp_validate_boolean( $attributes['requireLogin'] ) : true;
 
 // Site-wide policy is filter-driven and fail-closed by default (logged_in).
 $access_level = (string) apply_filters( 'gg_data_rag_access_level', 'logged_in' );
@@ -49,14 +51,16 @@ $guest_access_nonce = $guest_allowed ? wp_create_nonce( 'gg_rag_guest_access:' .
 	echo wp_kses_data(
 		get_block_wrapper_attributes(
 			array(
-				'id'                       => $block_id,
-				'data-connection-id'       => $connection_id,
-				'data-embedding-model-key' => $embedding_model_key,
-				'data-llm-model-id'        => $llm_model_id,
-				'data-agentic-model-id'    => $agentic_model,
-				'data-rerank-model-id'     => $rerank_model,
-				'data-prompt-id'           => $prompt_id,
-				'data-security-prompt-id'  => $security_prompt_id,
+				'id'                         => $block_id,
+				'data-connection-id'         => $connection_id,
+				'data-embedding-model-key'   => $embedding_model_key,
+				'data-llm-model-id'          => $llm_model_id,
+				'data-agentic-model-id'      => $agentic_model,
+				'data-rerank-model-id'       => $rerank_model,
+				'data-evaluator-model-id'    => $evaluator_model,
+				'data-prompt-id'             => $prompt_id,
+				'data-security-prompt-id'    => $security_prompt_id,
+				'data-evaluation-prompt-id'  => $evaluation_prompt_id,
 
 				'data-placeholder'           => $placeholder,
 				'data-enable-streaming'      => $enable_streaming ? 'true' : 'false',

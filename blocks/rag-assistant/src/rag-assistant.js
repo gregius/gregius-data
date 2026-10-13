@@ -34,8 +34,10 @@ const PROGRESS_STAGES = {
  * @param {string} props.llmModelId LLM model ID for answer generation.
  * @param {string} props.agenticModelId LLM model ID for query routing and tool selection (optional).
  * @param {string} props.rerankModelId Rerank model ID for result reranking (optional).
+ * @param {string} props.evaluatorModelId Evaluator model ID for retrieval-sufficiency grading (optional).
  * @param {number} props.promptId Prompt post ID (0 = active/default prompt).
  * @param {number} props.securityPromptId Security prompt post ID (0 = active/default security prompt).
+ * @param {number} props.evaluationPromptId Evaluation prompt post ID (0 = active/default evaluation prompt).
  * @param {string} props.placeholder Input placeholder text.
  * @param {boolean} props.useSSE Whether to use SSE streaming (default: true on frontend).
  * @return {JSX.Element} Chat interface component.
@@ -46,8 +48,10 @@ export default function ChatInterface({
     llmModelId,
     agenticModelId,
     rerankModelId,
+    evaluatorModelId,
     promptId = 0,
     securityPromptId = 0,
+    evaluationPromptId = 0,
     placeholder,
     useSSE = true,
     guestAccessNonce = '',
@@ -545,8 +549,10 @@ export default function ChatInterface({
                         llm_model_id: llmModelId,
                         agentic_model: agenticModelId || '',
                         rerank_model_id: rerankModelId || '',
+                        evaluator_model: evaluatorModelId || '',
                         prompt_id: parseInt(promptId, 10) || 0,
                         security_prompt_id: parseInt(securityPromptId, 10) || 0,
+                        evaluation_prompt_id: parseInt(evaluationPromptId, 10) || 0,
                         messages: getMessagesForAPI(),
                         conversation_id: conversationId,
                         guest_access_nonce: guestAccessNonce || '',
@@ -574,8 +580,10 @@ export default function ChatInterface({
             llmModelId,
             agenticModelId,
             rerankModelId,
+            evaluatorModelId,
             promptId,
             securityPromptId,
+            evaluationPromptId,
             getMessagesForAPI,
             handleComplete,
             handleError,
@@ -671,8 +679,10 @@ export default function ChatInterface({
             formData.append('llm_model_id', llmModelId);
             formData.append('agentic_model', agenticModelId || '');
             formData.append('rerank_model_id', rerankModelId || '');
+            formData.append('evaluator_model', evaluatorModelId || '');
             formData.append('prompt_id', (parseInt(promptId, 10) || 0).toString());
             formData.append('security_prompt_id', (parseInt(securityPromptId, 10) || 0).toString());
+            formData.append('evaluation_prompt_id', (parseInt(evaluationPromptId, 10) || 0).toString());
             formData.append('messages', JSON.stringify(getMessagesForAPI()));
             formData.append('conversation_id', conversationId);
             formData.append('guest_access_nonce', guestAccessNonce || '');
@@ -791,7 +801,10 @@ export default function ChatInterface({
             llmModelId,
             agenticModelId,
             rerankModelId,
+            evaluatorModelId,
             promptId,
+            securityPromptId,
+            evaluationPromptId,
             conversationId,
             getMessagesForAPI,
             handleSSEEvent,

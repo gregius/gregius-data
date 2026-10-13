@@ -31,8 +31,10 @@ export default function Edit({ attributes, setAttributes, clientId }) {
         llmModelId,
         agenticModelId,
         rerankModelId,
+        evaluatorModelId,
         promptId,
         securityPromptId,
+        evaluationPromptId,
         placeholder,
         enableStreaming,
         requireLogin,
@@ -41,6 +43,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     const [embeddingModels, setEmbeddingModels] = useState([]);
     const [llmModels, setLLMModels] = useState([]);
     const [rerankModels, setRerankModels] = useState([]);
+    const [evaluatorModels, setEvaluatorModels] = useState([]);
     const [prompts, setPrompts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingEmbeddings, setLoadingEmbeddings] = useState(false);
@@ -52,6 +55,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 
     const systemPrompts = prompts.filter((prompt) => (prompt.prompt_type || 'system') === 'system');
     const securityPrompts = prompts.filter((prompt) => prompt.prompt_type === 'security');
+    const evaluationPrompts = prompts.filter((prompt) => prompt.prompt_type === 'evaluation');
 
     // Store clientId as blockId attribute on mount.
     useEffect(() => {
@@ -77,10 +81,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
      */
     const loadInitialData = async () => {
         try {
-            const [connectionsResponse, llmModelsResponse, rerankModelsResponse, promptsResponse] = await Promise.all([
+            const [connectionsResponse, llmModelsResponse, rerankModelsResponse, evaluatorModelsResponse, promptsResponse] = await Promise.all([
                 apiFetch({ path: '/gg-data/v1/connections', method: 'GET' }),
                 apiFetch({ path: '/gg-data/v1/models?type=llm', method: 'GET' }),
                 apiFetch({ path: '/gg-data/v1/models?type=rerank', method: 'GET' }),
+                apiFetch({ path: '/gg-data/v1/models?type=evaluator', method: 'GET' }),
                 apiFetch({ path: '/gg-data/v1/prompts', method: 'GET' })
             ]);
 
@@ -113,6 +118,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
             if (rerankModelsResponse && rerankModelsResponse.success && rerankModelsResponse.data) {
                 const rerankArray = Object.values(rerankModelsResponse.data);
                 setRerankModels(rerankArray);
+            }
+
+            if (evaluatorModelsResponse && evaluatorModelsResponse.success && evaluatorModelsResponse.data) {
+                const evaluatorArray = Object.values(evaluatorModelsResponse.data);
+                setEvaluatorModels(evaluatorArray);
             }
 
             if (promptsResponse && promptsResponse.success && promptsResponse.data) {
@@ -219,6 +229,22 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                                 __nextHasNoMarginBottom={true}
                             />
 
+                            <SelectControl
+                                label={__('Evaluation Prompt', 'gregius-data')}
+                                value={evaluationPromptId ? String(evaluationPromptId) : ''}
+                                options={[
+                                    { label: __('Use selected evaluation prompt', 'gregius-data'), value: '' },
+                                    ...evaluationPrompts.map((prompt) => ({
+                                        label: prompt.title,
+                                        value: String(prompt.id),
+                                    })),
+                                ]}
+                                onChange={(value) => setAttributes({ evaluationPromptId: parseInt(value, 10) || 0 })}
+                                help={__('Grades whether retrieved context sufficiently answers the query.', 'gregius-data')}
+                                __next40pxDefaultSize={true}
+                                __nextHasNoMarginBottom={true}
+                            />
+
                             {loadingEmbeddings ? (
                                 <Spinner />
                             ) : (
@@ -268,6 +294,22 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                                 ]}
                                 onChange={(value) => setAttributes({ rerankModelId: value })}
                                 help={__('Optional. Reranks retrieved documents for better relevance.', 'gregius-data')}
+                                __next40pxDefaultSize={true}
+                                __nextHasNoMarginBottom={true}
+                            />
+
+                            <SelectControl
+                                label={__('Evaluator Model', 'gregius-data')}
+                                value={evaluatorModelId}
+                                options={[
+                                    { label: __('Disabled', 'gregius-data'), value: '' },
+                                    ...evaluatorModels.map((model) => ({
+                                        label: `${model.model_name} (${model.provider})`,
+                                        value: model.id,
+                                    })),
+                                ]}
+                                onChange={(value) => setAttributes({ evaluatorModelId: value })}
+                                help={__('Optional. Grades retrieved context and reformulates the search when insufficient.', 'gregius-data')}
                                 __next40pxDefaultSize={true}
                                 __nextHasNoMarginBottom={true}
                             />
@@ -332,8 +374,10 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                     llmModelId={llmModelId}
                     agenticModelId={agenticModelId}
                     rerankModelId={rerankModelId}
+                    evaluatorModelId={evaluatorModelId}
                     promptId={promptId}
                     securityPromptId={securityPromptId}
+                    evaluationPromptId={evaluationPromptId}
                     placeholder={placeholder}
                 />
             </div>
