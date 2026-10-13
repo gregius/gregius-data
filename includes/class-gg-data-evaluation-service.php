@@ -197,6 +197,7 @@ class GG_Data_Evaluation_Service {
 			'embedding_model' => trim( (string) $spec['models']['embedding'] ),
 			'agentic_model'   => isset( $spec['models']['agentic'] ) ? trim( (string) $spec['models']['agentic'] ) : '',
 			'rerank_model'    => isset( $spec['models']['rerank'] ) ? trim( (string) $spec['models']['rerank'] ) : '',
+			'evaluator_model' => isset( $spec['models']['evaluator'] ) ? trim( (string) $spec['models']['evaluator'] ) : '',
 			'answer_model'    => trim( (string) $spec['models']['answer'] ),
 			'prompts'         => $spec['prompts'],
 		);
@@ -403,6 +404,7 @@ class GG_Data_Evaluation_Service {
 				'embedding_model' => $config['embedding_model'],
 				'agentic_model'   => $config['agentic_model'],
 				'rerank_model'    => $config['rerank_model'],
+				'evaluator_model' => $config['evaluator_model'],
 				'answer_model'    => $config['answer_model'],
 				'prompt_id'       => isset( $sample['prompt_id'] ) ? absint( $sample['prompt_id'] ) : 0,
 				'conversation_id' => '',

@@ -6,6 +6,7 @@
 		"embedding": "text-embedding-3-small",
 		"agentic": "gpt-4o-mini",
 		"rerank": "rerank-v4.0-fast",
+		"evaluator": "",
 		"answer": "gpt-4o-mini"
 	},
 	"prompts": [

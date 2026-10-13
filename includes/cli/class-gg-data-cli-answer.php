@@ -82,6 +82,12 @@ class GG_Data_CLI_Answer {
 	 * [--rerank-model=<model>]
 	 * : Model for reranking (optional).
 	 *
+	 * [--evaluator-model=<model>]
+	 * : Model for grading retrieved context (optional).
+	 *
+	 * [--evaluation-prompt=<id>]
+	 * : gg_prompt post ID for evaluation criteria (optional).
+	 *
 	 * [--answer-model=<model>]
 	 * : Model for generating response.
 	 * ---
@@ -141,17 +147,19 @@ class GG_Data_CLI_Answer {
 			return;
 		}
 
-		$query           = $args[0];
-		$connection      = $assoc_args['connection'] ?? 'gregius-data';
-		$embedding_model = $assoc_args['embedding-model'] ?? 'hashingtf-murmur3-1024';
-		$agentic_model   = $assoc_args['agentic-model'] ?? '';
-		$rerank_model    = $assoc_args['rerank-model'] ?? '';
-		$answer_model    = $assoc_args['answer-model'] ?? 'gpt-4o-mini';
-		$no_track        = isset( $assoc_args['no-track'] );
-		$format          = $assoc_args['format'] ?? 'table';
-		$prompt_id       = $this->resolve_prompt_id( $assoc_args );
-		$conversation_id = '';
-		$source          = array(
+		$query                = $args[0];
+		$connection           = $assoc_args['connection'] ?? 'gregius-data';
+		$embedding_model      = $assoc_args['embedding-model'] ?? 'hashingtf-murmur3-1024';
+		$agentic_model        = $assoc_args['agentic-model'] ?? '';
+		$rerank_model         = $assoc_args['rerank-model'] ?? '';
+		$evaluator_model      = $assoc_args['evaluator-model'] ?? '';
+		$evaluation_prompt_id = absint( $assoc_args['evaluation-prompt'] ?? 0 );
+		$answer_model         = $assoc_args['answer-model'] ?? 'gpt-4o-mini';
+		$no_track             = isset( $assoc_args['no-track'] );
+		$format               = $assoc_args['format'] ?? 'table';
+		$prompt_id            = $this->resolve_prompt_id( $assoc_args );
+		$conversation_id      = '';
+		$source               = array(
 			'type' => 'wpcli',
 		);
 
@@ -184,16 +192,18 @@ class GG_Data_CLI_Answer {
 		// Execute RAG answer via Abilities Manager.
 		$result = $this->get_abilities()->execute_rag_answer(
 			array(
-				'query'           => $query,
-				'connection_name' => $connection,
-				'embedding_model' => $embedding_model,
-				'agentic_model'   => $agentic_model,
-				'rerank_model'    => $rerank_model,
-				'answer_model'    => $answer_model,
-				'prompt_id'       => $prompt_id,
-				'conversation_id' => $conversation_id,
-				'source'          => $source,
-				'messages'        => array(), // No conversation history in CLI.
+				'query'                => $query,
+				'connection_name'      => $connection,
+				'embedding_model'      => $embedding_model,
+				'agentic_model'        => $agentic_model,
+				'rerank_model'         => $rerank_model,
+				'evaluator_model'      => $evaluator_model,
+				'evaluation_prompt_id' => $evaluation_prompt_id,
+				'answer_model'         => $answer_model,
+				'prompt_id'            => $prompt_id,
+				'conversation_id'      => $conversation_id,
+				'source'               => $source,
+				'messages'             => array(), // No conversation history in CLI.
 			)
 		);
 
@@ -438,6 +448,12 @@ class GG_Data_CLI_Answer {
 			$meta_items[] = array(
 				'key'   => 'Rerank Model',
 				'value' => $metadata['rerank_model'],
+			);
+		}
+		if ( ! empty( $metadata['evaluator_model'] ) ) {
+			$meta_items[] = array(
+				'key'   => 'Evaluator Model',
+				'value' => $metadata['evaluator_model'],
 			);
 		}
 
