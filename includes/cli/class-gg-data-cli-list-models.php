@@ -68,12 +68,13 @@ class GG_Data_CLI_List_Models {
 	 * ---
 	 *
 	 * [--type=<type>]
-	 * : Filter by model type: embeddings, llm, or rerank.
+	 * : Filter by model type: embeddings, llm, rerank, or evaluator.
 	 * ---
 	 * options:
 	 *   - embeddings
 	 *   - llm
 	 *   - rerank
+	 *   - evaluator
 	 * ---
 	 *
 	 * [--format=<format>]
