@@ -1671,7 +1671,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * Creates tables for storing API-generated embeddings:
 		 * - wp_posts_openai_text_embedding_3_small_1536: 1536 dimensions
 		 * - wp_posts_openai_text_embedding_3_large_3072: 3072 dimensions (halfvec)
-		 * - wp_posts_gemini_gemini_embedding_2_3072: 3072 dimensions
+		 * - wp_posts_gemini_gemini_embedding_001_3072: 3072 dimensions
 		 * - wp_posts_voyage_voyage_4_1024: 1024 dimensions
 		 * - wp_posts_cohere_embed_v40_1536: 1536 dimensions
 		 *
@@ -1700,9 +1700,9 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					'vector_type' => 'halfvec',
 				),
 				array(
-					'name'        => $prefix . 'posts_gemini_gemini_embedding_2_3072',
+					'name'        => $prefix . 'posts_gemini_gemini_embedding_001_3072',
 					'dimensions'  => 3072,
-					'model'       => 'gemini-embedding-2',
+					'model'       => 'gemini-embedding-001',
 					'vector_type' => 'halfvec',
 				),
 				array(

@@ -41,7 +41,7 @@ const ModelsPage = () => {
     "text-embedding-3-small": 1536,
     "text-embedding-3-large": 3072,
     // Google Gemini
-    "gemini-embedding-2": 3072,
+    "gemini-embedding-001": 3072,
     // Voyage AI
     "voyage-4": 1024,
     // Cohere

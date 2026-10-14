@@ -63,11 +63,11 @@ class Test_GG_Data_Model_Discovery extends PHPUnit\Framework\TestCase {
 
 	public function test_present_model_resolves_active() {
 		$provider         = new GG_Data_Fake_Discovery_Provider();
-		$provider->models = array( 'gemini-3.8-flash', 'gemini-3.5-flash-lite' );
+		$provider->models = array( 'gemini-2.5-flash', 'gemini-2.5-pro' );
 
 		$this->assertSame(
 			'active',
-			$this->discovery_with( $provider )->resolve_lifecycle( 'gemini', 'key', 'gemini-3.8-flash' )
+			$this->discovery_with( $provider )->resolve_lifecycle( 'gemini', 'key', 'gemini-2.5-flash' )
 		);
 	}
 
@@ -97,7 +97,7 @@ class Test_GG_Data_Model_Discovery extends PHPUnit\Framework\TestCase {
 
 		$this->assertSame(
 			'unknown',
-			$this->discovery_with( $provider )->resolve_lifecycle( 'gemini', 'key', 'gemini-3.8-flash' )
+			$this->discovery_with( $provider )->resolve_lifecycle( 'gemini', 'key', 'gemini-2.5-flash' )
 		);
 	}
 

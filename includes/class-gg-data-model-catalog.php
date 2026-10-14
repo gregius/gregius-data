@@ -54,18 +54,23 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 			if ( null === self::$catalog ) {
 				self::$catalog = array(
 					'gemini'    => array(
-						'gemini-3.8-flash'      => array(
-							'name'   => 'Gemini 3.8 Flash',
+						'gemini-2.5-flash'      => array(
+							'name'   => 'Gemini 2.5 Flash',
 							'kind'   => 'llm',
 							'vision' => true,
 						),
-						'gemini-3.5-flash-lite' => array(
-							'name'   => 'Gemini 3.5 Flash-Lite',
+						'gemini-2.5-pro'        => array(
+							'name'   => 'Gemini 2.5 Pro',
 							'kind'   => 'llm',
 							'vision' => true,
 						),
-						'gemini-embedding-2'    => array(
-							'name'             => 'Gemini Embedding 2',
+						'gemini-2.0-flash-lite' => array(
+							'name'   => 'Gemini 2.0 Flash-Lite',
+							'kind'   => 'llm',
+							'vision' => true,
+						),
+						'gemini-embedding-001'  => array(
+							'name'             => 'Gemini Embedding 001',
 							'kind'             => 'embedding',
 							'dimensions'       => 3072,
 							'max_input_tokens' => 8192,

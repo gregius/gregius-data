@@ -38,7 +38,7 @@ class Test_GG_Data_Gemini_Provider extends PHPUnit\Framework\TestCase {
 		$result   = $provider->generate_embedding(
 			'hello',
 			array(
-				'model'   => 'gemini-embedding-2',
+				'model'   => 'gemini-embedding-001',
 				'api_key' => 'test-key',
 			)
 		);

@@ -22,8 +22,8 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 	public function test_llm_models_returns_id_to_name_map() {
 		$models = GG_Data_Model_Catalog::llm_models( 'gemini' );
 
-		$this->assertArrayHasKey( 'gemini-3.8-flash', $models );
-		$this->assertSame( 'Gemini 3.8 Flash', $models['gemini-3.8-flash'] );
+		$this->assertArrayHasKey( 'gemini-2.5-flash', $models );
+		$this->assertSame( 'Gemini 2.5 Flash', $models['gemini-2.5-flash'] );
 	}
 
 	public function test_vision_models_only_include_vision_capable_llms() {
@@ -70,7 +70,7 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 	public function test_context_limits_cover_every_llm_model() {
 		$limits = GG_Data_Model_Catalog::context_limits();
 
-		$this->assertSame( 1048576, $limits['gemini-3.8-flash'] );
+		$this->assertSame( 1048576, $limits['gemini-2.5-flash'] );
 		$this->assertSame( 128000, $limits['gpt-4o-mini'] );
 		$this->assertSame( 200000, $limits['claude-haiku-5-5'] );
 	}
@@ -78,7 +78,7 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 	public function test_max_tokens_map_covers_every_llm_model() {
 		$max = GG_Data_Model_Catalog::max_tokens_map();
 
-		$this->assertSame( 8192, $max['gemini-3.8-flash'] );
+		$this->assertSame( 8192, $max['gemini-2.5-flash'] );
 		$this->assertSame( 16384, $max['gpt-4o-mini'] );
 	}
 

@@ -303,8 +303,11 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_openai_3_large_field_type ON wp_posts_op
 CREATE INDEX IF NOT EXISTS idx_wp_posts_openai_3_large_status ON wp_posts_openai_text_embedding_3_large_3072(status);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_openai_3_large_hash ON wp_posts_openai_text_embedding_3_large_3072(content_hash);
 
--- Gemini gemini-embedding-2 (3072 dimensions, halfvec for HNSW compatibility)
-CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_2_3072 (
+-- Drop the legacy Gemini table (gemini-embedding-2) superseded by gemini-embedding-001.
+DROP TABLE IF EXISTS wp_posts_gemini_gemini_embedding_2_3072 CASCADE;
+
+-- Gemini gemini-embedding-001 (3072 dimensions, halfvec for HNSW compatibility)
+CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_001_3072 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
     post_type VARCHAR(20),
@@ -316,7 +319,7 @@ CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_2_3072 (
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
     generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    model_used VARCHAR(100) DEFAULT 'gemini-embedding-2',
+    model_used VARCHAR(100) DEFAULT 'gemini-embedding-001',
     error_message TEXT,
     
     UNIQUE(post_id, field_type, chunk_index),
@@ -326,14 +329,14 @@ CREATE TABLE IF NOT EXISTS wp_posts_gemini_gemini_embedding_2_3072 (
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_embedding_hnsw 
-ON wp_posts_gemini_gemini_embedding_2_3072 USING hnsw (embedding halfvec_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_embedding_hnsw 
+ON wp_posts_gemini_gemini_embedding_001_3072 USING hnsw (embedding halfvec_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_post_id ON wp_posts_gemini_gemini_embedding_2_3072(post_id);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_field_type ON wp_posts_gemini_gemini_embedding_2_3072(field_type);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_status ON wp_posts_gemini_gemini_embedding_2_3072(status);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_2_hash ON wp_posts_gemini_gemini_embedding_2_3072(content_hash);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_post_id ON wp_posts_gemini_gemini_embedding_001_3072(post_id);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_field_type ON wp_posts_gemini_gemini_embedding_001_3072(field_type);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_status ON wp_posts_gemini_gemini_embedding_001_3072(status);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_hash ON wp_posts_gemini_gemini_embedding_001_3072(content_hash);
 
 -- Voyage voyage-4 (1024 dimensions)
 CREATE TABLE IF NOT EXISTS wp_posts_voyage_voyage_4_1024 (
@@ -593,7 +596,7 @@ BEGIN
     SELECT COUNT(*) INTO v_chunk_count FROM wp_posts_chunks;
     SELECT COUNT(*) INTO v_openai_small_count FROM wp_posts_openai_text_embedding_3_small_1536;
     SELECT COUNT(*) INTO v_openai_large_count FROM wp_posts_openai_text_embedding_3_large_3072;
-    SELECT COUNT(*) INTO v_gemini_count FROM wp_posts_gemini_gemini_embedding_2_3072;
+    SELECT COUNT(*) INTO v_gemini_count FROM wp_posts_gemini_gemini_embedding_001_3072;
     SELECT COUNT(*) INTO v_voyage_count FROM wp_posts_voyage_voyage_4_1024;
     SELECT COUNT(*) INTO v_cohere_count FROM wp_posts_cohere_embed_v40_1536;
     SELECT COUNT(*) INTO v_hashingtf_count FROM wp_posts_hashingtf_murmur3_1024;
@@ -633,7 +636,7 @@ ALTER TABLE wp_term_taxonomy ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_term_relationships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_small_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_large_3072 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_posts_gemini_gemini_embedding_2_3072 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wp_posts_gemini_gemini_embedding_001_3072 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_voyage_voyage_4_1024 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_cohere_embed_v40_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_hashingtf_murmur3_1024 ENABLE ROW LEVEL SECURITY;
@@ -650,7 +653,7 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_term_taxonomy;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_term_relationships;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_001_3072;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024;
@@ -667,7 +670,7 @@ CREATE POLICY "Enable all access for service_role" ON wp_term_taxonomy FOR ALL T
 CREATE POLICY "Enable all access for service_role" ON wp_term_relationships FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_2_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_001_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -681,7 +684,7 @@ DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_clean;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_chunks;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072;
-DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_2_3072;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_001_3072;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024;
@@ -691,7 +694,7 @@ CREATE POLICY "Enable read access for anon" ON wp_posts_clean FOR SELECT TO anon
 CREATE POLICY "Enable read access for anon" ON wp_posts_chunks FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072 FOR SELECT TO anon USING (true);
-CREATE POLICY "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_2_3072 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_001_3072 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024 FOR SELECT TO anon USING (true);
