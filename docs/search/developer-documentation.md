@@ -140,8 +140,11 @@ Both functions use **GiST-optimized trigram matching** via the `<<->` distance o
 
 Supporting helpers:
 - `search_core_fuse_rrf(integer, integer)` — reciprocal rank fusion scoring
+- `search_core_bestmatch_tsquery(regconfig, text)` — builds a best-match (OR) full-text query from the parsed lexemes; see below
 - `search_core_vector_candidates(...)` — retrieves vector candidates from the configured embedding table
 - `gg_generate_search_vector(text, text, text, text)` — generates the query vector for semantic search by averaging matching document embeddings
+
+**Best-match full-text query:** the lexical leg builds its query via `search_core_bestmatch_tsquery`, which ORs the parsed lexemes instead of the strict-AND `plainto_tsquery` default. A query term absent from the corpus therefore no longer zeroes out the entire lexical leg — any matching lexeme keeps the row eligible, and `ts_rank_cd` ranks by term coverage. An empty or all-stopword query yields an empty `tsquery`, which matches nothing. The helper is declared `STABLE` (not `IMMUTABLE`) because `array_to_string` is STABLE. A `minimum_should_match` bound (or a BM25 ranker) is a deferred enhancement. Because the same best-match query feeds `gg_generate_search_vector`, its document-averaging set is likewise broadened to rows matching any term (still capped at 10).
 
 **PostgREST-only functions** (in `includes/sql/postgrest-schema.sql`, not auto-deployed):
 - `get_schema_status()` — returns extension availability and schema table presence for `pg_trgm`, `vector`, and vector table. Used by the integration class to populate per-connection capability state without auto-deploy.

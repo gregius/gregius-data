@@ -58,7 +58,7 @@ Explicitly excluded:
 │         ▼                                                          │
 │  SQL Search Functions                                                │
 │  - search_native_orchestrate                                        │
-│  - search_core_vector_candidates / RRF helper                       │
+│  - search_core_vector_candidates / RRF + best-match helpers         │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
          │                                      │
@@ -155,7 +155,7 @@ Emit gg_data_search_completed action
 ```
 search_native_orchestrate
    │
-   ├─ FTS lexical candidates
+   ├─ FTS lexical candidates (best-match OR)
    ├─ Trigram candidates (capability + query conditions)
    ├─ Vector candidates (capability + data conditions)
    ├─ Optional metadata filter containment per branch
