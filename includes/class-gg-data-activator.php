@@ -707,6 +707,76 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 		}
 
 		/**
+		 * Re-apply the search functions to install best-match (OR) full-text
+		 * retrieval, replacing the strict-AND `plainto_tsquery` lexical leg.
+		 *
+		 * Runs once, guarded by a site option. PostgreSQL (PDO) only; Supabase
+		 * is manual (re-apply postgrest-schema.sql).
+		 *
+		 * @since 1.0.0
+		 */
+		public static function migrate_search_bestmatch_fts() {
+			if ( get_option( 'gg_data_search_bestmatch_fts_migrated' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_search_bestmatch_fts_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_search_bestmatch_fts_for_current_site();
+		}
+
+		/**
+		 * Re-apply the search functions for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function migrate_search_bestmatch_fts_for_current_site() {
+			$settings_manager = new GG_Data_Settings_Manager();
+			$connections      = method_exists( $settings_manager, 'get_all_connections' ) ? $settings_manager->get_all_connections() : array();
+
+			$db = new GG_Data_DB();
+
+			foreach ( array_keys( (array) $connections ) as $connection_name ) {
+				try {
+					$conn = $db->get_connection( $connection_name );
+
+					if ( ! $conn ) {
+						continue; // PDO-only; PostgREST/Supabase is manual.
+					}
+
+					if ( class_exists( 'GG_Data_Search_Schema' ) ) {
+						$search_schema = new GG_Data_Search_Schema();
+						$search_schema->create_search_function( $conn, $connection_name );
+					}
+				} catch ( Exception $e ) {
+					$logger = new GG_Data_Logger();
+					$logger->log(
+						sprintf(
+							'Search function re-apply (best-match FTS) failed for connection "%s": %s',
+							$connection_name,
+							$e->getMessage()
+						),
+						'warning',
+						'search',
+						$connection_name
+					);
+				}
+			}
+
+			update_option( 'gg_data_search_bestmatch_fts_migrated', true );
+		}
+
+		/**
 		 * Remove the obsolete `typo_tolerance` and `similarity_threshold` search
 		 * settings on existing installs.
 		 *
@@ -813,6 +883,7 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 			self::migrate_hashingtf();
 			self::migrate_search_vector_language();
 			self::migrate_search_rag_precomputed_query_vector();
+			self::migrate_search_bestmatch_fts();
 			self::migrate_remove_typo_tolerance_settings();
 			self::migrate_remove_observability_setting();
 

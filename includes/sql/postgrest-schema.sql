@@ -719,6 +719,26 @@ AS $$
     END;
 $$;
 
+-- Best-match full-text query: OR of the parsed lexemes so a query term that is
+-- absent from the corpus does not zero out the lexical leg (strict AND via
+-- plainto_tsquery does). Matches any lexeme and lets ts_rank_cd rank by coverage.
+-- Empty or all-stopword input yields an empty tsquery, matching nothing.
+
+CREATE OR REPLACE FUNCTION search_core_bestmatch_tsquery(
+    search_language regconfig,
+    search_text text
+)
+RETURNS tsquery
+LANGUAGE sql
+STABLE
+SET search_path = public, extensions, pg_temp
+AS $$
+    SELECT to_tsquery(
+        search_language,
+        array_to_string(tsvector_to_array(to_tsvector(search_language, search_text)), ' | ')
+    );
+$$;
+
 -- Core vector candidate generator for multi-model retrieval.
 -- Resolves the query vector and candidate set from the embedding model's registered table.
 -- Handles dense embedding models (HashingTF, OpenAI, Cohere) and any future models
@@ -776,8 +796,8 @@ BEGIN
                      INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
                      WHERE
                          v.embedding IS NOT NULL
-                         AND pc.search_vector_weighted @@ plainto_tsquery($1::regconfig, $2)
-                     ORDER BY ts_rank_cd(pc.search_vector_weighted, plainto_tsquery($1::regconfig, $2)) DESC,
+                         AND pc.search_vector_weighted @@ search_core_bestmatch_tsquery($1::regconfig, $2)
+                     ORDER BY ts_rank_cd(pc.search_vector_weighted, search_core_bestmatch_tsquery($1::regconfig, $2)) DESC,
                               CASE v.field_type
                                   WHEN ''title''   THEN 0
                                   WHEN ''excerpt'' THEN 1
@@ -895,7 +915,7 @@ BEGIN
             pc.post_id,
             ts_rank_cd(
                 pc.search_vector_weighted,
-                plainto_tsquery(search_language::regconfig, search_text)
+                search_core_bestmatch_tsquery(search_language::regconfig, search_text)
             )::real AS source_score,
             pc.post_title_clean AS post_title,
             COALESCE(
@@ -908,13 +928,13 @@ BEGIN
             row_number() OVER (
                 ORDER BY ts_rank_cd(
                     pc.search_vector_weighted,
-                    plainto_tsquery(search_language::regconfig, search_text)
+                    search_core_bestmatch_tsquery(search_language::regconfig, search_text)
                 ) DESC
             ) AS rank_position
         FROM wp_posts_clean pc
         INNER JOIN wp_posts p ON pc.post_id = p.id
         WHERE
-            pc.search_vector_weighted @@ plainto_tsquery(search_language::regconfig, search_text)
+            pc.search_vector_weighted @@ search_core_bestmatch_tsquery(search_language::regconfig, search_text)
             AND p.post_type = ANY(post_types)
             AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
         LIMIT GREATEST(limit_count, 20)
@@ -1068,7 +1088,7 @@ BEGIN
             pc.post_id,
             ts_rank_cd(
                 pc.search_vector_weighted,
-                plainto_tsquery(search_language::regconfig, search_text)
+                search_core_bestmatch_tsquery(search_language::regconfig, search_text)
             )::real AS source_score,
             pc.post_title_clean AS post_title,
             COALESCE(
@@ -1081,13 +1101,13 @@ BEGIN
             row_number() OVER (
                 ORDER BY ts_rank_cd(
                     pc.search_vector_weighted,
-                    plainto_tsquery(search_language::regconfig, search_text)
+                    search_core_bestmatch_tsquery(search_language::regconfig, search_text)
                 ) DESC
             ) AS rank_position
         FROM wp_posts_clean pc
         INNER JOIN wp_posts p ON pc.post_id = p.id
         WHERE
-            pc.search_vector_weighted @@ plainto_tsquery(search_language::regconfig, search_text)
+            pc.search_vector_weighted @@ search_core_bestmatch_tsquery(search_language::regconfig, search_text)
             AND p.post_type = ANY(post_types)
             AND p.post_status IN ('publish', 'inherit') AND pc.visibility = 'public'
             AND (
@@ -1244,9 +1264,9 @@ BEGIN
             INNER JOIN wp_posts_clean pc ON v.post_id = pc.post_id
             WHERE 
                 v.embedding IS NOT NULL
-                AND pc.search_vector_weighted @@ plainto_tsquery(%L::regconfig, %L)
+                AND pc.search_vector_weighted @@ search_core_bestmatch_tsquery(%L::regconfig, %L)
             ORDER BY 
-                ts_rank_cd(pc.search_vector_weighted, plainto_tsquery(%L::regconfig, %L)) DESC,
+                ts_rank_cd(pc.search_vector_weighted, search_core_bestmatch_tsquery(%L::regconfig, %L)) DESC,
                 CASE v.field_type WHEN ''title'' THEN 0 WHEN ''excerpt'' THEN 1 ELSE 2 END
             LIMIT 10
         ) v

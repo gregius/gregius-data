@@ -40,6 +40,7 @@ class GG_Data_Search_Schema {
 	 */
 	private const SEARCH_FUNCTIONS = array(
 		'search_core_fuse_rrf',
+		'search_core_bestmatch_tsquery',
 		'search_core_vector_candidates',
 		'search_native_orchestrate',
 		'search_rag_orchestrate',
