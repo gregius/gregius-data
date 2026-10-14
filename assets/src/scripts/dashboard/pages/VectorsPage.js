@@ -11,7 +11,7 @@
  * - "+ Add Model" button to add global models to this connection
  *
  * Card Types:
- * - APIEmbeddingCard: internal (HashingTF) and API-provided embeddings (OpenAI, Voyage AI, etc.)
+ * - APIEmbeddingCard: internal (HashingTF) and API-provided embeddings (OpenAI, Cohere, etc.)
  *
  * @since 1.0.0
  */

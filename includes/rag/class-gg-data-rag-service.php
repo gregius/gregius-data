@@ -1020,7 +1020,7 @@ class GG_Data_RAG_Service {
 	/**
 	 * Rerank retrieved chunks using a rerank model.
 	 *
-	 * Uses a rerank model (Voyage AI or Cohere) to re-score and reorder
+	 * Uses a rerank model (Cohere) to re-score and reorder
 	 * chunks based on their relevance to the query.
 	 *
 	 * @since 1.0.0
@@ -1175,14 +1175,13 @@ class GG_Data_RAG_Service {
 	 * Get a provider instance by ID.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider_id Provider ID (e.g., 'voyage', 'cohere').
+	 * @param string $provider_id Provider ID (e.g., 'openai', 'cohere').
 	 * @param string $api_key     API key for the provider.
 	 * @return GG_Data_AI_Provider_Interface|null Provider instance or null.
 	 */
 	private function get_provider_instance( $provider_id, $api_key = '' ) {
 		$provider_map = array(
 			'openai'    => 'GG_Data_OpenAI_Provider',
-			'voyage'    => 'GG_Data_Voyage_Provider',
 			'cohere'    => 'GG_Data_Cohere_Provider',
 			'anthropic' => 'GG_Data_Anthropic_Provider',
 			'gemini'    => 'GG_Data_Gemini_Provider',
@@ -2435,7 +2434,7 @@ class GG_Data_RAG_Service {
 		 * when retrieved chunks don't actually help answer the question.
 		 *
 		 * The score comes from the reranker (if enabled) or vector similarity.
-		 * Reranker scores (Cohere/Voyage) range from 0.0 to 1.0.
+		 * Reranker scores (Cohere) range from 0.0 to 1.0.
 		 *
 		 * @since 1.0.0
 		 * @param float $threshold Minimum relevance score (0.0 to 1.0). Default 0.0.

@@ -129,46 +129,31 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 						),
 					),
 					'cohere'    => array(
-						'embed-v4.0'       => array(
-							'name'             => 'Embed v4.0',
+						'embed-v5.0-pro'   => array(
+							'name'             => 'Embed v5.0 Pro',
 							'kind'             => 'embedding',
-							'dimensions'       => 1536,
+							'dimensions'       => 2048,
 							'max_input_tokens' => 128000,
-							'description'      => 'Latest multilingual embeddings (100+ languages). Supports MRL dimensions: 256, 512, 1024, 1536.',
+							'description'      => 'High-accuracy embeddings (256-2048 dimensions).',
+						),
+						'embed-v5.0-fast'  => array(
+							'name'             => 'Embed v5.0 Fast',
+							'kind'             => 'embedding',
+							'dimensions'       => 2048,
+							'max_input_tokens' => 128000,
+							'description'      => 'Fast embeddings (256-2048 dimensions).',
+						),
+						'rerank-v4.0-pro'  => array(
+							'name'        => 'Rerank v4.0 Pro',
+							'kind'        => 'rerank',
+							'max_context' => 32000,
+							'description' => 'High-accuracy multilingual reranking.',
 						),
 						'rerank-v4.0-fast' => array(
 							'name'        => 'Rerank v4.0 Fast',
 							'kind'        => 'rerank',
-							'max_context' => 4096,
+							'max_context' => 32000,
 							'description' => 'Fast multilingual reranking.',
-						),
-					),
-					'voyage'    => array(
-						'voyage-4'      => array(
-							'name'             => 'Voyage 4',
-							'kind'             => 'embedding',
-							'dimensions'       => 1024,
-							'max_input_tokens' => 32000,
-							'description'      => 'General-purpose multilingual embeddings. Shared embedding space across the Voyage 4 series.',
-						),
-						'voyage-4-lite' => array(
-							'name'             => 'Voyage 4 Lite',
-							'kind'             => 'embedding',
-							'dimensions'       => 1024,
-							'max_input_tokens' => 32000,
-							'description'      => 'Lowest-cost Voyage 4 embedding.',
-						),
-						'rerank-3'      => array(
-							'name'        => 'Rerank 3',
-							'kind'        => 'rerank',
-							'max_context' => 32000,
-							'description' => 'Multilingual reranking.',
-						),
-						'rerank-3-lite' => array(
-							'name'        => 'Rerank 3 Lite',
-							'kind'        => 'rerank',
-							'max_context' => 32000,
-							'description' => 'Budget reranking.',
 						),
 					),
 					'deepseek'  => array(

@@ -338,20 +338,28 @@ CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_field_type ON wp_posts_gemini
 CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_status ON wp_posts_gemini_gemini_embedding_001_3072(status);
 CREATE INDEX IF NOT EXISTS idx_wp_posts_gemini_001_hash ON wp_posts_gemini_gemini_embedding_001_3072(content_hash);
 
--- Voyage voyage-4 (1024 dimensions)
-CREATE TABLE IF NOT EXISTS wp_posts_voyage_voyage_4_1024 (
+-- Legacy Voyage table (provider removed) — dropped on schema re-apply.
+DROP TABLE IF EXISTS wp_posts_voyage_voyage_4_1024 CASCADE;
+
+-- Drop legacy Cohere embedding tables (embed-v4.0 and embed-multilingual-v3.0)
+-- superseded by embed-v5.0.
+DROP TABLE IF EXISTS wp_posts_cohere_embed_v40_1536 CASCADE;
+DROP TABLE IF EXISTS wp_posts_cohere_embed_multilingual_v30_1024 CASCADE;
+
+-- Cohere embed-v5.0-pro (2048 dimensions, halfvec for storage efficiency)
+CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v50_pro_2048 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
     post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
-    embedding vector(1024),
+    embedding halfvec(2048),
     content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
     generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    model_used VARCHAR(100) DEFAULT 'voyage-4',
+    model_used VARCHAR(100) DEFAULT 'embed-v5.0-pro',
     error_message TEXT,
     
     UNIQUE(post_id, field_type, chunk_index),
@@ -361,29 +369,29 @@ CREATE TABLE IF NOT EXISTS wp_posts_voyage_voyage_4_1024 (
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_embedding_hnsw 
-ON wp_posts_voyage_voyage_4_1024 USING hnsw (embedding vector_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_pro_embedding_hnsw 
+ON wp_posts_cohere_embed_v50_pro_2048 USING hnsw (embedding halfvec_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_post_id ON wp_posts_voyage_voyage_4_1024(post_id);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_field_type ON wp_posts_voyage_voyage_4_1024(field_type);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_status ON wp_posts_voyage_voyage_4_1024(status);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_voyage_4_hash ON wp_posts_voyage_voyage_4_1024(content_hash);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_pro_post_id ON wp_posts_cohere_embed_v50_pro_2048(post_id);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_pro_field_type ON wp_posts_cohere_embed_v50_pro_2048(field_type);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_pro_status ON wp_posts_cohere_embed_v50_pro_2048(status);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_pro_hash ON wp_posts_cohere_embed_v50_pro_2048(content_hash);
 
--- Cohere embed-v4.0 (1536 dimensions)
-CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v40_1536 (
+-- Cohere embed-v5.0-fast (2048 dimensions, halfvec for storage efficiency)
+CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v50_fast_2048 (
     id SERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL REFERENCES wp_posts(id) ON DELETE CASCADE,
     post_type VARCHAR(20),
     field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('title', 'excerpt', 'chunk')),
     chunk_index INTEGER,
-    embedding vector(1536),
+    embedding halfvec(2048),
     content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL DEFAULT 0,
     cost DECIMAL(10, 8) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
     generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    model_used VARCHAR(100) DEFAULT 'embed-v4.0',
+    model_used VARCHAR(100) DEFAULT 'embed-v5.0-fast',
     error_message TEXT,
     
     UNIQUE(post_id, field_type, chunk_index),
@@ -393,14 +401,14 @@ CREATE TABLE IF NOT EXISTS wp_posts_cohere_embed_v40_1536 (
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_embedding_hnsw 
-ON wp_posts_cohere_embed_v40_1536 USING hnsw (embedding vector_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_fast_embedding_hnsw 
+ON wp_posts_cohere_embed_v50_fast_2048 USING hnsw (embedding halfvec_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
-CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_post_id ON wp_posts_cohere_embed_v40_1536(post_id);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_field_type ON wp_posts_cohere_embed_v40_1536(field_type);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_status ON wp_posts_cohere_embed_v40_1536(status);
-CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v40_hash ON wp_posts_cohere_embed_v40_1536(content_hash);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_fast_post_id ON wp_posts_cohere_embed_v50_fast_2048(post_id);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_fast_field_type ON wp_posts_cohere_embed_v50_fast_2048(field_type);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_fast_status ON wp_posts_cohere_embed_v50_fast_2048(status);
+CREATE INDEX IF NOT EXISTS idx_wp_posts_cohere_v50_fast_hash ON wp_posts_cohere_embed_v50_fast_2048(content_hash);
 
 -- ================================================
 -- HashingTF Murmur3 1024D (stateless internal embeddings)
@@ -581,8 +589,8 @@ DECLARE
     v_openai_small_count bigint;
     v_openai_large_count bigint;
     v_gemini_count bigint;
-    v_voyage_count bigint;
-    v_cohere_count bigint;
+    v_cohere_pro_count bigint;
+    v_cohere_fast_count bigint;
     v_hashingtf_count bigint;
     v_extensions jsonb;
 BEGIN
@@ -597,8 +605,8 @@ BEGIN
     SELECT COUNT(*) INTO v_openai_small_count FROM wp_posts_openai_text_embedding_3_small_1536;
     SELECT COUNT(*) INTO v_openai_large_count FROM wp_posts_openai_text_embedding_3_large_3072;
     SELECT COUNT(*) INTO v_gemini_count FROM wp_posts_gemini_gemini_embedding_001_3072;
-    SELECT COUNT(*) INTO v_voyage_count FROM wp_posts_voyage_voyage_4_1024;
-    SELECT COUNT(*) INTO v_cohere_count FROM wp_posts_cohere_embed_v40_1536;
+    SELECT COUNT(*) INTO v_cohere_pro_count FROM wp_posts_cohere_embed_v50_pro_2048;
+    SELECT COUNT(*) INTO v_cohere_fast_count FROM wp_posts_cohere_embed_v50_fast_2048;
     SELECT COUNT(*) INTO v_hashingtf_count FROM wp_posts_hashingtf_murmur3_1024;
     
     -- Check extensions
@@ -614,8 +622,8 @@ BEGIN
         'openai_small_embedding_count', COALESCE(v_openai_small_count, 0),
         'openai_large_embedding_count', COALESCE(v_openai_large_count, 0),
         'gemini_embedding_count', COALESCE(v_gemini_count, 0),
-        'voyage_embedding_count', COALESCE(v_voyage_count, 0),
-        'cohere_embedding_count', COALESCE(v_cohere_count, 0),
+        'cohere_pro_embedding_count', COALESCE(v_cohere_pro_count, 0),
+        'cohere_fast_embedding_count', COALESCE(v_cohere_fast_count, 0),
         'hashingtf_embedding_count', COALESCE(v_hashingtf_count, 0),
         'extensions', COALESCE(v_extensions, '{}'::jsonb),
         'checked_at', NOW()
@@ -637,8 +645,8 @@ ALTER TABLE wp_term_relationships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_small_1536 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_openai_text_embedding_3_large_3072 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_gemini_gemini_embedding_001_3072 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_posts_voyage_voyage_4_1024 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_posts_cohere_embed_v40_1536 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wp_posts_cohere_embed_v50_pro_2048 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wp_posts_cohere_embed_v50_fast_2048 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_hashingtf_murmur3_1024 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gg_schema_meta ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_gg_sync_metadata_entities ENABLE ROW LEVEL SECURITY;
@@ -654,8 +662,8 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_term_relationsh
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_001_3072;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v50_pro_2048;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v50_fast_2048;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON gg_schema_meta;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_gg_sync_metadata_entities;
@@ -671,8 +679,8 @@ CREATE POLICY "Enable all access for service_role" ON wp_term_relationships FOR 
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_small_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_openai_text_embedding_3_large_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_embedding_001_3072 FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_voyage_voyage_4_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v40_1536 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v50_pro_2048 FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v50_fast_2048 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_gg_sync_metadata_entities FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -685,8 +693,8 @@ DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_chunks;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_001_3072;
-DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024;
-DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_cohere_embed_v50_pro_2048;
+DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_cohere_embed_v50_fast_2048;
 DROP POLICY IF EXISTS "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024;
 
 CREATE POLICY "Enable read access for anon" ON wp_posts FOR SELECT TO anon USING (true);
@@ -695,8 +703,8 @@ CREATE POLICY "Enable read access for anon" ON wp_posts_chunks FOR SELECT TO ano
 CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_small_1536 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_openai_text_embedding_3_large_3072 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_gemini_gemini_embedding_001_3072 FOR SELECT TO anon USING (true);
-CREATE POLICY "Enable read access for anon" ON wp_posts_voyage_voyage_4_1024 FOR SELECT TO anon USING (true);
-CREATE POLICY "Enable read access for anon" ON wp_posts_cohere_embed_v40_1536 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_cohere_embed_v50_pro_2048 FOR SELECT TO anon USING (true);
+CREATE POLICY "Enable read access for anon" ON wp_posts_cohere_embed_v50_fast_2048 FOR SELECT TO anon USING (true);
 CREATE POLICY "Enable read access for anon" ON wp_posts_hashingtf_murmur3_1024 FOR SELECT TO anon USING (true);
 
 -- ================================================

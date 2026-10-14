@@ -669,7 +669,7 @@ class GG_Data_DeepSeek_Provider implements GG_Data_AI_Provider_Interface {
 	public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error {
 		return new WP_Error(
 			'gg_data_deepseek_no_rerank',
-			__( 'DeepSeek does not provide a rerank API. Use Voyage AI or Cohere for reranking.', 'gregius-data' )
+			__( 'DeepSeek does not provide a rerank API. Use Cohere for reranking.', 'gregius-data' )
 		);
 	}
 

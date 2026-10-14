@@ -141,7 +141,6 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-deepseek-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-anthropic-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-gemini-provider.php',
-	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-voyage-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-cohere-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-internal-provider.php',
 	GG_DATA_PLUGIN_DIR . 'includes/ai/providers/class-gg-data-typesafe-provider.php',
@@ -295,10 +294,7 @@ function gg_data_register_providers( $providers ) {
 	// Register Google Gemini provider (LLM + Embeddings - Free tier available).
 	$providers['gemini'] = new GG_Data_Gemini_Provider();
 
-	// Register Voyage AI provider (Embeddings + Rerank - RAG-optimized).
-	$providers['voyage'] = new GG_Data_Voyage_Provider();
-
-	// Register Cohere provider (Rerank only - Industry-leading reranking).
+	// Register Cohere provider (Embeddings + Reranking - Industry-leading reranking).
 	$providers['cohere'] = new GG_Data_Cohere_Provider();
 
 	// Register Internal provider (HashingTF Embeddings - Free Tier).

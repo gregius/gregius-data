@@ -70,7 +70,7 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
 │  │  │ ├─ Registry: GG_Data_LLM_Registry                  │ │ │
 │  │  │ ├─ Client Facade: GG_Data_Ai_Client               │ │ │
 │  │  │ ├─ OpenAI, Anthropic, Gemini, DeepSeek providers   │ │ │
-│  │  │ ├─ Voyage, Cohere, Internal providers              │ │ │
+│  │  │ ├─ Cohere, Internal providers              │ │ │
 │  │  │ └─ Tool Strategy Layer                              │ │ │
 │  │  │    ├─ OpenAI/DeepSeek native                       │ │ │
 │  │  │    ├─ Anthropic native                             │ │ │
@@ -88,9 +88,9 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
     │ via PDO         │          │ - Anthropic          │
     └─────────────────┘          │ - Google Gemini      │
                                   │ - DeepSeek           │
-    ┌─────────────────┐          │ - Voyage AI          │
-    │ Supabase        │          │ - Cohere             │
-    │ (PostgREST)     │          └──────────────────────┘
+    ┌─────────────────┐          │ - Cohere             │
+    │ Supabase        │          └──────────────────────┘
+    │ (PostgREST)     │
     └─────────────────┘
 ```
 
@@ -198,8 +198,8 @@ AI Registry
     ┌────┴────┬────────────┬─────────────┬────────────┬────────────┐
     │          │            │             │            │            │
     ▼          ▼            ▼             ▼            ▼            ▼
-  OpenAI   Anthropic   Gemini      DeepSeek      Voyage        Cohere
-   (LLM)   (LLM)       (LLM+E)     (LLM)         (E + Rerank)  (Rerank)
+  OpenAI   Anthropic   Gemini      DeepSeek      Cohere
+   (LLM)   (LLM)       (LLM+E)     (LLM)         (Rerank)
    │       │           │           │             │             │
    └───────┴───────────┴───────────┴─────────────┴─────────────┘
                  │
@@ -236,9 +236,9 @@ AI Registry
    - Fluent builder: `prompt()->setSystemMessage()->usingProvider()->usingModel()->generateText()`
    - Handles request orchestration
 
-4. **Concrete Providers** (7 implementations):
+4. **Concrete Providers** (6 implementations):
    - OpenAI, Anthropic, Gemini, DeepSeek: LLM support
-   - Voyage, Cohere: Embedding/reranking support
+   - Cohere: Embedding/reranking support
    - Internal: HashingTF Murmur3 1024D embeddings (free, no API required)
 
 5. **Tool Strategy Layer** — per-provider adapters:
@@ -693,7 +693,6 @@ Plugin Code:
 | PA-FR-17 (Registry + filter) | 3.2 Key Components #2, AD-03 | ✅ Covered |
 | PA-FR-18 (Client facade) | 3.2 Key Components #3 | ✅ Covered |
 | PA-FR-19 (Tool strategy layer) | 3.2 Tool Strategy Layer, AD-04 | ✅ Covered |
-| PA-FR-20 (Voyage provider) | 3.2 Concrete Providers | ✅ Covered |
 
 ### Interface Requirements Coverage
 

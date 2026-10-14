@@ -153,26 +153,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	/**
-	 * Generate embeddings for given text(s).
-	 *
-	 * Cohere provider does not support embeddings in this implementation.
-	 *
-	 * @since 1.2.0
-	 * @param string|array $input   Text or array of texts to embed.
-	 * @param array        $options Optional. Options like 'model'.
-	 * @return array|WP_Error Array of embedding vectors or WP_Error on failure.
-	 */
-	public function embed( string|array $input, array $options = array() ): array|WP_Error {
-		return new WP_Error(
-			'gg_data_cohere_embed_not_supported',
-			__( 'Cohere embeddings not implemented in this provider. Use rerank() instead.', 'gregius-data' )
-		);
-	}
-
-	/**
 	 * Generate embedding vector from text.
-	 *
-	 * Cohere provider does not support embeddings in this implementation.
 	 *
 	 * @since 1.2.0
 	 * @param string $text    The text to embed.
@@ -184,7 +165,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 
 		if ( empty( $api_key ) ) {
 			$model_registry = new GG_Data_Model_Registry();
-			$model_data     = $model_registry->get_model( 'gregius-data', $options['model'] ?? 'embed-v4.0' );
+			$model_data     = $model_registry->get_model( 'gregius-data', $options['model'] ?? 'embed-v5.0-fast' );
 			if ( $model_data && ! is_wp_error( $model_data ) ) {
 				$api_key = $model_data['api_key'] ?? '';
 			}
@@ -197,7 +178,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 			);
 		}
 
-		$model = isset( $options['model'] ) ? $options['model'] : 'embed-v4.0';
+		$model = isset( $options['model'] ) ? $options['model'] : 'embed-v5.0-fast';
 
 		$body = array(
 			'model'           => $model,
@@ -247,7 +228,14 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 			);
 		}
 
-		if ( ! isset( $data['embeddings'][0] ) ) {
+		$embeddings = isset( $data['embeddings'] ) ? $data['embeddings'] : array();
+
+		// The v2 Embed API nests vectors under the requested dtype key (e.g. "float").
+		$vector = isset( $embeddings['float'][0] )
+			? $embeddings['float'][0]
+			: ( isset( $embeddings[0] ) ? $embeddings[0] : null );
+
+		if ( ! is_array( $vector ) ) {
 			return new WP_Error(
 				'gg_data_cohere_invalid_response',
 				__( 'Invalid response from Cohere Embed API: missing embedding data.', 'gregius-data' )
@@ -255,8 +243,8 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 		}
 
 		return array(
-			'vector'     => $data['embeddings'][0],
-			'dimensions' => count( $data['embeddings'][0] ),
+			'vector'     => $vector,
+			'dimensions' => count( $vector ),
 			'model'      => $model,
 		);
 	}
@@ -304,7 +292,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 			);
 		}
 
-		$model              = $options['model'] ?? 'rerank-v3.5';
+		$model              = $options['model'] ?? 'rerank-v4.0-fast';
 		$top_n              = $options['top_n'] ?? null;
 		$max_tokens_per_doc = $options['max_tokens_per_doc'] ?? 4096;
 
@@ -384,8 +372,8 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 	/**
 	 * Get available rerank models.
 	 *
-	 * Only the fast model is included as Voyage AI is the primary reranking provider.
-	 * Cohere serves as a fallback/alternative for provider diversity.
+	 * Cohere is the primary reranking provider; both pro and fast models
+	 * are available for provider diversity.
 	 *
 	 * @since 1.2.0
 	 * @return array Array of rerank model info keyed by model ID.
@@ -468,7 +456,7 @@ class GG_Data_Cohere_Provider implements GG_Data_AI_Provider_Interface {
 				),
 				'body'    => wp_json_encode(
 					array(
-						'model'     => 'rerank-v3.5',
+						'model'     => 'rerank-v4.0-fast',
 						'query'     => 'test',
 						'documents' => array( 'test document' ),
 					)

@@ -438,7 +438,7 @@ class GG_Data_Anthropic_Provider implements GG_Data_AI_Provider_Interface {
 	public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error {
 		return new WP_Error(
 			'gg_data_anthropic_no_rerank',
-			__( 'Anthropic does not provide a rerank API. Use Voyage AI or Cohere for reranking.', 'gregius-data' )
+			__( 'Anthropic does not provide a rerank API. Use Cohere for reranking.', 'gregius-data' )
 		);
 	}
 

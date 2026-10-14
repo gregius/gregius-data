@@ -41,13 +41,6 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 		$this->assertSame( 3072, $models['text-embedding-3-large']['dimensions'] );
 	}
 
-	public function test_voyage_rerank_is_not_corrupted() {
-		$models = GG_Data_Model_Catalog::rerank_models( 'voyage' );
-
-		$this->assertArrayHasKey( 'rerank-3', $models );
-		$this->assertArrayHasKey( 'rerank-3-lite', $models );
-	}
-
 	public function test_embedding_dimensions_returns_flat_map() {
 		$dims = GG_Data_Model_Catalog::embedding_dimensions();
 

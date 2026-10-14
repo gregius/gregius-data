@@ -32,7 +32,7 @@ No database migration required. No lock-in to a single AI provider. No need to r
 - **Interaction tracking and logging** for operational visibility
 - **Retry queue and health checks** for resilience
 - **Orchestration-first design**: retrieval, model selection, and policy controls in one workflow
-- **Multi-provider AI support**: OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and Voyage AI (when configured)
+- **Multi-provider AI support**: OpenAI, Anthropic, Google Gemini, DeepSeek, and Cohere (when configured)
 - **Grounded retrieval layer**: semantic retrieval designed for RAG quality and source attribution
 - **Developer integration surface**: REST API, WP-CLI, and hooks for customization
 - **Data ownership stays with you**: your primary content remains in WordPress

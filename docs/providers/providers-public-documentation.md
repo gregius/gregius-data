@@ -90,7 +90,6 @@ These providers generate vector embeddings and rerank search results:
 
 | Provider | Purpose |
 |---|---|
-| [Voyage AI](https://www.voyageai.com) | Embeddings and reranking |
 | [Cohere](https://cohere.com) | Embeddings and reranking |
 
 <!-- IMAGE: AI providers configuration page showing API key fields for each provider -->
@@ -136,7 +135,7 @@ If the test fails, check credentials, network access, and PHP extension availabi
 | Direct [PostgreSQL](https://www.postgresql.org/) access | **PostgreSQL (PDO)** - requires the `pdo_pgsql` PHP extension. Ask your host to enable it if not already available. |
 | HTTP-based access that works on any hosting | **PostgREST ([Supabase](https://supabase.com/))** - no PHP extensions required. Works on shared hosting, managed WordPress, and environments without database TCP access. |
 | External AI text generation (LLM) | **[OpenAI](https://openai.com), [Anthropic](https://www.anthropic.com), [Gemini](https://deepmind.google/technologies/gemini/), or [DeepSeek](https://deepseek.com)** |
-| External embeddings or reranking | **[Voyage AI](https://www.voyageai.com)** (embeddings + reranking) or **[Cohere](https://cohere.com)** (embeddings + reranking) |
+| External embeddings or reranking | **[Cohere](https://cohere.com)** (embeddings + reranking) |
 | Local embeddings, zero setup | **[HashingTF Murmur3 1024D](https://en.wikipedia.org/wiki/MurmurHash)** (`hashingtf-murmur3-1024`) - stateless, no vocabulary needed |
 
 ---

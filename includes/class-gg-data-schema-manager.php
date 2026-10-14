@@ -1672,8 +1672,8 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		 * - wp_posts_openai_text_embedding_3_small_1536: 1536 dimensions
 		 * - wp_posts_openai_text_embedding_3_large_3072: 3072 dimensions (halfvec)
 		 * - wp_posts_gemini_gemini_embedding_001_3072: 3072 dimensions
-		 * - wp_posts_voyage_voyage_4_1024: 1024 dimensions
-		 * - wp_posts_cohere_embed_v40_1536: 1536 dimensions
+		 * - wp_posts_cohere_embed_v50_pro_2048: 2048 dimensions (halfvec)
+		 * - wp_posts_cohere_embed_v50_fast_2048: 2048 dimensions (halfvec)
 		 *
 		 * @param PDO $conn Database connection.
 		 * @return bool Success or failure.
@@ -1706,16 +1706,16 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 					'vector_type' => 'halfvec',
 				),
 				array(
-					'name'        => $prefix . 'posts_voyage_voyage_4_1024',
-					'dimensions'  => 1024,
-					'model'       => 'voyage-4',
-					'vector_type' => 'vector',
+					'name'        => $prefix . 'posts_cohere_embed_v50_pro_2048',
+					'dimensions'  => 2048,
+					'model'       => 'embed-v5.0-pro',
+					'vector_type' => 'halfvec',
 				),
 				array(
-					'name'        => $prefix . 'posts_cohere_embed_v40_1536',
-					'dimensions'  => 1536,
-					'model'       => 'embed-v4.0',
-					'vector_type' => 'vector',
+					'name'        => $prefix . 'posts_cohere_embed_v50_fast_2048',
+					'dimensions'  => 2048,
+					'model'       => 'embed-v5.0-fast',
+					'vector_type' => 'halfvec',
 				),
 			);
 

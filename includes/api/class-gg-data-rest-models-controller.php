@@ -844,21 +844,6 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 					),
 					200
 				);
-			} elseif ( 'voyage' === $provider ) {
-				$voyage_provider = new GG_Data_Voyage_Provider();
-				$result          = $voyage_provider->validate_api_key( $api_key );
-
-				if ( is_wp_error( $result ) ) {
-					return $result;
-				}
-
-				return new WP_REST_Response(
-					array(
-						'success' => true,
-						'message' => __( 'Connection successful! Voyage AI API key is valid.', 'gregius-data' ),
-					),
-					200
-				);
 			} elseif ( 'cohere' === $provider ) {
 				$cohere_provider = new GG_Data_Cohere_Provider();
 				$result          = $cohere_provider->validate_api_key( $api_key );

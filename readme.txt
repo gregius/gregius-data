@@ -114,7 +114,7 @@ Only content from the post types you choose for synchronization.
 
 = Which AI providers are supported? =
 
-Supported providers include OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, Voyage AI, and TypeSafe (evaluation) when configured.
+Supported providers include OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe (evaluation) when configured.
 
 = Do I need AI API keys to use the plugin? =
 
@@ -169,7 +169,7 @@ Visit the contributor profiles on WordPress.org:
 * Retrieval and semantic search workflows over PostgreSQL-backed data
 * Vector and embeddings management workflows
 * RAG orchestration with source-aware response metadata
-* Multi-provider AI support (OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, Voyage AI, TypeSafe)
+* Multi-provider AI support (OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, TypeSafe)
 * Connection health checks and schema setup tooling
 * Retry queue for failed synchronization operations
 * Admin dashboard modules: Models, Connections, Sync, Vectors, Prompts, Search, and Logs
@@ -199,14 +199,13 @@ This plugin connects to services you configure:
 - You provide and control this database connection (self-hosted or managed provider).
 
 2. AI provider APIs (optional):
-- OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, Voyage AI, and TypeSafe are used only if you configure them.
+- OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe are used only if you configure them.
 - Requests to generation/embedding/rerank workflows send request data to the provider you selected. Data is sent only when a workflow runs (a query, sync, embedding, or rerank operation) and only after you have configured that provider.
 - OpenAI Terms: https://openai.com/policies/terms-of-use/ | Privacy: https://openai.com/policies/privacy-policy/
 - Anthropic Terms: https://www.anthropic.com/legal/consumer-terms | Privacy: https://www.anthropic.com/privacy
 - Google Gemini Terms: https://policies.google.com/terms | Privacy: https://policies.google.com/privacy
 - DeepSeek Terms: https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html | Privacy: https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html
 - Cohere Terms: https://cohere.com/terms-of-use | Privacy: https://cohere.com/privacy
-- Voyage AI Terms: https://www.voyageai.com/tos | Privacy: https://www.voyageai.com/privacy
 - TypeSafe Terms: https://typesafe.ai/terms | Privacy: https://typesafe.ai/privacy
 
 You are responsible for each configured provider's terms and privacy policy.

@@ -193,7 +193,7 @@ interface GG_Data_AI_Provider_Interface {
 	 * Generate embeddings for multiple texts in a single API call (OPTIONAL).
 	 *
 	 * This is an OPTIONAL method - only providers with batch embedding support
-	 * implement it (OpenAI, Voyage AI). Check with method_exists() before calling.
+	 * implement it (OpenAI, Cohere). Check with method_exists() before calling.
 	 *
 	 * @since 2.0.0
 	 * @param array $texts   Array of strings to embed.

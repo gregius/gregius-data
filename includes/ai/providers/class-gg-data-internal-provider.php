@@ -130,7 +130,7 @@ class GG_Data_Internal_Provider implements GG_Data_AI_Provider_Interface {
 	public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error {
 		return new WP_Error(
 			'gg_data_internal_no_rerank',
-			__( 'Internal provider does not support reranking. Use Voyage AI or Cohere for reranking.', 'gregius-data' )
+			__( 'Internal provider does not support reranking. Use Cohere for reranking.', 'gregius-data' )
 		);
 	}
 

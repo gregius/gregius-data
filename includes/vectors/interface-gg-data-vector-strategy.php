@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Interface GG_Data_Vector_Strategy_Interface
  *
  * Strategy Pattern for vector generation. Allows different generation
- * approaches (HashingTF, OpenAI, Voyage AI) to be used interchangeably.
+ * approaches (HashingTF, OpenAI, Cohere) to be used interchangeably.
  *
  * @since 1.0.0
  */

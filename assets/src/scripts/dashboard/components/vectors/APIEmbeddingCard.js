@@ -1,7 +1,7 @@
 /**
  * API Embedding Card Component
  *
- * Card component for API-based embedding models (OpenAI, Voyage AI, etc.)
+ * Card component for API-based embedding models (OpenAI, Cohere, etc.)
  * showing generation status, token tracking, and batch processing actions.
  *
  * @package    Gregius_Data

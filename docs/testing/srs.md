@@ -172,7 +172,7 @@ Requirement notation:
 | Class | Reason |
 |---|---|
 | GG_Data_Citation_Resolver | Class file does not exist in the codebase |
-| AI Provider classes (OpenAI, Anthropic, Gemini, DeepSeek, Cohere, Voyage) | Deferred — require external API mocking |
+| AI Provider classes (OpenAI, Anthropic, Gemini, DeepSeek, Cohere) | Deferred — require external API mocking |
 | GG_Data_PostgREST_Provider | Deferred — requires Supabase/PostgREST endpoint mocking |
 
 ## 5. Verification and Acceptance

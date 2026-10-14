@@ -531,7 +531,7 @@ class GG_Data_Gemini_Provider implements GG_Data_AI_Provider_Interface {
 	public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error {
 		return new WP_Error(
 			'gg_data_gemini_no_rerank',
-			__( 'Gemini does not provide a rerank API. Use Voyage AI or Cohere for reranking.', 'gregius-data' )
+			__( 'Gemini does not provide a rerank API. Use Cohere for reranking.', 'gregius-data' )
 		);
 	}
 

@@ -63,7 +63,7 @@ class GG_Data_Vector_Generator {
 	 * @return void
 	 */
 	private function register_default_strategies(): void {
-		// Register API embeddings strategy (OpenAI, Voyage AI, etc).
+		// Register API embeddings strategy (OpenAI, Cohere, etc).
 		require_once GG_DATA_PLUGIN_DIR . 'includes/vectors/strategies/class-gg-data-api-embeddings-strategy.php';
 		$this->register_strategy( new GG_Data_API_Embeddings_Strategy() );
 

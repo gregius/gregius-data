@@ -3,7 +3,7 @@
  * API Embeddings Vector Generation Strategy v2.0
  *
  * Row-per-embedding architecture with chunk support.
- * Strategy for API-based embedding generation (OpenAI, Voyage AI, etc).
+ * Strategy for API-based embedding generation (OpenAI, Cohere, etc).
  *
  * Schema: embedding tables with (post_id, field_type, chunk_index, embedding)
  * - field_type: 'title', 'excerpt', 'chunk'
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class GG_Data_API_Embeddings_Strategy
  *
  * Implements the vector generation strategy for external API embeddings.
- * Supports OpenAI, Voyage AI, and other API-based embedding providers.
+ * Supports OpenAI, Cohere, and other API-based embedding providers.
  *
  * @since 2.0.0
  */
@@ -122,7 +122,7 @@ class GG_Data_API_Embeddings_Strategy implements GG_Data_Vector_Strategy_Interfa
 	 * @return string Strategy name.
 	 */
 	public function get_name(): string {
-		return 'API Embeddings (OpenAI, Voyage AI, etc)';
+		return 'API Embeddings (OpenAI, Cohere, etc)';
 	}
 
 	/**

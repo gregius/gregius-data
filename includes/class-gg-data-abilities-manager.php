@@ -326,7 +326,7 @@ class GG_Data_Abilities_Manager {
 									),
 									'provider'    => array(
 										'type'        => 'string',
-										'description' => __( 'Provider name (e.g., openai, voyage, local).', 'gregius-data' ),
+										'description' => __( 'Provider name (e.g., openai, cohere, local).', 'gregius-data' ),
 									),
 									'label'       => array(
 										'type'        => 'string',
