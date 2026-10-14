@@ -26,22 +26,6 @@ const PROGRESS_STAGES = {
 };
 
 /**
- * Detect whether an element is view-anchored (position: fixed), including
- * when a fixed wrapper (e.g. a positioned Group) contains the block.
- *
- * @param {Element} el Element to inspect.
- * @return {boolean} True when the element or an ancestor is fixed-positioned.
- */
-const isFixedPositioned = (el) => {
-    let node = el;
-    while (node && node !== document.body && node !== document.documentElement) {
-        if (getComputedStyle(node).position === 'fixed') return true;
-        node = node.parentElement;
-    }
-    return false;
-};
-
-/**
  * Shared chat interface component.
  *
  * @param {Object} props Component properties.
@@ -238,10 +222,6 @@ export default function ChatInterface({
         // Get the block container (parent of input)
         const blockElement = inputContainerRef.current.closest('.wp-block-gregius-data-rag-assistant');
         if (!blockElement) return;
-
-        // An anchored (position:fixed) block is view-locked; scrolling the page
-        // toward it only scrolls the content behind it, so skip.
-        if (isFixedPositioned(blockElement)) return;
 
         // Calculate target position: block bottom should be 2rem from viewport bottom
         const blockRect = blockElement.getBoundingClientRect();
