@@ -112,21 +112,6 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 						),
 					),
 					'anthropic' => array(
-						'claude-opus-5-5'         => array(
-							'name'   => 'Claude Opus 5.5',
-							'kind'   => 'llm',
-							'vision' => true,
-						),
-						'claude-sonnet-5-5'       => array(
-							'name'   => 'Claude Sonnet 5.5',
-							'kind'   => 'llm',
-							'vision' => true,
-						),
-						'claude-haiku-5-5'        => array(
-							'name'   => 'Claude Haiku 5.5',
-							'kind'   => 'llm',
-							'vision' => true,
-						),
 						'claude-opus-4-20250514'   => array(
 							'name'   => 'Claude Opus 4.5',
 							'kind'   => 'llm',
@@ -187,13 +172,13 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 						),
 					),
 					'deepseek'  => array(
-						'deepseek-flash'  => array(
-							'name'   => 'DeepSeek Flash',
+						'deepseek-chat'     => array(
+							'name'   => 'DeepSeek Chat',
 							'kind'   => 'llm',
-							'vision' => true,
+							'vision' => false,
 						),
-						'deepseek-v4-pro' => array(
-							'name'   => 'DeepSeek V4 Pro',
+						'deepseek-reasoner' => array(
+							'name'   => 'DeepSeek Reasoner',
 							'kind'   => 'llm',
 							'vision' => false,
 						),
@@ -383,6 +368,26 @@ if ( ! class_exists( 'GG_Data_Model_Catalog' ) ) {
 			);
 
 			return self::llm_limits( $defaults, 'max_tokens' );
+		}
+
+		/**
+		 * Flat embedding model-id => dimensions map across all providers.
+		 *
+		 * @since 1.0.0
+		 * @return array Model-id => dimensions.
+		 */
+		public static function embedding_dimensions(): array {
+			$dimensions = array();
+
+			foreach ( self::all() as $models ) {
+				foreach ( $models as $id => $model ) {
+					if ( isset( $model['kind'] ) && 'embedding' === $model['kind'] && isset( $model['dimensions'] ) ) {
+						$dimensions[ $id ] = (int) $model['dimensions'];
+					}
+				}
+			}
+
+			return $dimensions;
 		}
 
 		/**

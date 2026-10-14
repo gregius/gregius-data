@@ -373,8 +373,11 @@ class GG_Data_REST_Models_Controller extends WP_REST_Controller {
 
 		return new WP_REST_Response(
 			array(
-				'success' => true,
-				'data'    => $data,
+				'success'        => true,
+				'data'           => $data,
+				'context_limits' => GG_Data_Model_Catalog::context_limits(),
+				'max_tokens'     => GG_Data_Model_Catalog::max_tokens_map(),
+				'dimensions'     => GG_Data_Model_Catalog::embedding_dimensions(),
 			),
 			200
 		);

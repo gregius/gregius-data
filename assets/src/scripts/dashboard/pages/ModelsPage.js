@@ -35,77 +35,13 @@ const ModelsPage = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
-  // Model dimensions mapping
-  const MODEL_DIMENSIONS = {
-    // OpenAI (Ada-002 excluded - legacy model)
-    "text-embedding-3-small": 1536,
-    "text-embedding-3-large": 3072,
-    // Google Gemini
-    "gemini-embedding-001": 3072,
-    // Voyage AI
-    "voyage-4": 1024,
-    // Cohere
-    "embed-v4.0": 1536,
-    // Internal
-    "hashingtf-murmur3-1024": 1024,
-  };
-
-  // Model context window limits (tokens)
-  const MODEL_CONTEXT_LIMITS = {
-    // OpenAI
-    "gpt-3.5-turbo": 16385,
-    "gpt-4": 8192,
-    "gpt-4-turbo": 128000,
-    "gpt-4o": 128000,
-    "gpt-4o-mini": 128000,
-    // DeepSeek
-    "deepseek-chat": 64000,
-    "deepseek-coder": 64000,
-    "deepseek-reasoner": 64000,
-    // Anthropic Claude
-    "claude-3-5-sonnet-20241022": 200000,
-    "claude-3-5-haiku-20241022": 200000,
-    "claude-3-opus-20240229": 200000,
-    "claude-3-sonnet-20240229": 200000,
-    "claude-3-haiku-20240307": 200000,
-    // Google Gemini
-    "gemini-2.5-flash": 1048576,
-    "gemini-2.5-pro": 1048576,
-    "gemini-2.0-flash": 1048576,
-    "gemini-2.0-flash-lite": 1048576,
-    "gemini-1.5-pro": 2097152,
-    "gemini-1.5-flash": 1048576,
-    "gemini-1.5-flash-8b": 1048576,
-  };
-
-  // Form state
-  // Native max output tokens per model (provider hard ceilings)
-  const MODEL_MAX_TOKENS = {
-    // OpenAI
-    "gpt-3.5-turbo": 4096,
-    "gpt-4": 8192,
-    "gpt-4-turbo": 4096,
-    "gpt-4o": 16384,
-    "gpt-4o-mini": 16384,
-    // DeepSeek
-    "deepseek-chat": 8192,
-    "deepseek-coder": 8192,
-    "deepseek-reasoner": 8192,
-    // Anthropic Claude
-    "claude-3-5-sonnet-20241022": 8192,
-    "claude-3-5-haiku-20241022": 8192,
-    "claude-3-opus-20240229": 4096,
-    "claude-3-sonnet-20240229": 4096,
-    "claude-3-haiku-20240307": 4096,
-    // Google Gemini
-    "gemini-2.5-flash": 8192,
-    "gemini-2.5-pro": 8192,
-    "gemini-2.0-flash": 8192,
-    "gemini-2.0-flash-lite": 8192,
-    "gemini-1.5-pro": 8192,
-    "gemini-1.5-flash": 8192,
-    "gemini-1.5-flash-8b": 8192,
-  };
+  // Catalog metadata (context limits / max tokens / dimensions) fetched from the
+  // models/providers endpoint — single source of truth is the PHP catalog.
+  const [catalogLimits, setCatalogLimits] = useState({
+    context_limits: {},
+    max_tokens: {},
+    dimensions: {},
+  });
 
   // Form state
   const [editingId, setEditingId] = useState(null);
@@ -139,6 +75,11 @@ const ModelsPage = () => {
 
       setModels(modelsArray);
       setProviders(providersData.data);
+      setCatalogLimits({
+        context_limits: providersData.context_limits || {},
+        max_tokens: providersData.max_tokens || {},
+        dimensions: providersData.dimensions || {},
+      });
 
       // Live-check model lifecycles in the background (non-blocking).
       refreshLifecycles();
@@ -206,7 +147,7 @@ const ModelsPage = () => {
 
   // Get dimensions for a specific model
   const getDimensionsForModel = (modelName) => {
-    return MODEL_DIMENSIONS[modelName] || 1536; // Default to 1536 if not found
+    return catalogLimits.dimensions[modelName] || 1536; // Default to 1536 if not found
   };
 
   // Check if provider requires API key
@@ -219,7 +160,7 @@ const ModelsPage = () => {
     if (!modelName) {
       return "";
     }
-    const limit = MODEL_CONTEXT_LIMITS[modelName] || 128000;
+    const limit = catalogLimits.context_limits[modelName] || 128000;
     return limit;
   };
 
@@ -228,7 +169,7 @@ const ModelsPage = () => {
     if (!modelName) {
       return "";
     }
-    return MODEL_MAX_TOKENS[modelName] || 8192;
+    return catalogLimits.max_tokens[modelName] || 8192;
   };
 
   // Handle model name change and auto-populate dimensions/context_window
@@ -463,7 +404,7 @@ const ModelsPage = () => {
       (model.config && model.config.max_tokens) ||
       getDefaultMaxTokens(model_name);
     // Use model-specific default: model's full context limit
-    const modelLimit = MODEL_CONTEXT_LIMITS[model_name] || 128000;
+    const modelLimit = catalogLimits.context_limits[model_name] || 128000;
     const defaultContextWindow = modelLimit;
     const context_window =
       model.context_window ||
@@ -519,7 +460,7 @@ const ModelsPage = () => {
       return null;
     }
 
-    return MODEL_CONTEXT_LIMITS[formData.model_name] || 128000;
+    return catalogLimits.context_limits[formData.model_name] || 128000;
   };
 
   const getProviderName = (id) => {

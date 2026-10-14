@@ -48,18 +48,26 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 		$this->assertArrayHasKey( 'rerank-3-lite', $models );
 	}
 
-	public function test_deepseek_flash_is_vision_capable_but_pro_is_not() {
-		$vision = GG_Data_Model_Catalog::vision_models( 'deepseek' );
+	public function test_embedding_dimensions_returns_flat_map() {
+		$dims = GG_Data_Model_Catalog::embedding_dimensions();
 
-		$this->assertContains( 'deepseek-flash', $vision );
-		$this->assertNotContains( 'deepseek-v4-pro', $vision );
+		$this->assertSame( 1536, $dims['text-embedding-3-small'] );
+		$this->assertSame( 1024, $dims['hashingtf-murmur3-1024'] );
 	}
 
-	public function test_anthropic_keeps_both_model_generations() {
+	public function test_deepseek_models_are_not_vision_capable() {
+		$vision = GG_Data_Model_Catalog::vision_models( 'deepseek' );
+
+		$this->assertSame( array(), $vision );
+	}
+
+	public function test_anthropic_models_match_supported_list() {
 		$models = GG_Data_Model_Catalog::llm_models( 'anthropic' );
 
-		$this->assertArrayHasKey( 'claude-haiku-5-5', $models );
+		$this->assertArrayHasKey( 'claude-opus-4-20250514', $models );
+		$this->assertArrayHasKey( 'claude-sonnet-4-20250514', $models );
 		$this->assertArrayHasKey( 'claude-haiku-4-20250514', $models );
+		$this->assertArrayNotHasKey( 'claude-haiku-5-5', $models );
 	}
 
 	public function test_embedding_and_rerank_are_absent_from_simple_providers() {
@@ -72,7 +80,7 @@ class Test_GG_Data_Model_Catalog extends PHPUnit\Framework\TestCase {
 
 		$this->assertSame( 1048576, $limits['gemini-2.5-flash'] );
 		$this->assertSame( 128000, $limits['gpt-4o-mini'] );
-		$this->assertSame( 200000, $limits['claude-haiku-5-5'] );
+		$this->assertSame( 200000, $limits['claude-haiku-4-20250514'] );
 	}
 
 	public function test_max_tokens_map_covers_every_llm_model() {
