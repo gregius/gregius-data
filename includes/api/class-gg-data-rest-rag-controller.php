@@ -764,6 +764,11 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 		 */
 		do_action( 'gg_data_rag_tool_executed', $action_name, $result, $tool_context );
 
+		// Fire gg_data_rag_complete hook for interaction tracking.
+		if ( ! is_wp_error( $result ) && ! empty( $conversation_id ) ) {
+			do_action( 'gg_data_rag_complete', $result, $params['query'] ?? '', 0 );
+		}
+
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}

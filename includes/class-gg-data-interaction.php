@@ -203,6 +203,7 @@ class GG_Data_Interaction {
 			'sources_details'     => $result_sources,
 			'citation_sources'    => $meta['citation_sources'] ?? array(),
 			'tool'                => $meta['tool_selected'] ?? null,
+			'suggested_questions' => $meta['suggested_questions'] ?? array(),
 			'models'              => array(
 				'agentic'   => $meta['agentic_model'] ?? null,
 				'embedding' => $meta['embedding_model'] ?? null,
@@ -215,7 +216,7 @@ class GG_Data_Interaction {
 				'metadata_filter' => $meta['metadata_filter'] ?? array(),
 			),
 			'latency'             => array(
-				'total' => $meta['execution_time'] ?? 0,
+				'total' => $meta['execution_time'] ?? (int) $execution_time,
 			),
 			'retrieval'           => $meta['retrieval'] ?? array(),
 			'policy'              => $meta['policy'] ?? array(),
@@ -234,21 +235,24 @@ class GG_Data_Interaction {
 			'conversation_memory' => $meta['conversation_memory'] ?? array(),
 		);
 
-		$post_id = 0;
-		$post_id = self::record_rag(
+		$post_id  = 0;
+		$turn_num = 0;
+		$record   = self::record_rag(
 			$conversation_id,
 			$interaction_args
 		);
 
 		$record_error = null;
-		if ( is_wp_error( $post_id ) ) {
-			$record_error = $post_id->get_error_message();
-			$post_id      = 0;
+		if ( is_wp_error( $record ) ) {
+			$record_error = $record->get_error_message();
 			$this->logger->log(
 				'Failed to record RAG interaction: ' . $record_error,
 				'error',
 				'interaction'
 			);
+		} elseif ( is_array( $record ) ) {
+			$post_id  = (int) ( $record['post_id'] ?? 0 );
+			$turn_num = (int) ( $record['turn_num'] ?? 0 );
 		}
 
 		// Build log context for Logs UI display.
@@ -258,7 +262,8 @@ class GG_Data_Interaction {
 			$result,
 			$query,
 			$interaction_args,
-			$execution_time
+			$execution_time,
+			$turn_num
 		);
 
 		if ( ! empty( $record_error ) ) {
@@ -319,10 +324,11 @@ class GG_Data_Interaction {
 	 * @param string $original_query  Original query.
 	 * @param array  $args            Interaction arguments.
 	 * @param int    $execution_time  Execution time in milliseconds.
+	 * @param int    $turn_num        Turn index within the conversation.
 	 * @return array
 	 */
-	private static function build_rag_log_context_payload( $interaction_id, $conversation_id, array $result, $original_query, array $args, $execution_time ) {
-		return self::build_rag_observability_payload( $interaction_id, $conversation_id, $result, $original_query, $args, $execution_time );
+	private static function build_rag_log_context_payload( $interaction_id, $conversation_id, array $result, $original_query, array $args, $execution_time, $turn_num = 0 ) {
+		return self::build_rag_observability_payload( $interaction_id, $conversation_id, $result, $original_query, $args, $execution_time, $turn_num );
 	}
 
 	/**
@@ -337,9 +343,10 @@ class GG_Data_Interaction {
 	 * @param string $original_query  Original query.
 	 * @param array  $args            Interaction arguments.
 	 * @param int    $execution_time  Execution time in milliseconds.
+	 * @param int    $turn_num        Turn index within the conversation.
 	 * @return array
 	 */
-	private static function build_rag_observability_payload( $interaction_id, $conversation_id, array $result, $original_query, array $args, $execution_time ) {
+	private static function build_rag_observability_payload( $interaction_id, $conversation_id, array $result, $original_query, array $args, $execution_time, $turn_num = 0 ) {
 		$source         = isset( $args['source'] ) && is_array( $args['source'] ) ? $args['source'] : array();
 		$security_check = isset( $args['security_check'] ) && is_array( $args['security_check'] ) ? $args['security_check'] : array();
 		$manifest       = isset( $args['manifest'] ) && is_array( $args['manifest'] ) ? $args['manifest'] : array();
@@ -388,6 +395,7 @@ class GG_Data_Interaction {
 				'conversation_id' => (string) $conversation_id,
 				'type'            => 'rag',
 				'source'          => isset( $source['type'] ) ? sanitize_key( (string) $source['type'] ) : 'rest',
+				'turn_index'      => (int) $turn_num,
 			),
 			'intent'            => array(
 				'original_query'     => $query_payload['original'],
@@ -398,10 +406,11 @@ class GG_Data_Interaction {
 				'policy_reason_code' => $args['policy']['reason_code'] ?? '',
 			),
 			'outcome'           => array(
-				'answer'     => $args['response'] ?? '',
-				'sources'    => $sources_payload,
-				'latency_ms' => $latency_payload['total_ms'],
-				'status'     => 'completed',
+				'answer'              => $args['response'] ?? '',
+				'sources'             => $sources_payload,
+				'latency_ms'          => $latency_payload['total_ms'],
+				'status'              => 'completed',
+				'suggested_questions' => $args['suggested_questions'] ?? array(),
 			),
 			'execution'         => array(
 				'models'     => $models_payload,
@@ -955,7 +964,7 @@ class GG_Data_Interaction {
 	 *     @type array  $retrieval       Retrieval funnel details for this turn.
 	 *     @type array  $policy          Retrieval policy used for this turn.
 	 * }
-	 * @return int|WP_Error Post ID or error.
+	 * @return array|WP_Error Array with `post_id` and `turn_num`, or error.
 	 */
 	public static function record_rag( $conversation_id, array $args ) {
 		// Validate conversation ID.
@@ -1289,7 +1298,7 @@ class GG_Data_Interaction {
 	 * @since 1.0.0
 	 * @param string $conversation_id Client-provided conversation UUID.
 	 * @param array  $args            First turn arguments.
-	 * @return int|WP_Error Post ID or error.
+	 * @return array|WP_Error Array with `post_id` and `turn_num`, or error.
 	 */
 	private static function create_rag_conversation( $conversation_id, array $args ) {
 		$defaults = array(
@@ -1367,7 +1376,8 @@ class GG_Data_Interaction {
 			array( 'sources' => $args['sources_details'] ?? array() ),
 			$args['original_query'] ?? $args['query'],
 			$args,
-			$args['latency']['total'] ?? 0
+			$args['latency']['total'] ?? 0,
+			1
 		);
 
 		$save_result = self::save_interaction_data_meta( $post_id, $data );
@@ -1375,7 +1385,10 @@ class GG_Data_Interaction {
 			return $save_result;
 		}
 
-		return $post_id;
+		return array(
+			'post_id'  => $post_id,
+			'turn_num' => 1,
+		);
 	}
 
 	/**
@@ -1384,7 +1397,7 @@ class GG_Data_Interaction {
 	 * @since 1.0.0
 	 * @param int   $post_id Existing conversation post ID.
 	 * @param array $args    Turn arguments.
-	 * @return int|WP_Error Post ID or error.
+	 * @return array|WP_Error Array with `post_id` and `turn_num`, or error.
 	 */
 	private static function append_rag_turn( $post_id, array $args ) {
 		$defaults = array(
@@ -1502,7 +1515,8 @@ class GG_Data_Interaction {
 			array( 'sources' => $args['sources_details'] ?? array() ),
 			$args['original_query'] ?? $args['query'],
 			$args,
-			$args['latency']['total'] ?? 0
+			$args['latency']['total'] ?? 0,
+			$turn_num
 		);
 
 		$save_result = self::save_interaction_data_meta( $post_id, $data );
@@ -1520,7 +1534,10 @@ class GG_Data_Interaction {
 			)
 		);
 
-		return $post_id;
+		return array(
+			'post_id'  => $post_id,
+			'turn_num' => $turn_num,
+		);
 	}
 
 	/**
@@ -1698,6 +1715,11 @@ class GG_Data_Interaction {
 		// Include tool selection if provided (RAG agentic flows).
 		if ( ! empty( $args['tool'] ) ) {
 			$turn_data['tool'] = $args['tool'];
+		}
+
+		// Include suggested follow-up questions if provided (search_entity_content).
+		if ( ! empty( $args['suggested_questions'] ) && is_array( $args['suggested_questions'] ) ) {
+			$turn_data['suggested_questions'] = $args['suggested_questions'];
 		}
 
 		// Include LLM usage metadata if provided (from generateTextWithMetadata).

@@ -572,32 +572,24 @@ class GG_Data_RAG_Service {
 		// Format results as chunks.
 		$chunks = array();
 		foreach ( $results as $result ) {
-			// Supabase returns 'post_id', not 'id'.
-			// Column names may be prefixed (fts_post_id, tg_post_id, vec_post_id).
-			$post_id = $result['post_id'] ?? $result['fts_post_id'] ?? $result['tg_post_id'] ?? $result['vec_post_id'] ?? $result['id'] ?? 0;
+			$post_id = (int) ( $result['post_id'] ?? 0 );
 			$post    = get_post( $post_id );
 
 			if ( ! $post ) {
 				continue;
 			}
 
-			// Score may be prefixed depending on match type (fts_, tg_, vec_).
-			$score = $result['relevance_score']
-				?? $result['fts_relevance_score']
-				?? $result['tg_relevance_score']
-				?? $result['vec_relevance_score']
-				?? $result['combined_score']
-				?? $result['score']
-				?? 0.0;
-
 			$chunks[] = array(
-				'post_id'    => $post_id,
-				'title'      => $post->post_title,
-				'excerpt'    => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 55 ),
-				'content'    => $post->post_content,
-				'url'        => get_permalink( $post_id ),
-				'score'      => (float) $score,
-				'match_type' => $result['fts_match_type'] ?? $result['tg_match_type'] ?? $result['vec_match_type'] ?? $result['match_type'] ?? 'unknown',
+				'post_id'     => $post_id,
+				'title'       => $post->post_title,
+				'excerpt'     => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 55 ),
+				'content'     => $post->post_content,
+				'url'         => get_permalink( $post_id ),
+				'score'       => (float) ( $result['relevance_score'] ?? 0.0 ),
+				'match_type'  => $result['match_type'] ?? 'unknown',
+				'has_fts'     => $this->is_db_truthy( $result['has_fts'] ?? null ),
+				'has_trigram' => $this->is_db_truthy( $result['has_trigram'] ?? null ),
+				'has_vector'  => $this->is_db_truthy( $result['has_vector'] ?? null ),
 			);
 		}
 
@@ -626,7 +618,7 @@ class GG_Data_RAG_Service {
 				'connection'      => $this->connection_name,
 				'post_types'      => $options['post_types'] ?? array(),
 				'sql_function'    => 'search_rag_orchestrate',
-				'fusion_signals'  => array_count_values( array_column( $chunks, 'match_type' ) ),
+				'fusion_signals'  => $this->build_fusion_signal_counts( $chunks ),
 			)
 		);
 
@@ -722,29 +714,24 @@ class GG_Data_RAG_Service {
 
 		$chunks = array();
 		foreach ( $results as $result ) {
-			$post_id = $result['post_id'] ?? $result['fts_post_id'] ?? $result['tg_post_id'] ?? $result['vec_post_id'] ?? $result['id'] ?? 0;
+			$post_id = (int) ( $result['post_id'] ?? 0 );
 			$post    = get_post( $post_id );
 
 			if ( ! $post ) {
 				continue;
 			}
 
-			$score = $result['relevance_score']
-				?? $result['fts_relevance_score']
-				?? $result['tg_relevance_score']
-				?? $result['vec_relevance_score']
-				?? $result['combined_score']
-				?? $result['score']
-				?? 0.0;
-
 			$chunks[] = array(
-				'post_id'    => (int) $post_id,
-				'title'      => $post->post_title,
-				'excerpt'    => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 55 ),
-				'content'    => $post->post_content,
-				'url'        => get_permalink( $post_id ),
-				'score'      => (float) $score,
-				'match_type' => $result['fts_match_type'] ?? $result['tg_match_type'] ?? $result['vec_match_type'] ?? $result['match_type'] ?? 'unknown',
+				'post_id'     => $post_id,
+				'title'       => $post->post_title,
+				'excerpt'     => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 55 ),
+				'content'     => $post->post_content,
+				'url'         => get_permalink( $post_id ),
+				'score'       => (float) ( $result['relevance_score'] ?? 0.0 ),
+				'match_type'  => $result['match_type'] ?? 'unknown',
+				'has_fts'     => $this->is_db_truthy( $result['has_fts'] ?? null ),
+				'has_trigram' => $this->is_db_truthy( $result['has_trigram'] ?? null ),
+				'has_vector'  => $this->is_db_truthy( $result['has_vector'] ?? null ),
 			);
 		}
 
@@ -765,11 +752,62 @@ class GG_Data_RAG_Service {
 				'connection'      => $this->connection_name,
 				'post_types'      => $options['post_types'] ?? array(),
 				'sql_function'    => $rag_pdo_fn,
-				'fusion_signals'  => array_count_values( array_column( $chunks, 'match_type' ) ),
+				'fusion_signals'  => $this->build_fusion_signal_counts( $chunks ),
 			)
 		);
 
 		return $chunks;
+	}
+
+	/**
+	 * Normalize a database boolean to a PHP bool.
+	 *
+	 * PostgREST returns JSON booleans; PDO (pgsql) may return 't'/'f' strings.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $value Raw column value.
+	 * @return bool
+	 */
+	private function is_db_truthy( $value ) {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		return in_array( strtolower( (string) $value ), array( '1', 't', 'true' ), true );
+	}
+
+	/**
+	 * Count retrieved chunks by contributing fusion leg.
+	 *
+	 * A chunk may match more than one leg, so the sum of the counts can exceed
+	 * the total number of chunks.
+	 *
+	 * @since 1.0.0
+	 * @param array $chunks Retrieved chunks.
+	 * @return array Map of 'fts'|'trigram'|'vector' => count.
+	 */
+	private function build_fusion_signal_counts( $chunks ) {
+		$counts = array(
+			'fts'     => 0,
+			'trigram' => 0,
+			'vector'  => 0,
+		);
+
+		foreach ( $chunks as $chunk ) {
+			if ( ! empty( $chunk['has_fts'] ) ) {
+				++$counts['fts'];
+			}
+
+			if ( ! empty( $chunk['has_trigram'] ) ) {
+				++$counts['trigram'];
+			}
+
+			if ( ! empty( $chunk['has_vector'] ) ) {
+				++$counts['vector'];
+			}
+		}
+
+		return $counts;
 	}
 
 	/**
@@ -1566,6 +1604,12 @@ class GG_Data_RAG_Service {
 								$custom_result = $this->append_manifest_metadata_to_result( $custom_result, $options );
 							}
 							do_action( 'gg_data_rag_tool_executed', $tool_name, $custom_result, $tool_context );
+
+							// Fire gg_data_rag_complete hook for interaction tracking.
+							if ( ! is_wp_error( $custom_result ) && ! empty( $options['conversation_id'] ) ) {
+								$execution_time = ( microtime( true ) - $start_time ) * 1000;
+								do_action( 'gg_data_rag_complete', $custom_result, $query, $execution_time );
+							}
 
 							return $custom_result;
 						}

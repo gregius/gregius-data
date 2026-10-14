@@ -36,5 +36,8 @@ function gg_data_record_search( array $args ) {
  * @return int|WP_Error Post ID or error.
  */
 function gg_data_record_rag( $conversation_id, array $args ) {
-	return GG_Data_Interaction::record_rag( $conversation_id, $args );
+	$record = GG_Data_Interaction::record_rag( $conversation_id, $args );
+
+	// Preserve the historical int|WP_Error contract for external consumers.
+	return ( is_array( $record ) && isset( $record['post_id'] ) ) ? $record['post_id'] : $record;
 }
