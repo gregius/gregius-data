@@ -87,8 +87,6 @@ Internal helpers:
 
 - `ai`
   - Label: AI & Machine Learning
-- `gregius-data`
-  - Label: Gregius Data
 
 Categories are registered only when `wp_register_ability_category` exists.
 
@@ -121,7 +119,7 @@ Basic contract policy:
 
 Input highlights:
 - Required: `query`, `connection_name`, `embedding_model`, `answer_model`
-- Optional: `agentic_model`, `rerank_model`, `messages`
+- Optional: `agentic_model`, `rerank_model`, `evaluator_model`, `evaluation_prompt_id`, `messages`
 - Internal/runtime only in basic mode: prompt resolution and security prompt selection
 - Internal/runtime only in basic mode: interaction tracking normalization (`conversation_id`, `source`)
 
@@ -134,7 +132,7 @@ Output highlights:
 
 Label: `List Data Connections`
 
-Category: `gregius-data`  
+Category: `ai`  
 Permission: `current_user_can( 'manage_options' )`
 
 Description:
@@ -171,13 +169,13 @@ Category: `ai`
 Permission: `current_user_can( 'manage_options' )`
 
 Description:
-- returns registered AI models by type: `embeddings`, `llm`, `rerank`
+- returns registered AI models by type: `embeddings`, `llm`, `rerank`, `evaluator`
 - use this output to get valid `embedding_model`, `rerank_model`, `agentic_model`, and `answer_model` values for `answer`
 
 Execution summary:
 - reads models via `GG_Data_Model_Registry`
 - input contract accepts only optional `type` filter
-- optional `type` filtering: `embeddings`, `llm`, `rerank`
+- optional `type` filtering: `embeddings`, `llm`, `rerank`, `evaluator`
 - model definitions are read from a global/provider registry scope (not per-connection model storage)
 - returns normalized model objects including `id`, `type`, `provider`, `label`, `is_active`, optional `description`, optional `dimensions`
 - does not persist `gg_interaction` records (utility/discovery ability only)

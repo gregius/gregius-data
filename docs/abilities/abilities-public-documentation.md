@@ -80,7 +80,7 @@ AI models power search, answers, and relevance ranking. Different model types ha
 Each model displays:
 
 - **ID** — Unique identifier
-- **Type** — What it is used for (embeddings, LLM, rerank)
+- **Type** — What it is used for (embeddings, LLM, rerank, evaluator)
 - **Provider** — Where the model comes from
 - **Label** — Display name
 - **Active status** — Whether the model is enabled
@@ -94,6 +94,7 @@ Narrow the list by model type:
 - **embeddings** — Convert text into searchable vectors
 - **llm** — Language models that generate answers
 - **rerank** — Improve result relevance
+- **evaluator** — Grade retrieval sufficiency and drive corrective query rewriting
 
 [SRS: ABIL-FR-10, ABIL-DR-05]
 

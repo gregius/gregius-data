@@ -117,7 +117,7 @@ Plugin init -> GG_Data_Abilities_Manager::init()
 
 categories hook fires
    -> if wp_register_ability_category exists
-   -> register ai and gregius-data categories
+   -> register the ai category
 
 abilities hook fires
    -> if wp_register_ability exists
@@ -196,7 +196,7 @@ list-models
 
 ### AD-03: Stable Namespaced Ability IDs and Categories
 
-**Decision:** Use stable, namespaced IDs and two fixed categories.
+**Decision:** Use stable, namespaced IDs and a single fixed category.
 
 **Alternatives Considered:**
 - Dynamic IDs by connection/environment

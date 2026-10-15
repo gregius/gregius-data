@@ -42,7 +42,7 @@ The subsystem bridges Gregius plugin runtime services with WordPress Abilities A
 
 #### 1.3.2 System Functions Summary
 
-- Register categories (`ai`, `gregius-data`) via Abilities categories hook.
+- Register the `ai` category via the Abilities categories hook.
 - Register three abilities: `gregius-data/answer`, `gregius-data/list-connections`, `gregius-data/list-models`.
 - Expose JSON input and output schemas for each ability.
 - Enforce per-ability permissions (`read` for answer; `manage_options` for connection/model listing).
@@ -82,7 +82,6 @@ Requirement notation:
 | ABIL-FR-01 | The software MUST register abilities categories on `wp_abilities_api_categories_init` when `wp_register_ability_category` is available. | Must |
 | ABIL-FR-02 | The software MUST register abilities on `wp_abilities_api_init` when `wp_register_ability` is available. | Must |
 | ABIL-FR-03 | The software MUST register category `ai` for AI/ML capability grouping. | Must |
-| ABIL-FR-04 | The software MUST register category `gregius-data` for plugin operational utility grouping. | Must |
 | ABIL-FR-05 | The software MUST register ability `gregius-data/answer` with execute callback, permission callback, and schema contracts. | Must |
 | ABIL-FR-06 | The software MUST register ability `gregius-data/list-connections` with execute callback, permission callback, and schema contracts. | Must |
 | ABIL-FR-07 | The software MUST register ability `gregius-data/list-models` with execute callback, permission callback, and schema contracts. | Must |
@@ -98,7 +97,7 @@ Requirement notation:
 | ABIL-DR-02 | All registered abilities MUST declare output schemas in object form suitable for Abilities API discovery. | Must |
 | ABIL-DR-03 | Ability metadata MUST include `show_in_rest=true`, `annotations`, and MCP metadata (`public`, `type=tool`). | Must |
 | ABIL-DR-04 | The `answer` ability contract MUST require `query`, `connection_name`, `embedding_model`, and `answer_model` for basic execution. | Must |
-| ABIL-DR-05 | The `list-models` contract MUST support optional `type` filtering across embeddings, llm, and rerank model classes, and MUST NOT require connection input. | Must |
+| ABIL-DR-05 | The `list-models` contract MUST support optional `type` filtering across embeddings, llm, rerank, and evaluator model classes, and MUST NOT require connection input. | Must |
 | ABIL-DR-06 | Errors for invalid input combinations (e.g., conflicting prompt arguments) SHOULD return structured `WP_Error` responses. | Should |
 | ABIL-DR-07 | Basic MCP-facing answer contract SHOULD keep prompt selection internal and not require prompt identifiers in public payloads. | Should |
 | ABIL-DR-08 | The `list-connections` contract SHOULD preserve default response shape for backward compatibility when optional enrichment flags are omitted. | Should |
@@ -140,7 +139,7 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| ABIL-FR-01..04, ABIL-OR-01 | `includes/class-gg-data-abilities-manager.php` | Registration hooks, category setup, API-availability guards |
+| ABIL-FR-01..03, ABIL-OR-01 | `includes/class-gg-data-abilities-manager.php` | Registration hooks, category setup, API-availability guards |
 | ABIL-FR-05..07, ABIL-DR-01..03, ABIL-OR-02..03 | `includes/class-gg-data-abilities-manager.php` | Ability definitions, permission callbacks, schema/meta contracts |
 | ABIL-FR-08, ABIL-DR-04, ABIL-DR-06 | `includes/class-gg-data-abilities-manager.php`, `includes/rag/class-gg-data-rag-service.php` | Answer callback flow, options normalization, validation errors |
 | ABIL-FR-09, ABIL-DR-08, ABIL-DR-09 | `includes/class-gg-data-abilities-manager.php`, `includes/class-gg-data-settings-manager.php`, `includes/class-gg-data-connection-model-manager.php` | Connection listing normalization and optional embedding model context |

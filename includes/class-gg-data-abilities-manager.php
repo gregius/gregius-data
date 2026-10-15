@@ -63,7 +63,7 @@ class GG_Data_Abilities_Manager {
 			'gregius-data/answer',
 			array(
 				'label'               => __( 'Answer Question', 'gregius-data' ),
-				'description'         => __( 'Searches site content semantically and answers a question using retrieved context. Requires connection_name, embedding_model, and answer_model. Use "list-connections" and "list-models" to discover valid values. Optional relevance reranking is available via rerank_model. Optional agentic orchestration is available via agentic_model.', 'gregius-data' ),
+				'description'         => __( 'Searches site content semantically and answers a question using retrieved context. Requires connection_name, embedding_model, and answer_model. Use "list-connections" and "list-models" to discover valid values. Optional relevance reranking is available via rerank_model. Optional agentic orchestration is available via agentic_model. Optional retrieval-sufficiency grading and corrective query rewrite is available via evaluator_model.', 'gregius-data' ),
 				'category'            => 'ai',
 				'execute_callback'    => array( $this, 'execute_rag_answer' ),
 				'permission_callback' => function () {
@@ -150,7 +150,7 @@ class GG_Data_Abilities_Manager {
 							'properties'  => array(
 								'tool'            => array(
 									'type'        => 'string',
-									'description' => __( 'Tool selected: search_content, summarize_conversation, respond_directly, or clarify_previous.', 'gregius-data' ),
+									'description' => __( 'Tool selected: search_content, compare_content, summarize_conversation, respond_directly, clarify_previous, search_entity_content, or rewrite_query.', 'gregius-data' ),
 								),
 								'chunks_used'     => array( 'type' => 'integer' ),
 								'embedding_model' => array( 'type' => 'string' ),
@@ -289,7 +289,7 @@ class GG_Data_Abilities_Manager {
 			'gregius-data/list-models',
 			array(
 				'label'               => __( 'List AI Models', 'gregius-data' ),
-				'description'         => __( 'Returns registered AI models by type (embeddings, llm, rerank). Use this to get valid embedding_model, rerank_model, agentic_model, and answer_model values for answer.', 'gregius-data' ),
+				'description'         => __( 'Returns registered AI models by type (embeddings, llm, rerank, evaluator). Use this to get valid embedding_model, rerank_model, agentic_model, evaluator_model, and answer_model values for answer.', 'gregius-data' ),
 				'category'            => 'ai',
 				'execute_callback'    => array( $this, 'execute_list_models' ),
 				'permission_callback' => function () {
