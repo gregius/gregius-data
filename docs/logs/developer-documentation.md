@@ -86,7 +86,6 @@ Key methods:
 - `purge_old_logs( $days = 30, $trigger = 'manual' )`
 - `create_logs_table()`
 - `create_logs_tables_for_all_sites()`
-- `migrate_legacy_options()`
 - `get_log_levels()`
 - `get_components()`
 
