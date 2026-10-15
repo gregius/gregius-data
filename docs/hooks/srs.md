@@ -161,8 +161,8 @@ Acceptance baseline:
 | HOOKS-FR-01 to HOOKS-FR-05 | includes/hooks/class-gg-data-lifecycle-hooks.php, includes/class-gg-data-chunker.php, includes/search/class-gg-data-search-integration.php, includes/class-gg-data-interaction.php | Core sync/chunk/search/interaction hook emissions |
 | HOOKS-FR-06 to HOOKS-FR-10 | includes/rag/class-gg-data-rag-service.php, includes/ai/class-gg-data-llm-registry.php | Dynamic and tiered hook surface |
 | HOOKS-FR-11, HOOKS-FR-12 | includes/class-gg-data-logger.php | Logs retention governance hooks |
-| HOOKS-FR-13 | includes/rag/class-gg-data-rag-service.php (line ~1302) | Pre-retrieval filtering hook (new Tier 1) |
-| HOOKS-FR-14 | includes/rag/class-gg-data-rag-service.php (line ~1819) | LLM response post-processing hook (new Tier 1) |
+| HOOKS-FR-13 | includes/rag/class-gg-data-rag-service.php | Pre-retrieval filtering hook (new Tier 1) |
+| HOOKS-FR-14 | includes/rag/class-gg-data-rag-service.php | LLM response post-processing hook (new Tier 1) |
 | HOOKS-FR-15 | includes/api/class-gg-data-rest-interactions-controller.php | Feedback submission action hook (new Tier 1) |
 | HOOKS-FR-21 | includes/class-gg-data-content-cleaner.php | Metadata manifest sync enrichment hook (Tier 1) |
 | HOOKS-FR-22 | includes/api/class-gg-data-rest-sync-controller.php | Sync post types updated action hook (Tier 1) |
