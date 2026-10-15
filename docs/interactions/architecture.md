@@ -97,6 +97,9 @@ The subsystem is event-driven at ingress and REST-driven at egress. This separat
 - `gg_data_interaction_meta_fields`
 - `gg_data_interaction_log_context`
 - `gg_data_interaction_recorded`
+- `gg_data_interaction_feedback_schema`
+- `gg_data_interaction_turn_feedback_recorded`
+- `gg_data_interaction_feedback_received`
 - `gg_data_should_sync_post` integration boundary
 
 ### 3.2 Responsibilities Mapping

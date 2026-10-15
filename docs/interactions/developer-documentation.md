@@ -154,7 +154,7 @@ Overridden permission checks:
   "models": {
     "agentic": "gpt-4o-mini",
     "embedding": "hashingtf-murmur3-1024",
-    "rerank": "rerank-2.5",
+    "rerank": "rerank-v4.0-fast",
     "answer": "deepseek-reasoner"
   },
   "manifest": {
@@ -355,13 +355,20 @@ $result = GG_Data_Interaction::record_turn_feedback(
 // keys whitelisted via the gg_data_interaction_feedback_schema filter.
 ```
 
+### 8.7 Read Conversation Source
+
+```php
+$source = GG_Data_Interaction::get_conversation_source( $conversation_id );
+// [ 'type' => 'frontend' ], or [] when the conversation/source is absent.
+```
+
 ## 9. Parity Coverage Snapshot
 
 Coverage verified from code:
 - Event ingress hooks documented: 2 (`gg_data_rag_complete`, `gg_data_search_completed`)
-- Interaction extension hooks documented: 5 (`gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_schema`, `gg_data_interaction_turn_feedback_recorded`)
+- Interaction extension hooks documented: 6 (`gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_schema`, `gg_data_interaction_turn_feedback_recorded`, `gg_data_interaction_feedback_received`)
 - Integration filter documented: 1 (`gg_data_should_sync_post`)
-- Public conversation access methods: 3 (`get_conversation_transcript`, `get_conversation_turns`, `record_turn_feedback`)
+- Public conversation access methods: 4 (`get_conversation_transcript`, `get_conversation_turns`, `get_conversation_source`, `record_turn_feedback`)
 - Interaction meta fields documented: 6
 - REST endpoint family documented: list/get/create/update/delete (+ governance constraints)
 
