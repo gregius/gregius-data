@@ -21,7 +21,7 @@ import {
 
 // Import stores (this registers them with WordPress data)
 import '../stores/connections';
-import '../stores/selectedConnection'; // Shared state for Content/Sync/Vector pages
+import '../stores/selectedConnection'; // Shared state for Sync/Vector pages
 import '../stores/searchConnection'; // Independent state for Search page
 import '../stores/settings';
 import '../stores/logs';

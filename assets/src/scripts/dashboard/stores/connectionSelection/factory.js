@@ -1,7 +1,7 @@
 /**
  * Connection Selection Store Factory
  * 
- * Creates isolated connection selection stores for different contexts (RAG, Search, Content/Sync).
+ * Creates isolated connection selection stores for different contexts (Search, Sync/Vectors).
  * Each store maintains its own selected connection with localStorage persistence.
  * 
  * @since 2.2.0

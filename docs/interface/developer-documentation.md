@@ -33,7 +33,10 @@ Not covered:
 
 ### 3.1 Run the Dashboard in Development
 
+Dashboard assets build from the `assets/` directory, not the plugin root:
+
 ```bash
+cd assets
 npm install
 npm run start
 ```
@@ -41,7 +44,15 @@ npm run start
 ### 3.2 Build Production Assets
 
 ```bash
+cd assets
 npm run build
+```
+
+If `wp-scripts` exits with no output (its binary lacks the execute bit in some environments), build with webpack directly:
+
+```bash
+cd assets
+NODE_ENV=production node node_modules/webpack/bin/webpack.js --config webpack.config.js
 ```
 
 ### 3.3 Verify Dashboard Mount
@@ -108,9 +119,10 @@ Implemented stores:
 - `gg-data/settings`
 - `gg-data/connections`
 - `gg-data/logs`
-- `gg-data/selectedConnection`
-- `gg-data/searchConnection`
-- `gg-data/connectionSelection`
+- `gg-data/selected`
+- `gg-data/search-connection`
+
+The `gg-data/selected` and `gg-data/search-connection` stores are created by `createConnectionSelectionStore()` in `assets/src/scripts/dashboard/stores/connectionSelection/factory.js`.
 
 Store pattern expectations:
 - Register store via `registerStore`.

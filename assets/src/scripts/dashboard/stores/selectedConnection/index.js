@@ -2,7 +2,7 @@
  * Selected Connection Store
  * 
  * WordPress Data Store for managing the currently selected database connection.
- * Used by Content and Sync pages.
+ * Used by Sync and Vectors pages.
  * Persists selection in localStorage.
  * 
  * @since 1.0.0

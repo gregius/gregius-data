@@ -2,7 +2,7 @@
  * Search Connection Store
  * 
  * Manages connection selection specifically for the Search page.
- * Independent from Content/Sync connection selection.
+ * Independent from the Sync/Vectors connection selection.
  * 
  * @since 2.1.0
  */
