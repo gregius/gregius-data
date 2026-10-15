@@ -213,11 +213,11 @@ Parameters:
 
 Return:
 - success: array with
-  - `status` ('SAFE' or 'UNSAFE')
+  - `status` ('safe' or 'unsafe')
   - `reason` (string: explanation)
   - `prompt` (resolved security prompt metadata)
   - `usage` (LLM token usage data)
-- failure: `WP_Error` on resolution or LLM failure; treated as UNSAFE (fail-safe)
+- failure: `WP_Error` on resolution or LLM failure; treated as unsafe (fail-safe)
 
 ### 5.2 Security check behavior
 
@@ -226,7 +226,7 @@ Gatekeeper workflow:
 2. Invokes LLM with:
    - System message: resolved security prompt content
    - User message: user query
-3. Parses LLM response as JSON: `{"status":"SAFE|UNSAFE","reason":"..."}`
+3. Parses LLM response as JSON: `{"status":"safe|unsafe","reason":"..."}`
 4. On JSON parse failure, checks response for literal 'unsafe' substring (fallback)
 5. Returns normalized result with status, reason, prompt metadata, and usage info
 
@@ -236,13 +236,13 @@ RAG service invokes gatekeeper pre-retrieval in `generate_answer()` flow:
 1. Before tool selection
 2. Before any tool execution or document retrieval
 
-If check returns UNSAFE status:
+If check returns unsafe status:
 - Build short-circuit response: 'I can\'t help with that request'
 - Include full security_check metadata in interaction log
 - Fire `gg_data_rag_error` action
 - Return early without executing retrieval or generation
 
-If check returns SAFE status or fails with error:
+If check returns safe status or fails with error:
 - Proceed to normal retrieval and generation
 - Still log security_check metadata for audit
 
@@ -279,7 +279,7 @@ Activation seeds TWO factory prompts via `seed_default_prompts()`:
 - Type: 'security'
 - Status: 'published'
 - Selected: true (active by default)
-- Content: Prompt to classify queries as SAFE/UNSAFE
+- Content: Prompt to classify queries as safe/unsafe
 - Guard option: `gg_data_security_prompt_seeded`
 
 Both are marked as factory prompts (`_gg_prompt_is_factory=1`) for identification.
@@ -309,7 +309,7 @@ System prompt resolution:
 
 Security gatekeeper check:
 - Invokes `run_security_gatekeeper_check()` before tool selection and retrieval
-- Classifies query as SAFE/UNSAFE
+- Classifies query as safe/unsafe
 - Blocks unsafe queries with policy response
 - Logs security check results in interaction metadata
 

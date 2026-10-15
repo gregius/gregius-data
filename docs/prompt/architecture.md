@@ -64,7 +64,7 @@ Element responsibilities:
 | Prompt CPT + Taxonomy Registrar | Registers `gg_prompt` post type, metadata schema, and `gg_prompt_type` hierarchical taxonomy with 'system' and 'security' terms. |
 | Prompt Resolver | Resolves effective prompt by fallback order, validity rules, token expansion, hash maintenance, and type-scoping (e.g., resolve('system') or resolve('security')). |
 | Prompt REST Controller | Exposes prompt CRUD + activate routes with capability checks, prompt_type parameter handling, type-scoped activation (deselects only prompts of same type). |
-| Security Gatekeeper Check | Pre-retrieval LLM-based query classifier; resolves 'security' prompt, invokes LLM with security prompt as system message, parses classify response (SAFE/UNSAFE), blocks unsafe queries. |
+| Security Gatekeeper Check | Pre-retrieval LLM-based query classifier; resolves 'security' prompt, invokes LLM with security prompt as system message, parses classify response (safe/unsafe), blocks unsafe queries. |
 | Lifecycle Seed/Migration | Seeds System Default (system, active) and Security Default (security, active) prompts idempotently; migrates legacy prompts to 'system' type; migrates baked date/time text to placeholders. |
 | Prompt Consumers | Supply optional prompt override context, request type-scoped resolution, consume resolved prompt output, integrate security check results into interaction logs. |
 
@@ -85,9 +85,9 @@ Security gatekeeper query classification flow (pre-retrieval check in RAG):
 2. RAG service calls `run_security_gatekeeper_check($query, $llm_model_id, $options)`.
 3. Gatekeeper resolves 'security' type prompt via type-scoped resolver.
 4. Gatekeeper invokes LLM with security prompt as system message, query as user message.
-5. Gatekeeper parses LLM response as JSON: `{"status":"SAFE|UNSAFE","reason":"..."}`.
-6. If status is UNSAFE, RAG returns short-circuit response: "I can't help with that request" + metadata.
-7. If status is SAFE, RAG proceeds to retrieval and normal answer generation.
+5. Gatekeeper parses LLM response as JSON: `{"status":"safe|unsafe","reason":"..."}`.
+6. If status is unsafe, RAG returns short-circuit response: "I can't help with that request" + metadata.
+7. If status is safe, RAG proceeds to retrieval and normal answer generation.
 8. Security check result (status, reason, prompt, usage) stored in interaction metadata.
 
 Lifecycle flow:
@@ -184,7 +184,7 @@ Persistence dependencies:
 ### Decision AD-06: Pre-retrieval LLM-based security gatekeeper
 
 - Status: Accepted
-- Decision: Invoke a separate LLM call with security prompt before retrieval to classify user query as SAFE or UNSAFE; block unsafe queries with policy response.
+- Decision: Invoke a separate LLM call with security prompt before retrieval to classify user query as safe or unsafe; block unsafe queries with policy response.
 - Rationale: Prevents policy-violating queries from reaching retrieval and generation phases; uses LLM classification (not keyword filtering) for nuance and context awareness; separate call allows security check to use specialized security prompt without affecting answer generation prompt.
 - Alternatives considered:
   - Keyword-based filtering (brittle, high false positive rate).

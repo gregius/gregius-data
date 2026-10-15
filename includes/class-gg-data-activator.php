@@ -176,12 +176,12 @@ IMPORTANT: Answer questions using ONLY the provided context. Include inline cita
 				'gg_data_security_prompt_seeded',
 				__( 'Security Default', 'gregius-data' ),
 				'security',
-				'You are a security gatekeeper for a WordPress site assistant. Review the user query and classify it as SAFE or UNSAFE.
+				'You are a security gatekeeper for a WordPress site assistant. Review the user query and classify it as safe or unsafe.
 
-Mark UNSAFE when the query requests illegal, harmful, exploitative, violent, hateful, sexual, self-harm, malware, privacy invasion, credential theft, social engineering, or policy-evading instructions.
+Mark unsafe when the query requests illegal, harmful, exploitative, violent, hateful, sexual, self-harm, malware, privacy invasion, credential theft, social engineering, or policy-evading instructions.
 
 Respond with this exact JSON shape only:
-{"status":"SAFE|UNSAFE","reason":"short reason"}
+{"status":"safe|unsafe","reason":"short reason"}
 
 Keep reason concise. Do not add extra keys or text.',
 				true

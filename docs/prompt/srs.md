@@ -42,7 +42,7 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 - Resolve effective prompt content by deterministic fallback order, type-scoped to ('system' or 'security').
 - Expand date/time tokens at runtime.
 - Classify user queries via LLM-based security gatekeeper before retrieval (pre-RAG check).
-- Block queries classified as UNSAFE; allow SAFE queries to proceed to answer generation.
+- Block queries classified as unsafe; allow safe queries to proceed to answer generation.
 - Expose prompt CRUD and activation operations via REST with type-aware support.
 - Seed factory prompts (system and security) and run placeholder migration idempotently.
 - Store security check results in interaction metadata for audit and analysis.
@@ -67,8 +67,8 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 | Selected prompt | Prompt marked by `_gg_prompt_selected=1` and `_gg_prompt_status=published` within a type |
 | Factory prompt | Activation-seeded prompt marked by `_gg_prompt_is_factory=1` (one per type: System Default for system, Security Default for security) |
 | Prompt hash | SHA256 hash of normalized prompt content |
-| Security gatekeeper | LLM-based pre-retrieval query classifier using 'security' type prompt; classifies query as SAFE or UNSAFE |
-| Security check | The execution of the security gatekeeper LLM call; returns status (SAFE/UNSAFE), reason, and LLM usage metadata |
+| Security gatekeeper | LLM-based pre-retrieval query classifier using 'security' type prompt; classifies query as safe or unsafe |
+| Security check | The execution of the security gatekeeper LLM call; returns status (safe/unsafe), reason, and LLM usage metadata |
 
 ### 1.5 Abbreviations and Acronyms
 
@@ -111,8 +111,8 @@ Requirement notation:
 | PROMPT-FR-10 | Activation/version-check flows MUST migrate legacy prompts without type assignment to type='system' idempotently. | Must |
 | PROMPT-FR-11 | Activation/version-check flows MUST migrate legacy baked date/time values in factory prompts to placeholder tokens idempotently. | Must |
 | PROMPT-FR-12 | RAG generation MUST resolve system prompt content through the type-scoped prompt resolver with prompt_type='system' before model invocation. | Must |
-| PROMPT-FR-13 | Pre-retrieval, RAG generation MUST execute security gatekeeper LLM check using the active 'security' type prompt to classify user query as SAFE or UNSAFE. | Must |
-| PROMPT-FR-14 | If security gatekeeper classifies query as UNSAFE, RAG MUST return short-circuit response 'I can\'t help with that request' without proceeding to retrieval or answer generation. | Must |
+| PROMPT-FR-13 | Pre-retrieval, RAG generation MUST execute security gatekeeper LLM check using the active 'security' type prompt to classify user query as safe or unsafe. | Must |
+| PROMPT-FR-14 | If security gatekeeper classifies query as unsafe, RAG MUST return short-circuit response 'I can\'t help with that request' without proceeding to retrieval or answer generation. | Must |
 | PROMPT-FR-15 | Security check results (status, reason, prompt, usage) MUST be stored in interaction metadata for audit and analysis. | Must |
 | PROMPT-FR-16 | REST prompt activation MUST deselect only prompts of the same type, allowing independent type selections to coexist. | Must |
 | PROMPT-FR-17 | CLI and ability-based answer flows MUST support optional prompt override semantics with type support and reject conflicting override inputs. | Must |
@@ -128,7 +128,7 @@ Requirement notation:
 | PROMPT-DR-05 | Prompt hashing MUST normalize line endings and trim content before SHA256 computation. | Must |
 | PROMPT-DR-06 | Resolution source metadata SHOULD indicate one of `explicit`, `selected`, or `factory`. | Should |
 | PROMPT-DR-07 | REST payload contracts for prompt resources MUST include sufficient fields for title, content, status, version, selection, factory markers, and prompt type. | Must |
-| PROMPT-DR-08 | Security check result MUST contain status ('SAFE' or 'UNSAFE'), reason (string), prompt metadata, and LLM usage metadata. | Must |
+| PROMPT-DR-08 | Security check result MUST contain status ('safe' or 'unsafe'), reason (string), prompt metadata, and LLM usage metadata. | Must |
 | PROMPT-DR-09 | Interaction metadata MUST include complete security_check object (status, reason, prompt, usage) for auditing and analysis. | Must |
 
 ### 3.3 Operations and Security Requirements
