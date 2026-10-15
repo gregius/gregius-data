@@ -60,7 +60,7 @@ The sync subsystem consumes WordPress content changes (post/meta/term/status) an
 | Real-time sync | Asynchronous sync triggered by WordPress lifecycle actions (save_post, transition_post_status, etc.); non-blocking (errors do not fail WordPress operations) |
 | Batch sync | Synchronous bulk sync operation with pagination and offset-based loops; user-initiated via REST API |
 | Content cleaning | Automatic HTML stripping, hash-based change detection, and preparation for search/vectors workflows |
-| Chunking | Content segmentation into fixed-size or semantic chunks per connection-specific strategy |
+| Chunking | Adaptive content segmentation (paragraph-first, sentence-aware, fixed-size fallback) per connection-specific strategy |
 | Sync metadata | Aggregate tracking table (wp_gg_sync_metadata) recording WordPress ↔ PostgreSQL record counts and last-sync timestamps |
 | Provider routing | Runtime dispatch to provider implementations through a strict bulk-capable contract |
 
@@ -123,7 +123,7 @@ Requirement notation:
 | SYNC-DR-02 | Batch sync responses MUST include processed count, failed count, skipped count, and has-more pagination flag. | Must |
 | SYNC-DR-03 | Sync metadata contracts MUST track WordPress and PostgreSQL counts with drift and last-sync timestamp. | Must |
 | SYNC-DR-04 | Content cleaning contracts MUST include original content, cleaned content, content hash, and cleaning version. | Must |
-| SYNC-DR-05 | Chunk contracts MUST include post_id, chunk_index, content, and result of chunking strategy. | Must |
+| SYNC-DR-05 | Chunk contracts MUST include post_id, chunk_index, chunk_text, chunk_hash, source_hash, and token_count. | Must |
 | SYNC-DR-06 | Configuration payload contracts MUST expose enabled post types, statuses, real-time toggle, and metadata toggle per connection. | Must |
 | SYNC-DR-07 | Validation payloads MUST include WordPress total, PostgreSQL total, drift, orphan detection, and missing entity counts. | Must |
 

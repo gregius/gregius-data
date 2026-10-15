@@ -267,8 +267,8 @@ Response:
   "post_type": "post",
   "post_date": "2026-04-04T10:30:00Z",
   "chunks": [
-    { "chunk_index": 0, "text": "... chunk 1 ...", "word_count": 150 },
-    { "chunk_index": 1, "text": "... chunk 2 ...", "word_count": 142 }
+    { "chunk_index": 0, "chunk_text": "... chunk 1 ...", "token_count": 150 },
+    { "chunk_index": 1, "chunk_text": "... chunk 2 ...", "token_count": 142 }
   ]
 }
 ```
@@ -434,7 +434,7 @@ Query wp_posts_chunks directly:
 ```php
 $chunks = $wpdb->get_results(
   $wpdb->prepare(
-    "SELECT chunk_index, text FROM wp_posts_chunks WHERE post_id = %d",
+    "SELECT chunk_index, chunk_text FROM wp_posts_chunks WHERE post_id = %d",
     $post_id
   )
 );

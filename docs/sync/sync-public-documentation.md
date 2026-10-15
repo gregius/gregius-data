@@ -134,14 +134,15 @@ The content cleaner strips HTML tags, calculates an MD5 hash of the cleaned cont
 
 ### Chunking
 
-After cleaning, the chunker segments content into smaller pieces based on the connection's chunking strategy:
+After cleaning, the chunker segments content using the connection's chunking strategy. The built-in `default` strategy is adaptive and recursive:
 
-| Strategy | Behavior |
-|---|---|
-| **Fixed-size** | Splits content into chunks of equal token or character count |
-| **Semantic** | Splits at natural boundaries (paragraphs, sentences) |
+1. **Paragraph-first** — split on blank lines; pack paragraphs into a chunk until the next would exceed the target size.
+2. **Sentence-aware** — an over-target paragraph is split at sentence boundaries (`.`, `!`, `?`).
+3. **Fixed-size fallback** — an over-target sentence is split on word boundaries.
 
-Chunking strategy is configurable per connection and per post type. If you change the strategy, existing content needs to be re-chunked — you can trigger this via a manual batch sync.
+The target is ~512 tokens with a ~100-token minimum (tokens are estimated at ~4 characters each), and chunks do not overlap. Small trailing fragments are merged into the previous chunk.
+
+The active strategy is resolved per connection through the `gg_data_chunking_strategy` filter (default `default`); additional strategies can be registered with the `gg_data_chunking_strategies` filter. If you change the strategy, existing content needs to be re-chunked — trigger this via a manual batch sync.
 
 Chunks are stored in `wp_posts_chunks` and consumed downstream by the Search and Vector subsystems.
 
