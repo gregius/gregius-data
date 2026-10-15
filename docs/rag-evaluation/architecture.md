@@ -15,7 +15,6 @@ In scope:
 - Requirement-linked architecture decisions.
 
 Out of scope:
-- Benchmark runner architecture (fully independent component).
 - Class-level or function-level implementation design.
 - Sprint planning and task decomposition.
 - Provider-specific model orchestration internals.
@@ -33,7 +32,7 @@ Out of scope:
 ## 3. Architecture Context (AV-01)
 
 System context summary:
-The RAG evaluation subsystem operates adjacent to the RAG benchmark subsystem but is fully independent. It executes configured prompts through shipped `wp gg-data evaluation` commands, produces canonical JSONL and framework-specific adapter output, and writes a run manifest for provenance tracking.
+The RAG evaluation subsystem operates as an independent, plugin-adjacent component. It executes configured prompts through shipped `wp gg-data evaluation` commands, produces canonical JSONL and framework-specific adapter output, and writes a run manifest for provenance tracking.
 
 Interfaces at context level:
 - CLI execution interface via `wp gg-data evaluation` commands.
@@ -41,7 +40,6 @@ Interfaces at context level:
 - Local JSON configuration file for runtime parameters and prompt corpus, with a shipped template inside the plugin and a writable site-local config under uploads.
 - Canonical artifact filesystem boundary for JSONL and manifest output.
 - Framework adapter output boundary for framework-specific JSONL or dataset files.
-- No interface with the RAG benchmark runner.
 
 ## 4. Architecture Views
 
@@ -125,14 +123,14 @@ wp-content/uploads/gregius-data/artifacts/evaluation/YYYYMMDD-HHMMSS/
   - Tradeoff: Framework-native Python APIs are not callable directly; adapter output files bridge the gap.
 - Traceability: RE-FR-01, RE-OR-01.
 
-### Decision AD-02: Independent config schema, no benchmark coupling
+### Decision AD-02: Independent config schema
 
 - Status: Accepted
-- Decision: The evaluation runner uses its own standalone configuration file and prompt corpus schema. No programmatic coupling to benchmark runner config or benchmark artifact output is permitted.
-- Rationale: Benchmark and evaluation are independent concerns with different scale, purpose, and dataset design requirements. Coupling creates implicit dependencies and design compromises on both sides.
+- Decision: The evaluation runner uses its own standalone configuration file and prompt corpus schema.
+- Rationale: A standalone configuration file and prompt corpus schema keeps the evaluation concern independent, avoiding implicit dependencies and design compromises.
 - Alternatives considered:
-  - Shared config schema between benchmark and evaluation.
-  - Evaluation runner reads from prior benchmark artifact directories.
+  - Shared config schema with other plugin subsystems.
+  - Evaluation runner reads from prior artifact directories.
   - Shared prompt/sample matrix with evaluation-specific extension fields.
 - Consequences:
   - Positive: Both tools remain clean, focused, and independently maintainable.
@@ -199,7 +197,6 @@ wp-content/uploads/gregius-data/artifacts/evaluation/YYYYMMDD-HHMMSS/
 
 Constraints:
 - Evaluation subsystem must preserve transport-agnostic execution policy.
-- No programmatic coupling to benchmark runner or benchmark artifact directories is permitted.
 - Canonical artifact format must remain stable for a given schema version.
 - Runtime artifact default location remains outside docs.
 
@@ -207,4 +204,4 @@ Assumptions:
 - Prompt corpus is authored by the operator before command execution and the live response/context fields are generated during the run.
 - Ragas consumption of adapter output occurs outside this runner in a Python environment.
 - Additional framework adapters will be added in future iterations as evaluation tooling matures.
-- Prompt IDs are treated as stable identifiers and governed by the same stability norms as benchmark prompt IDs.
+- Prompt IDs are treated as stable identifiers and governed by stable-identifier governance norms.

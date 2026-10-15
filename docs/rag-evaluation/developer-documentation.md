@@ -297,4 +297,4 @@ When extending evaluation functionality:
 1. Keep transport-agnostic execution policy intact.
 2. Keep canonical-first artifact model intact.
 3. Preserve manifest schema backward compatibility or increment `schema_version`.
-4. Do not introduce programmatic coupling to the benchmark runner.
+4. Avoid introducing programmatic coupling to other plugin subsystems.

@@ -25,7 +25,7 @@ This architecture defines how Gregius Data records search and RAG runtime intera
 **Explicitly Excluded:**
 - Detailed logging subsystem internals
 - End-user UX for interaction exploration
-- Benchmark/reporting analytics logic
+- Reporting analytics logic
 
 ### 1.2 Stakeholders and Concerns
 

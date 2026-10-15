@@ -97,7 +97,6 @@ $gg_data_files = array(
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-content-source.php', // Content source resolver (posts vs attachments).
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-content-cleaner.php', // Content cleaner service.
 	GG_DATA_PLUGIN_DIR . 'includes/trait-gg-data-format-json-output.php', // Shared JSON output formatter.
-	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-benchmark-service.php', // Benchmark orchestration service.
 	GG_DATA_PLUGIN_DIR . 'includes/class-gg-data-evaluation-service.php', // Evaluation orchestration service.
 	GG_DATA_PLUGIN_DIR . 'includes/sync/class-gg-data-sync-hooks.php', // Sync hooks.
 	GG_DATA_PLUGIN_DIR . 'includes/vectors/interface-gg-data-vector-strategy.php', // Vector strategy interface.

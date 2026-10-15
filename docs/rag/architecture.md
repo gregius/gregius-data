@@ -30,7 +30,7 @@ Canonical contract reference:
 
 **Explicitly Excluded:**
 - Provider subsystem internals beyond their role as supporting dependencies
-- Benchmark runner implementation
+- Evaluation runner implementation
 - End-user UX guidance and operator playbooks
 - Class-by-class implementation reference and recipes
 
@@ -335,7 +335,7 @@ The runtime model prioritizes deterministic safety over best-effort synthesis. G
 - Internal logs without response-level observability
 
 **Rationale:**
-- Supports debugging, benchmark evaluation, and governance review.
+- Supports debugging, evaluation, and governance review.
 - Enables parity checks across interfaces and releases.
 - Makes fallback behavior explicit to consumers and reviewers.
 

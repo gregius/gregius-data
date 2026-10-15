@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 /**
- * Shared JSON output formatting for RAG Benchmark and Evaluation services.
+ * Shared JSON output formatting for the RAG Evaluation service.
  *
  * @package Gregius_Data
  */

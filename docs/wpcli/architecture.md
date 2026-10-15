@@ -18,8 +18,8 @@ This architecture describes how Gregius Data exposes operator workflows through 
 - CLI bootstrap and command registration
 - Command-handler decomposition by command family
 - Validation, batching, and output orchestration patterns
-- Runtime flows for sync, vectors, answer, benchmark, evaluation, listing, and logs operations
-- Shipped benchmark and evaluation command families under `wp gg-data` with site-local config and uploads-based artifact storage
+- Runtime flows for sync, vectors, answer, evaluation, listing, and logs operations
+- Shipped evaluation command families under `wp gg-data` with site-local config and uploads-based artifact storage
 
 **Explicitly Excluded:**
 - Service-manager internal implementations

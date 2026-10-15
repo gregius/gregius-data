@@ -20,7 +20,7 @@ In scope:
 Out of scope:
 - End-user chat UX.
 - LLM provider-specific request semantics beyond gatekeeper classification.
-- Benchmark/evaluation subsystem execution logic.
+- Evaluation subsystem execution logic.
 
 ## 2. Stakeholders and Concerns
 

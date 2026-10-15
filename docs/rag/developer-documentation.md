@@ -26,7 +26,6 @@ Covered:
 
 Not covered:
 - End-user chat UX documentation
-- Benchmark-runner workflows
 - Provider subsystem internals beyond their use by RAG
 
 ## 3. Quick Start
@@ -173,11 +172,11 @@ Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg
   - **Abstain** (no coverage): uses `$all_chunks` — the full merged candidate set.
   - **LLM failure fallback**: uses `$synthesis_chunks` — the balanced synthesis chunk set.
   - **Success**: uses `$synthesis_chunks` — the balanced synthesis chunk set.
-- The `chunks` key feeds `format_json_output()` (via the `GG_Data_Format_Json_Output` trait), which extracts `retrieved_contexts` for evaluation and benchmark dataset capture. Without it, `compare_content` tool results would record empty retrieved contexts.
+- The `chunks` key feeds `format_json_output()` (via the `GG_Data_Format_Json_Output` trait), which extracts `retrieved_contexts` for evaluation dataset capture. Without it, `compare_content` tool results would record empty retrieved contexts.
 
 **`handle_assistant_actions()`**
 - Return contract varies by action type (callback confirmation, metadata, etc.).
-- Not relevant for evaluation or benchmark capture.
+- Not relevant for evaluation capture.
 
 [SRS: RAG-FR-05 to RAG-FR-17]
 
@@ -198,7 +197,7 @@ Relevant filters: `gg_data_rag_evaluator_threshold` (float, default 0.5), `gg_da
 
 **Disambiguation:**
 
-- **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gg-data evaluation` / `gg-data benchmark` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation` and `docs/rag-benchmark`).
+- **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gg-data evaluation` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation`).
 - **Rerank** (a ranking model scoring candidate relevance) is distinct from the **evaluator** (a go/no-go sufficiency judgment). Both are optional and independent.
 
 ## 5. REST API Entry Points

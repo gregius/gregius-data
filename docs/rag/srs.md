@@ -172,10 +172,10 @@ Requirement notation:
 | RAG-QR-04 | Compare-mode fallback-to-top-candidates MUST remain disabled by default so compare acceptance remains deterministic unless explicitly overridden by operators. | Metadata inspection + controlled override test |
 | RAG-QR-05 | The subsystem MUST support capability-conditional governance so structural quality rules continue to apply even when optional rerank or agentic components are absent. | Configuration variation test |
 | RAG-QR-06 | The subsystem SHOULD provide retrieval-funnel observability sufficient to diagnose candidate counts, acceptance filtering, rerank execution, and final evidence selection. | Metadata inspection |
-| RAG-QR-07 | The subsystem SHOULD preserve stable policy and metadata semantics across supported interfaces so benchmark and release validation remain comparable. | Cross-interface contract inspection |
+| RAG-QR-07 | The subsystem SHOULD preserve stable policy and metadata semantics across supported interfaces so evaluation and release validation remain comparable. | Cross-interface contract inspection |
 | RAG-QR-08 | The subsystem MUST return explicit authorization failures when access policy denies endpoint usage. | Permission test |
 | RAG-QR-09 | The subsystem MUST avoid fatal failure when retrieval backends, chunk data, or rerank execution are unavailable and MUST use documented fallback behavior instead. | Failure-mode test |
-| RAG-QR-10 | The subsystem SHOULD support benchmarkable behavior across single, compare, ambiguous, and no-evidence prompt classes. | Benchmark evidence review |
+| RAG-QR-10 | The subsystem SHOULD support behavior that can be evaluated across single, compare, ambiguous, and no-evidence prompt classes. | Evaluation evidence review |
 
 ## 4. Verification and Acceptance
 
@@ -184,7 +184,7 @@ Requirement notation:
 | Functional requirements | Endpoint and service execution inspection | REST request testing + runtime result review |
 | Data and contract requirements | Response schema and metadata inspection | JSON response review + source attribution review |
 | Operations requirements | Configuration variation and permission checks | Settings inspection + access-control tests |
-| Quality requirements | Governance and benchmark behavior review | Metadata inspection + benchmark evidence snapshot |
+| Quality requirements | Governance and evaluation behavior review | Metadata inspection + evaluation evidence snapshot |
 
 Acceptance baseline for current implemented subsystem:
 - MVP roadmap expectations require correct handling across single, compare, ambiguous, no-evidence, and one-sided evidence scenarios.
@@ -218,7 +218,7 @@ Acceptance baseline for current implemented subsystem:
 
 | ID | Section | Issue | Owner | Target Date |
 |---|---|---|---|---|
-| RAG-TBD-01 | 3.4 | Formal benchmark pass criteria for compare and ambiguous prompt classes are referenced in roadmap artifacts but not yet codified as machine-checkable release criteria in this subsystem package. | Product and engineering | TBD |
+| RAG-TBD-01 | 3.4 | Formal evaluation pass criteria for compare and ambiguous prompt classes are referenced in roadmap artifacts but not yet codified as machine-checkable release criteria in this subsystem package. | Product and engineering | TBD |
 | RAG-TBD-02 | 3.3, 3.4 | Interface-specific guarantees for non-REST consumers are implied by current implementation and roadmap language but are not yet documented in a dedicated RAG developer artifact. | Engineering | TBD |
 | RAG-TBD-03 | 3.2 | Full external response schema documentation for all metadata fields remains split across architecture and runtime code and should be consolidated in future RAG developer documentation. | Engineering | TBD |
 

@@ -35,9 +35,8 @@ wp-config.php
 .env
 *.sql
 
-# Benchmark and evaluation runtime artifacts and local config files
+# Evaluation runtime artifacts and local config files
 .artifacts/
-bin/rag-benchmark-*/rag-benchmark-*-config.json
 bin/rag-evaluation/rag-evaluation-config.json
 
 # WordPress core (if accidentally included)

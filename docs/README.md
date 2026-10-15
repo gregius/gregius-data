@@ -14,16 +14,10 @@ This documentation is organized for **active development**. User-facing document
   - **[interface/architecture.md](interface/architecture.md)** - Architecture views, decisions, constraints, and risks for dashboard presentation and client integration flows
   - **[interface/developer-documentation.md](interface/developer-documentation.md)** - Developer reference for app shell/tab patterns, stores, apiFetch integration, and troubleshooting
 
-- **[rag-benchmark/architecture.md](rag-benchmark/architecture.md)** - RAG quality benchmark architecture
-  - Canonical benchmark architecture reference
-  - Prompt matrix and execution model
-  - Artifact and scorecard architecture
-  - Runner direction and transition notes
-
 - **[rag-evaluation/](rag-evaluation/)** - RAG evaluation subsystem documentation
   - **[rag-evaluation/srs.md](rag-evaluation/srs.md)** - Software Requirements Specification for RAG evaluation, scoring, and quality measurement
   - **[rag-evaluation/architecture.md](rag-evaluation/architecture.md)** - Architecture views, decisions, constraints, and risks for evaluation framework and artifact management
-  - **[rag-evaluation/developer-documentation.md](rag-evaluation/developer-documentation.md)** - Developer reference for evaluation runners, scorecards, and benchmark integration
+  - **[rag-evaluation/developer-documentation.md](rag-evaluation/developer-documentation.md)** - Developer reference for evaluation runners, metrics, and framework adapters
 
 - **[search/](search/)** - Search subsystem documentation
   - **[search/srs.md](search/srs.md)** - Software Requirements Specification for search orchestration and controls

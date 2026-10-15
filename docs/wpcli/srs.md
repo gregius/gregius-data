@@ -19,7 +19,7 @@ Standard: ISO/IEC/IEEE 29148:2018
 
 ### 1.1 System Purpose
 
-This SRS defines what the Gregius Data WP-CLI interface must do to expose automation and operator workflows for sync, vectors, answer, listing, and log operations.
+This SRS defines what the Gregius Data WP-CLI interface must do to expose automation and operator workflows for sync, vectors, answer, evaluation, listing, and log operations.
 
 ### 1.2 System Scope
 
@@ -28,6 +28,7 @@ The WP-CLI subsystem includes:
 - Sync command family for posts, terms, and full sync workflows
 - Vector command family for generate and rebuild workflows
 - RAG answer command and optional prompt override behavior
+- Evaluation command family for running RAG content-quality evaluations (Ragas via gregius-eval)
 - Listing commands for configured connections and available models
 - Logs command family for list, export, purge, and stats workflows
 - Output formatting contracts for table/json/csv and deterministic automation usage
@@ -44,7 +45,7 @@ The CLI layer is an operator-facing interface that delegates business logic to e
 
 #### 1.3.2 System Functions Summary
 
-- Register command namespace and six command families under `gg-data`.
+- Register command namespace and seven command families under `gg-data`.
 - Validate required/optional options and enforce safe defaults.
 - Process batch workloads for sync and vectors with progress and memory cleanup.
 - Execute RAG answers through Abilities manager with optional prompt overrides.
@@ -68,6 +69,7 @@ The CLI layer is an operator-facing interface that delegates business logic to e
 - `includes/cli/class-gg-data-cli-sync.php`
 - `includes/cli/class-gg-data-cli-vectors.php`
 - `includes/cli/class-gg-data-cli-answer.php`
+- `includes/cli/class-gg-data-cli-evaluation.php`
 - `includes/cli/class-gg-data-cli-list-connections.php`
 - `includes/cli/class-gg-data-cli-list-models.php`
 - `includes/cli/class-gg-data-cli-logs.php`
@@ -83,7 +85,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| CLI-FR-01 | The software MUST register the `gg-data` namespace and the command families `sync`, `vectors`, `answer`, `list-connections`, `list-models`, and `logs`. | Must |
+| CLI-FR-01 | The software MUST register the `gg-data` namespace and the command families `sync`, `vectors`, `answer`, `evaluation`, `list-connections`, `list-models`, and `logs`. | Must |
 | CLI-FR-02 | The software MUST provide sync subcommands `posts`, `terms`, and `all`. | Must |
 | CLI-FR-03 | The software MUST provide vectors subcommands `generate` and `rebuild`. | Must |
 | CLI-FR-04 | The software MUST provide an `answer` command with a required `<query>` positional argument. | Must |

@@ -38,7 +38,6 @@ wp gg-data --help
 wp gg-data sync --help
 wp gg-data vectors --help
 wp gg-data answer --help
-wp gg-data benchmark --help
 wp gg-data evaluation --help
 wp gg-data list-connections --help
 wp gg-data list-models --help
@@ -59,10 +58,6 @@ wp gg-data vectors generate --connection=gregius-data --embedding-model=hashingt
 # RAG answer
 wp gg-data answer "What is dementia care?" --format=json
 
-# Benchmark validation and targeted execution
-wp gg-data benchmark validate_config
-wp gg-data benchmark run --only=P1
-
 # Evaluation validation and adapter-targeted execution
 wp gg-data evaluation validate_config
 wp gg-data evaluation run --framework=ragas --only=P1
@@ -82,7 +77,6 @@ Registered commands:
 - `wp gg-data sync`
 - `wp gg-data vectors`
 - `wp gg-data answer`
-- `wp gg-data benchmark`
 - `wp gg-data evaluation`
 - `wp gg-data list-connections`
 - `wp gg-data list-models`
@@ -210,41 +204,7 @@ Implementation notes:
 
 [SRS: CLI-FR-05, CLI-DR-04]
 
-### 5.5 Benchmark Commands (`GG_Data_CLI_Benchmark`)
-
-Source: `includes/cli/class-gg-data-cli-benchmark.php`
-
-Subcommands:
-- `wp gg-data benchmark run`
-- `wp gg-data benchmark list_prompts`
-- `wp gg-data benchmark validate_config`
-- `wp gg-data benchmark scorecard`
-
-Options:
-- `run`:
-  - `--config=<path>`
-  - `--only=<id>`
-  - `--scorecard-scope=all|selected` (default `all`)
-  - `--output-dir=<path>`
-- `list_prompts`:
-  - `--config=<path>`
-  - `--format=table|json|csv` (default `table`)
-- `validate_config`:
-  - `--config=<path>`
-- `scorecard`:
-  - `--config=<path>`
-  - `--only=<id>`
-  - `--scorecard-scope=all|selected` (default `all`)
-  - `--output-dir=<path>`
-
-Implementation notes:
-- Delegates to `GG_Data_Benchmark_Service`.
-- Default writable config path resolves from `wp_upload_dir()['basedir']` to `wp-content/uploads/gregius-data/config/rag-benchmark-quality-config.json` on single-site, or the site-specific uploads base on multisite.
-- Default artifact root resolves from `wp_upload_dir()['basedir']` to `wp-content/uploads/gregius-data/artifacts/benchmark/` on single-site, or the site-specific uploads base on multisite.
-- Shipped template path remains inside the plugin at `includes/cli/resources/benchmark/rag-benchmark-quality-config.example.json`.
-- `run` writes scorecard and prompt artifacts; `scorecard` writes scorecard-only output without prompt execution.
-
-### 5.6 Evaluation Commands (`GG_Data_CLI_Evaluation`)
+### 5.5 Evaluation Commands (`GG_Data_CLI_Evaluation`)
 
 Source: `includes/cli/class-gg-data-cli-evaluation.php`
 
@@ -276,7 +236,7 @@ Implementation notes:
 - `run` writes raw artifacts, canonical `prompts.jsonl`, framework adapter output, and `manifest.json`.
 - Supported framework discovery is exposed through `adapters`; current supported framework is `ragas`.
 
-### 5.7 Logs Commands (`GG_Data_CLI_Logs`)
+### 5.6 Logs Commands (`GG_Data_CLI_Logs`)
 
 Source: `includes/cli/class-gg-data-cli-logs.php`
 
@@ -380,9 +340,9 @@ Cause:
 - Unsupported `--level` or `--component` value.
 
 Resolution:
-- Use the allowed enum values documented in section 5.7.
+- Use the allowed enum values documented in section 5.6.
 
-### Config not found for benchmark or evaluation
+### Config not found for evaluation
 
 Cause:
 - The writable uploads-based config file has not been copied from the shipped template yet.
@@ -394,9 +354,9 @@ Resolution:
 ## 9. Parity Coverage Snapshot
 
 Documented and code-backed:
-- Bootstrap registration of namespace plus eight command families
+- Bootstrap registration of namespace plus seven command families
 - Sync, vectors, answer, list, and logs option/default contracts
-- Benchmark and evaluation option/default contracts, including uploads-based config and artifact paths
+- Evaluation option/default contracts, including uploads-based config and artifact paths
 - Batch validation, progress, and memory cleanup patterns
 - Prompt resolution and no-track behavior for answer command
 - Logs validation and maintenance command behavior

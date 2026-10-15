@@ -76,21 +76,18 @@ Core command examples:
 
 * `wp gg-data list-connections`
 * `wp gg-data answer "What is dementia care?" --format=json`
-* `wp gg-data benchmark validate-config`
-* `wp gg-data benchmark run --only=P1`
 * `wp gg-data evaluation validate-config`
 * `wp gg-data evaluation run --framework=ragas`
 
-Benchmark and evaluation config templates are shipped inside the plugin under:
+Evaluation config templates are shipped inside the plugin under:
 
-* `wp-content/plugins/gregius-data/includes/cli/resources/benchmark/`
 * `wp-content/plugins/gregius-data/includes/cli/resources/evaluation/`
 
 Recommended writable local config location:
 
 * `wp-content/uploads/gregius-data/config/`
 
-Benchmark and evaluation artifacts are written outside the plugin directory by default so they are not lost on plugin updates:
+Evaluation artifacts are written outside the plugin directory by default so they are not lost on plugin updates:
 
 * `wp-content/uploads/gregius-data/artifacts/`
 

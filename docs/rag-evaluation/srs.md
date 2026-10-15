@@ -33,7 +33,7 @@ Repository path: public/wp-content/plugins/gregius-data
 
 #### 1.3.1 System Context
 
-The evaluation runner is a plugin-adjacent data preparation component that ingests pre-collected RAG interaction prompts from a standalone configuration file and produces framework-ready evaluation artifacts. It operates fully independently of the RAG benchmark component.
+The evaluation runner is a plugin-adjacent data preparation component that ingests pre-collected RAG interaction prompts from a standalone configuration file and produces framework-ready evaluation artifacts.
 
 #### 1.3.2 System Functions Summary
 

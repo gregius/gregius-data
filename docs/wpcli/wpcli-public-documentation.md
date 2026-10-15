@@ -4,7 +4,7 @@
 
 ## Overview
 
-Gregius Data ships a full WP-CLI command surface under `wp gg-data` — eight command families covering sync, vectors, RAG answers, benchmarks, evaluation, listing, and logs. Every subcommand accepts a `--format` flag (table, json, or csv), producing deterministic output for scripts and CI/CD pipelines.
+Gregius Data ships a full WP-CLI command surface under `wp gg-data` — seven command families covering sync, vectors, RAG answers, evaluation, listing, and logs. Every subcommand accepts a `--format` flag (table, json, or csv), producing deterministic output for scripts and CI/CD pipelines.
 
 Automation and scripting are a site operator's most reliable tools. Without a command-line interface, routine tasks — syncing content after a migration, rebuilding vectors after a model change, auditing logs — require dashboard clicks or REST calls that compound into brittle workflows. The `wp gg-data` namespace turns these into repeatable, versionable one-liners.
 
@@ -28,7 +28,6 @@ wp gg-data --help
 wp gg-data sync --help
 wp gg-data vectors --help
 wp gg-data answer --help
-wp gg-data benchmark --help
 wp gg-data evaluation --help
 wp gg-data list-connections --help
 wp gg-data list-models --help
@@ -155,43 +154,6 @@ wp gg-data answer "Summarize our privacy policy" --prompt-id=42
 
 ---
 
-## Benchmark Commands
-
-Benchmark commands validate and run the RAG quality benchmark. Designed for QA reviewers who need repeatable response validation.
-
-### Subcommands
-
-| Subcommand | Purpose |
-|---|---|
-| `wp gg-data benchmark run` | Execute the full prompt matrix |
-| `wp gg-data benchmark list_prompts` | List configured benchmark prompts |
-| `wp gg-data benchmark validate_config` | Validate the benchmark configuration file |
-| `wp gg-data benchmark scorecard` | Regenerate scorecard from existing artifacts |
-
-### Flags
-
-| Flag | Default | Description |
-|---|---|---|
-| `--config` | uploads-based path | Path to benchmark config JSON |
-| `--only` | (none) | Run a single prompt by ID (e.g. `P1`) |
-| `--scorecard-scope` | `all` | `all` or `selected` |
-| `--output-dir` | uploads-based path | Artifact output directory |
-
-### Examples
-
-```bash
-# Validate config before running
-wp gg-data benchmark validate_config
-
-# Targeted single-prompt run
-wp gg-data benchmark run --only=P1 --scorecard-scope=selected
-
-# Regenerate scorecard without re-running
-wp gg-data benchmark scorecard --from-dir=/path/to/artifacts
-```
-
----
-
 ## Evaluation Commands
 
 Evaluation commands produce framework-ready evaluation datasets from pre-collected RAG prompts. Designed for QA engineers running downstream quality measurement.
@@ -313,7 +275,6 @@ wp gg-data logs stats --format=json
 | `sync` | `manage_options` | Writes to PostgreSQL |
 | `vectors` | `manage_options` | Generates and stores embeddings |
 | `answer` | `read` | Reads via Abilities API |
-| `benchmark` | `manage_options` | Executes RAG pipeline |
 | `evaluation` | `manage_options` | Executes RAG pipeline |
 | `list-connections` | `manage_options` | Reads connection configuration |
 | `list-models` | `manage_options` | Reads model registry |
