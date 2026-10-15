@@ -530,7 +530,7 @@ Verified hooks and filters:
 - `gg_data_rag_access_level`
 - `gg_data_rag_required_capability`
 
-Use `gg_data_rag_endpoint_permission` for request-aware allow or deny logic, and use the other two filters to customize the default security policy. [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
+Use `gg_data_rag_endpoint_permission` for request-aware allow or deny logic, and use the other two filters to customize the default security policy. Signatures and tiers are in the canonical hook catalog (docs/hooks/developer-documentation.md). [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
 
 ### 6.6 Route Throttling Hooks
 

@@ -83,13 +83,7 @@ Behavior:
 - Stops if a batch deletes `0` rows while rows still remain, which prevents infinite polling.
 - Requires deliberate invocation because the operation is irreversible for the targeted synchronized rows.
 
-Batch-size extension hooks:
-```php
-apply_filters( 'gg_data_sync_delete_batch_size', 500, $connection_name );
-apply_filters( 'gg_data_sync_delete_batch_size_wp_posts_chunks', 500, $connection_name );
-apply_filters( 'gg_data_sync_delete_batch_size_wp_posts_clean', 500, $connection_name );
-apply_filters( 'gg_data_sync_delete_batch_size_wp_posts', 500, $connection_name );
-```
+Batch-size extension hooks: `gg_data_sync_delete_batch_size` (global) plus per-table variants `gg_data_sync_delete_batch_size_wp_posts_chunks`, `..._wp_posts_clean`, and `..._wp_posts`. See the canonical hook catalog (docs/hooks/developer-documentation.md) for signatures and defaults.
 
 Use the global filter for a default sync-wide limit and the table-specific filters when one table needs a different batch size.
 
@@ -342,12 +336,7 @@ add_filter('gg_data_term_sync_batch_size', function($size, $connection_name) {
 
 ### Filter: Batch Delete Size
 
-```php
-apply_filters('gg_data_sync_delete_batch_size', 500, $connection_name)
-apply_filters('gg_data_sync_delete_batch_size_wp_posts_chunks', 500, $connection_name)
-apply_filters('gg_data_sync_delete_batch_size_wp_posts_clean', 500, $connection_name)
-apply_filters('gg_data_sync_delete_batch_size_wp_posts', 500, $connection_name)
-```
+`gg_data_sync_delete_batch_size` (global) plus the per-table variants documented in the canonical hook catalog (docs/hooks/developer-documentation.md).
 
 These filters let operators tune destructive batch deletes for direct API or automation workflows without changing cursor handling.
 

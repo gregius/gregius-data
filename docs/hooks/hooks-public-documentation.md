@@ -65,6 +65,8 @@ Gregius Data hooks are organized by the subsystem they extend:
 | RAG governance | Set retrieval policy, rerank policy, threshold profiles, rate limits | `gg_data_rag_retrieval_policy`, `gg_data_rag_rate_limit` |
 | Provider | Intercept API requests and responses per provider | `gg_data_openai_request`, `gg_data_anthropic_call` |
 | Log retention | Override retention period, observe purge events | `gg_data_log_retention_days`, `gg_data_after_purge_logs` |
+| Document ingestion | Control PDF/document extraction limits and attachment eligibility | `gg_data_document_max_pages`, `gg_data_asset_process_post` |
+| Access control | Set RAG access policy, required capability, and guest routes | `gg_data_rag_access_level`, `gg_data_rag_guest_allowed_routes` |
 
 ---
 

@@ -414,17 +414,8 @@ Search logging is intentionally split into two layers:
   - `debug` otherwise
 
 Slow threshold behavior:
-- default threshold: `400` milliseconds
-- override via filter: `gg_data_search_slow_log_ms`
-
-Example filter:
-
-```php
-add_filter( 'gg_data_search_slow_log_ms', function( $threshold_ms, $search_term, $connection_name, $retrieval_mode ) {
-    unset( $search_term, $connection_name, $retrieval_mode );
-    return 500;
-}, 10, 4 );
-```
+- default threshold: `1000` milliseconds
+- override via filter: `gg_data_search_slow_log_ms` — see the canonical hook catalog (docs/hooks/developer-documentation.md) for the signature.
 
 ## 10. Integration Notes
 

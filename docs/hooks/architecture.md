@@ -92,8 +92,8 @@ Mapping:
    - Purpose: analytics metadata, post-record callbacks, and feedback signal collection.
 
 6. **RAG and Governance Hooks**
-   - Examples: `gg_data_rag_tools`, `gg_data_rag_tool_{name}`, `gg_data_rag_tool_executed`, `gg_data_rag_complete`, `gg_data_rag_journey_allowed_block_id_prefixes`, plus governance policy hooks.
-   - Purpose: tool registration/execution, journey block ID allowlist extension, and policy tuning.
+   - Examples: `gg_data_rag_tools`, `gg_data_rag_tool_{name}`, `gg_data_rag_tool_executed`, `gg_data_rag_complete`, plus governance policy hooks.
+   - Purpose: tool registration/execution and policy tuning.
 
 6b. **RAG Lifecycle Extension Hooks** (added Tier 1)
    - Examples: `gg_data_rag_system_prompt`, `gg_data_rag_tool_selection_system_prompt`, `gg_data_rag_pre_retrieval_filter`, `gg_data_rag_llm_response`.
@@ -107,21 +107,13 @@ Mapping:
    - Examples: `gg_data_log_retention_days`, `gg_data_before_purge_logs`, `gg_data_after_purge_logs`.
    - Purpose: retention policy extension, pre/post purge observability, and site-scoped governance.
 
-8b. **Memory Anchoring Extension Hooks** (Tier 2)
-   - Examples: `gg_data_rag_pre_retrieval_filter` (extended), `gg_data_rag_turn_metadata`.
-   - Purpose: conversation-aware retrieval filtering and turn metadata enrichment for semantic context compression without core behavior logic.
-
-8c. **Confidence Scoring Extension Hooks** (Tier 2)
-   - Examples: `gg_data_rag_confidence_score` (filter), confidence response schema fields (`confidence_score`, `confidence_breakdown`).
-   - Purpose: extensible confidence computation and factuality-faithfulness scoring with auditability and tamper-resilience without core business logic.
-
 - **Tier 1 (Public Stable):** core extension hooks documented with explicit contracts and examples.
 - **Tier 2 (Semi-Public):** advanced hooks with caveats; subject to tighter evolution controls than Tier 3.
 - **Tier 3 (Internal):** implementation hooks not guaranteed as stable extension API.
 
 Mapping:
-- AV-02 -> HOOKS-FR-02, HOOKS-FR-07 to HOOKS-FR-12, HOOKS-FR-16 to HOOKS-FR-20
-- AV-02 -> HOOKS-DR-01 to HOOKS-DR-09
+- AV-02 -> HOOKS-FR-02, HOOKS-FR-07 to HOOKS-FR-12
+- AV-02 -> HOOKS-DR-01 to HOOKS-DR-07
 
 ---
 
@@ -264,68 +256,6 @@ Consequences:
 Linked requirements:
 - AD-06 -> HOOKS-FR-13, HOOKS-FR-14, HOOKS-FR-15
 
-### AD-07: Conversation-Aware Retrieval and Turn Metadata for Memory Anchoring
-
-Decision:
-- Add conversation message history as optional 4th parameter to `gg_data_rag_pre_retrieval_filter` (backward-compatible).
-- Introduce `gg_data_rag_turn_metadata` (Tier 2) filter hook for anchor-relevant turn governance metadata.
-- Third-party plugins implement Memory Anchoring / Semantic Context Compression logic, not core.
-
-Rationale:
-- Core publishes agnostic conversation-aware filtering and metadata enrichment points.
-- Third-party plugins can implement custom anchor selection, evidence ranking, and conversation pruning without coupling to core.
-- Ensures deterministic metadata shape for audit and traceability.
-
-Consequences:
-- Retrieval filter extended but maintains backward compatibility (4th param has safe default).
-- Turn metadata must be persisted in interaction records for audit trail.
-- Third-party plugins must implement own anchoring strategy; no default behavior in core.
-
-Linked requirements:
-- AD-07 -> HOOKS-FR-16, HOOKS-FR-17, HOOKS-DR-09
-
-### AD-08: Confidence Scoring with Immutable Audit Trail and Extensible Computation
-
-Decision:
-- Every RAG response includes `confidence_score` (float 0.0-1.0) and `confidence_breakdown` (structured factors).
-- Introduce `gg_data_rag_confidence_score` (Tier 2) filter hook for override without making confidence data mutable.
-- Core computes baseline confidence; third-party plugins can override via hook but cannot mutate stored audit fields.
-- Third-party plugins implement Confidence Scoring / Factuality-Faithfulness policy, not core.
-
-Rationale:
-- Confidence is required for enterprise audit, explainability, and hallucination prevention.
-- Baseline formula prevents guardrail bypass; third-party plugins can customize logic via extension hook.
-- Immutable audit fields preserve integrity for compliance and post-hoc analysis.
-- Reason-code enum prevents silent failures and aids troubleshooting.
-
-Consequences:
-- Response schema expanded permanently; all responses contain confidence metadata.
-- Turn metadata includes confidence_score and confidence_factors as immutable audit fields.
-- Third-party plugins implement own scoring calibration; baseline formula is non-prescriptive.
-- Governance/policy tuning is externalized via filter hook.
-
-Linked requirements:
-- AD-08 -> HOOKS-FR-18, HOOKS-FR-19, HOOKS-FR-20, HOOKS-DR-08
-
-### AD-09: Staged Promotion Policy for Enterprise Contracts
-
-Decision:
-- Memory Anchoring (HOOKS-FR-16/17) and Confidence Scoring (HOOKS-FR-18/19/20) hooks are released as **Tier 2** (semi-public) for one full release cycle.
-- Promotion to Tier 1 is gated on: (1) zero signature drift, (2) no breaking changes in downstream third-party implementations, (3) documented calibration evidence (confidence only).
-
-Rationale:
-- Tier 2 period allows calibration, signature validation, and downstream feedback collection without committing to immutable contract.
-- Reduces release-time risk of immature specifications.
-- Third-party plugin ecosystem validated through controlled release cycle.
-
-Consequences:
-- One-cycle validation gate before Tier 1 status; documented promotion criteria.
-- Staged rollout reduces risk to third-party integrations.
-- Architecture complete: core publishes agnostic lifecycle seams; third-party plugins implement domain-specific behavior.
-
-Linked requirements:
-- AD-09 -> HOOKS-OR-06, HOOKS-OR-07
-
 ### 6.1 Constraints
 
 | ID | Constraint | Impact |
@@ -350,7 +280,7 @@ Linked requirements:
 | Architecture Item | SRS IDs Covered |
 |---|----|---|
 | AV-01 (Context View) | HOOKS-FR-01 to HOOKS-FR-12, HOOKS-OR-01 to HOOKS-OR-05 |
-| AV-02 (Component View) | HOOKS-FR-02, HOOKS-FR-07 to HOOKS-FR-12, HOOKS-FR-16 to HOOKS-FR-20, HOOKS-DR-01 to HOOKS-DR-09 |
+| AV-02 (Component View) | HOOKS-FR-02, HOOKS-FR-07 to HOOKS-FR-12, HOOKS-DR-01 to HOOKS-DR-07 |
 | AV-03 (Runtime View) | HOOKS-FR-03 to HOOKS-FR-06, HOOKS-DR-02 to HOOKS-DR-04 |
 | AD-01 | HOOKS-FR-01, HOOKS-DR-05 |
 | AD-02 | HOOKS-FR-07 to HOOKS-FR-10, HOOKS-OR-05 |
@@ -358,6 +288,3 @@ Linked requirements:
 | AD-04 | HOOKS-FR-06, HOOKS-DR-04 |
 | AD-05 | HOOKS-FR-07, HOOKS-OR-03, HOOKS-OR-05 |
 | AD-06 | HOOKS-FR-13, HOOKS-FR-14, HOOKS-FR-15 |
-| AD-07 | HOOKS-FR-16, HOOKS-FR-17, HOOKS-DR-09 |
-| AD-08 | HOOKS-FR-18, HOOKS-FR-19, HOOKS-FR-20, HOOKS-DR-08 |
-| AD-09 | HOOKS-OR-06, HOOKS-OR-07 |
