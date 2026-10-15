@@ -160,7 +160,7 @@ Optional capability method:
 
 TypeSafe (Jev):
 - `includes/ai/providers/class-gg-data-typesafe-provider.php` — decision model (TypeSafe System One) that returns typed judgments, not prose.
-- `evaluate()` sends `POST https://api.typesafe.ai/v1/systemone` with `state` + `questions` (Noul/Choice/Score) and returns `answers` keyed by question id. The RAG service thresholds the `noul` probability into `correct | insufficient`.
+- `evaluate()` sends `POST https://api.typesafe.ai/v1/systemone` with `state` + `questions` (Noul/Choice/Score) and returns `answers` keyed by question id. The RAG service thresholds the `noul` probability into `correct | insufficient`. The provider is primitive-agnostic — it forwards `questions` verbatim — but the RAG evaluator currently issues only a `noul` question; `choice` and `score` are provider-supported yet not wired to the evaluator prompt (roadmap: let the evaluation prompt select the primitive and supply its criteria/options/levels).
 - Jev is English-primary, text-only; the versioned model `jev-1.13.0` is pinned by default.
 
 Traceability:
