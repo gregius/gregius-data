@@ -9,6 +9,14 @@ Commit baseline: a93b763
 Plugin version: 1.0.0  
 Requires PHP: 8.2
 
+> **Historical note:** this audit was performed against an earlier revision history of the
+> repository. The commit SHAs referenced throughout (`a93b763` baseline; remediation pushes
+> `79f98f4`, `481d58e`, `f4ddde0`) are not present in the current `main` history (79 commits
+> beginning at `dec2f34`), so they no longer resolve. The findings, remediation status, and
+> §13 patch diffs remain valid against the current code. The §8.1 route/permission counts are
+> dated 2026-04-22 reconnaissance evidence and have since changed (now ~95 routes / ~113
+> permission callbacks).
+
 ## 1) Audit Objective
 
 Perform a comprehensive static and dynamic security audit of the full plugin codebase and produce a risk register ranked by exploitability and impact.
