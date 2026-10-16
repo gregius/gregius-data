@@ -42,7 +42,7 @@ $queue = new GG_Data_Retry_Queue();
 
 // Queue a failed operation for retry
 $queued = $queue->queue_for_retry(
-    'sync_post',   // operation_type: sync_post | sync_meta | delete_post | delete_meta
+    'sync_meta',   // operation_type: sync_meta | delete_post | delete_meta
     $post_id,      // entity_id (int)
     $error_message, // raw error string from PDO or Exception
     $operation_data // array: full context needed to reconstruct the operation
@@ -95,7 +95,7 @@ Response:
     "failed_permanently": 1,
     "items": [
       {
-        "operation_type": "sync_post",
+        "operation_type": "sync_meta",
         "entity_id": 123,
         "attempt_count": 2,
         "error_type": "transient",
@@ -161,7 +161,7 @@ Response:
 
 ```php
 [
-  'operation_type' => 'sync_post',           // sync_post | sync_meta | delete_post | delete_meta
+  'operation_type' => 'sync_meta',           // sync_meta | delete_post | delete_meta
   'entity_id'      => 123,                   // Post ID or meta ID (int)
   'error_message'  => 'PDO Error: ...',      // Original error string
   'error_type'     => 'transient',           // transient | permanent | unknown
@@ -218,9 +218,6 @@ The following call sites in `GG_Data_DB` invoke `queue_for_retry()` on failure:
 
 | Method | Trigger | Operation Type |
 |---|---|---|
-| `upsert_post()` | PDO error result | `sync_post` |
-| `upsert_post()` | Exception during binding | `sync_post` |
-| `upsert_post()` | PDOException outer catch | `sync_post` |
 | `delete_post()` | PDOException | `delete_post` |
 | `upsert_post_meta()` | PDO error result | `sync_meta` |
 | `upsert_post_meta()` | PDOException | `sync_meta` |

@@ -88,7 +88,7 @@ Mapping:
 
 1. **Error Handler Component** (`GG_Data_Error_Handler`)
    - Stateless classifier; receives error message string, returns structured classification result
-   - Maintains two internal pattern lists: 18 transient patterns, 15 permanent patterns
+   - Maintains two internal pattern lists: 18 transient patterns, 16 permanent patterns
    - Unknown errors (no match) default to retry-safe to prevent silent data loss
 
 2. **Retry Queue Manager Component** (`GG_Data_Retry_Queue`)
@@ -99,8 +99,8 @@ Mapping:
    - Exposes `manual_retry($index)` and `clear_dead_letter_queue()` for REST controller delegation
 
 3. **DB Integration Layer** (`GG_Data_DB`)
-   - 8 instrumented call sites that invoke `queue_for_retry()` on failure
-   - Call sites span: `upsert_post` (×3), `delete_post` (×1), `upsert_post_meta` (×3), `delete_post_meta` (×1)
+   - 5 instrumented call sites that invoke `queue_for_retry()` on failure
+   - Call sites span: `delete_post` (×1), `upsert_post_meta` (×3), `delete_post_meta` (×1)
    - Provides `operation_data` payload carrying context needed for retry reconstruction
 
 4. **REST Controller Component** (`GG_Data_REST_Retry_Queue_Controller`)
@@ -135,7 +135,7 @@ Mapping:
 ### 4.1 Queueing Flow (DB Failure Path)
 
 ```
-GG_Data_DB method (e.g., upsert_post) fails
+GG_Data_DB method (e.g., upsert_post_meta) fails
     │
     ├─ Extract error string from PDO errorInfo or Exception message
     ├─ Instantiate GG_Data_Error_Handler
@@ -148,14 +148,14 @@ GG_Data_DB method (e.g., upsert_post) fails
     └─ retry_safe = true:
         ├─ Instantiate GG_Data_Retry_Queue
         ├─ $queue->queue_for_retry(
-        │       'sync_post',         // operation_type
-        │       $post_arr['ID'],     // entity_id
+        │       'sync_meta',         // operation_type
+        │       $post_id,            // entity_id
         │       $error_message,      // error_message
-        │       $post_arr            // operation_data (full context)
+        │       $meta_data           // operation_data (full context)
         │   )
         ├─ Build queue item: attempt_count=1, next_retry=now+5s, first_attempt=now
         ├─ Serialize + store in wp_options['gg_data_retry_queue']
-        ├─ Log [warning]: "Queued sync_post #{id} for retry - next retry in 5s"
+        ├─ Log [warning]: "Queued sync_meta #{id} for retry - next retry in 5s"
         └─ Return true (queued); DB method returns false to original caller
 ```
 
@@ -177,8 +177,6 @@ process_queue()
         └─ YES → retry_operation($item)
                   │
                   ├─ Switch on operation_type:
-                  │   ├─ sync_post:    get_post() + GG_Data_DB->upsert_post()
-                  │   │                (if post deleted → return true, it's resolved)
                   │   ├─ sync_meta:    GG_Data_DB->upsert_post_meta()
                   │   ├─ delete_post:  GG_Data_DB->delete_post()
                   │   └─ delete_meta:  GG_Data_DB->delete_post_meta()
@@ -213,7 +211,7 @@ POST /gg-data/v1/sync/retry-queue/retry/{index}
     │
     ├─ Permission: manage_options
     ├─ Load dead_letter_queue[index]
-    ├─ Reset item: attempt_count=1, next_retry=now+5s
+    ├─ Reset item: attempt_count=1, next_retry=now
     ├─ Append back to pending queue
     ├─ Remove from dead letter queue
     └─ Log [info]: "Manually retrying from dead letter"

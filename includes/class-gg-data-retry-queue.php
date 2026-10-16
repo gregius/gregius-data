@@ -79,7 +79,7 @@ class GG_Data_Retry_Queue {
 	/**
 	 * Add failed sync operation to retry queue
 	 *
-	 * @param string $operation_type Type of operation (sync_post, sync_meta, delete_post).
+	 * @param string $operation_type Type of operation (sync_meta, delete_post, delete_meta).
 	 * @param int    $entity_id      ID of the entity (post ID, meta ID, etc.).
 	 * @param string $error_message  The error message from failed operation.
 	 * @param array  $operation_data Additional data needed to retry operation (optional).
@@ -245,15 +245,6 @@ class GG_Data_Retry_Queue {
 
 		try {
 			switch ( $item['operation_type'] ) {
-				case 'sync_post':
-					// Get fresh post data from WordPress.
-					$post = get_post( $item['entity_id'] );
-					if ( ! $post ) {
-						// Post no longer exists - consider it successful.
-						return true;
-					}
-					return $db->upsert_post( $post );
-
 				case 'sync_meta':
 					// Retry metadata sync.
 					if ( isset( $item['operation_data']['meta_id'] ) ) {
