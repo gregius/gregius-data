@@ -44,7 +44,7 @@ Core responsibilities:
 
 Notable behavior:
 - Reads provider type from connection config via settings manager.
-- Migrates legacy version key from `wp_options` to `wp_gg_data_settings`.
+- Migrates legacy version key from `wp_options` to `wp_gg_settings`.
 - Uses transaction boundaries for direct PostgreSQL create and upgrade operations.
 
 ### 3.2 Schema REST Controller (`GG_Data_REST_Schema_Controller`)

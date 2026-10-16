@@ -150,7 +150,6 @@ class GG_Data_Uninstaller {
 			'gg_data_check_connection_health',
 			'gg_data_daily_validation',
 			'gg_data_orphan_cleanup',
-			'gg_data_check_vector_indexes',
 			'gg_data_daily_log_retention_purge',
 			'gg_data_cleanup_logs',
 			'gg_data_process_simple_vectors',

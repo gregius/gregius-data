@@ -244,9 +244,6 @@ function gg_data_init() {
 	// Add daily sync validation cron hook.
 	add_action( 'gg_data_daily_validation', array( $gg_data_sync_validator, 'run_validation' ) );
 
-	// Add vector index optimization cron hook.
-	add_action( 'gg_data_check_vector_indexes', array( $gg_data_schema, 'scheduled_index_check' ) );
-
 	// Initialize minimal admin interface (creates WordPress menu + React dashboard container).
 	// All AJAX handlers are in their respective feature classes.
 	// All REST API endpoints are in the REST API controllers.

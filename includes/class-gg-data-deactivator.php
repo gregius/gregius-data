@@ -26,7 +26,6 @@ if ( ! class_exists( 'GG_Data_Deactivator' ) ) {
 			self::clear_log_retention_events();
 
 			// Clear scheduled events (active).
-			wp_clear_scheduled_hook( 'gg_data_check_vector_indexes' );
 			wp_clear_scheduled_hook( 'gg_data_process_retry_queue' ); // Retry queue processor.
 			wp_clear_scheduled_hook( 'gg_data_check_connection_health' ); // Connection health monitor.
 			wp_clear_scheduled_hook( 'gg_data_daily_validation' ); // Sync validator.

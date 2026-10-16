@@ -252,7 +252,7 @@ Linked requirements:
 ### AD-03: Per-Connection Version Tracking in Settings Table
 
 Decision:
-- Persist schema version per connection in `wp_gg_data_settings` category `schema`.
+- Persist schema version per connection in `wp_gg_settings` category `schema`.
 
 Rationale:
 - Supports multi-connection operation and upgrade targeting.

@@ -61,7 +61,7 @@ The schema subsystem sits between connection/provider configuration and feature 
 | Schema version | Version value persisted per connection for migration and compatibility checks |
 | Provider-aware routing | Runtime branch that chooses direct PostgreSQL or PostgREST-compatible schema path |
 | Supabase manual SQL flow | Setup path where SQL must be applied manually via SQL editor and then verified |
-| Settings category schema | `wp_gg_data_settings` category used to store version metadata |
+| Settings category schema | `wp_gg_settings` category used to store version metadata |
 
 ### 1.5 Abbreviations and Acronyms
 
