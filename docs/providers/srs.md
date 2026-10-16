@@ -110,7 +110,7 @@ Requirement notation:
 |---|---|---|
 | PA-FR-01 | The software MUST define a database provider interface that all DB backend implementations are required to fulfill before use. | Must |
 | PA-FR-02 | The DB provider interface MUST include three connection management operations: establish a connection using a configuration record, close an established connection, and test a connection without persisting it. | Must |
-| PA-FR-03 | The DB provider interface MUST include two post data operations: write or update a WordPress post record to the external database, and delete a post record from the external database. | Must |
+| PA-FR-03 | The DB provider interface MUST include post data and mirror-maintenance operations: write or update a WordPress post record to the external database, delete a post record from the external database, list IDs from a table (orphan detection), bulk-delete records by ID, and delete a term relationship. | Must |
 | PA-FR-04 | The DB provider interface MUST be scoped to connection management, data synchronization/mirroring, and schema management operations. Semantic search and vector generation are provided by the search service and embeddings strategies and are explicitly excluded from the DB provider interface. | Must |
 | PA-FR-05 | The DB provider interface MUST include two schema management operations: retrieve the current schema version installed on the backend, and create or update the database schema to the required version. | Must |
 | PA-FR-06 | The software MUST provide a DB provider factory that creates and returns a DB provider instance given a named provider type string. | Must |
@@ -124,12 +124,12 @@ Requirement notation:
 | ID | Requirement | Priority |
 |---|---|---|
 | PA-FR-11 | The software MUST define an AI provider interface that all AI service implementations are required to fulfill before use. | Must |
-| PA-FR-12 | The AI provider interface MUST include: a unique string identifier, a human-readable display name, a text generation method, LLM model listing, embedding model listing, reranking model listing, a capability flags array, a reranking method, and an embedding generation method. | Must |
+| PA-FR-12 | The AI provider interface MUST include: a unique string identifier, a human-readable display name, a text generation method, LLM model listing, vision model listing, embedding model listing, reranking model listing, a capability flags array, a reranking method, and an embedding generation method. | Must |
 | PA-FR-13 | The software MUST provide an AI provider registry that resolves a registered AI provider instance by its string identifier. | Must |
 | PA-FR-14 | The AI provider registry MUST allow third-party code to register additional AI providers via a WordPress filter without modifying core plugin files. | Must |
 | PA-FR-15 | The software MUST provide a fluent AI client facade that allows callers to initiate a text generation request and optionally chain provider, model, system message, and named connection selections before executing. | Must |
 | PA-FR-16 | The AI client facade MUST support per-request selection of a named connection, enabling multiple API credentials to be used for the same provider type. | Must |
-| PA-FR-17 | The software MUST ship native AI provider implementations for: OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and an internal provider with the HashingTF Murmur3 1024D embedding model. | Must |
+| PA-FR-17 | The software MUST ship native AI provider implementations for: OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, TypeSafe (retrieval-sufficiency evaluator), and an internal provider with the HashingTF Murmur3 1024D embedding model. | Must |
 
 #### 3.1.3 Tool Calling Strategy Layer
 
@@ -159,7 +159,6 @@ Requirement notation:
 | PA-DR-04 | AI provider text generation responses MUST return either an array containing at minimum `text`, `tokens_used`, and `model` fields, or a `WP_Error` instance on failure. | Must |
 | PA-DR-05 | Chunk production MUST remain provider-agnostic. Chunk boundaries and chunk content MUST NOT vary based on which DB provider is active for a given connection. | Must |
 | PA-DR-06 | The `supabase` DB provider factory type alias MUST resolve to the same HTTP-based PostgREST provider as the `postgrest` alias. | Must |
-| PA-DR-07 | The backward compatibility AI provider interface alias MUST remain resolvable and behave identically to the canonical AI provider interface. | Must |
 | PA-DR-08 | For any validation or summary operation that requires multiple sequential HTTP calls on the PostgREST provider, the software SHOULD provide a single-call RPC equivalent that returns all required data in one server round trip. | Should |
 | PA-DR-09 | Runtime PostgREST/Supabase operations MUST resolve credentials from canonical keys only: `project_url`, `publishable_key`, and `secret_key`. | Must |
 | PA-DR-10 | Legacy Supabase key aliases (`api_key`, `service_role_key`) MAY be accepted only at configuration ingestion boundaries and MUST be normalized to canonical keys before runtime provider use. | Must |
@@ -194,7 +193,7 @@ Requirement notation:
 | AI provider interface and registry (PA-FR-11–17) | Interface conformance and registration behavior tests | Unit tests, filter integration test |
 | Tool calling strategy layer (PA-FR-18–23) | Strategy selection, format output, and response parsing tests | Unit tests per strategy implementation |
 | Connection management (PA-FR-24–25) | Lifecycle and caching behavior tests | Unit tests, code review |
-| Data contracts (PA-DR-01–08) | Response schema inspection | Unit tests + manual inspection |
+| Data contracts (PA-DR-01–10) | Response schema inspection | Unit tests + manual inspection |
 | Operations requirements (PA-OR-01–07) | Environment, credential, and lifecycle review | Host compatibility review, code review |
 | Quality requirements (PA-QR-01–05) | Static analysis, code review, integration test | PHPStan, code review, test suite |
 
@@ -208,7 +207,7 @@ Requirement notation:
 | PA-FR-24 to PA-FR-25 | docs/providers/architecture.md (Connection Manager Integration, Provider Lifecycle) | Connection manager requirements |
 | PA-DR-01 to PA-DR-04 | docs/providers/architecture.md (Standardized Return Formats, AI Provider Architecture) | Response contract requirements |
 | PA-DR-05 | docs/providers/architecture.md (Shared Chunk Contract Across Providers) | Chunking independence requirement |
-| PA-DR-06 to PA-DR-07 | docs/providers/architecture.md (Factory Type Aliases, backward compatibility note under Key Components) | Alias and backward compatibility requirements |
+| PA-DR-06 | docs/providers/architecture.md (Factory Type Aliases, backward compatibility note under Key Components) | DB provider type alias requirement |
 | PA-DR-08 | docs/providers/architecture.md (RPC Functions for Performance Optimization, Validation RPC Pattern) | RPC consolidation requirement |
 | PA-DR-09 to PA-DR-10 | docs/providers/architecture.md (Interface Constraints, Connection Key Normalization Contract) | Canonical runtime key usage and ingestion-boundary normalization |
 | PA-OR-01 to PA-OR-07 | docs/providers/architecture.md (HTTP-Based Providers, Direct Connection Providers, Performance Considerations, Security Considerations) | Operational and environment constraint requirements |
@@ -221,7 +220,6 @@ Requirement notation:
 - This SRS is produced in SRS-first mode without separate BRS, StRS, or SyRS artifacts.
 - Requirements are reverse-engineered from `docs/providers/architecture.md` and the verified codebase state as of 2026-03-30. The architecture doc is treated as the authoritative design record.
 - The MySQL 9.0+ provider described as a future enhancement in the architecture doc is out of scope for this SRS. Requirements will be added in a future revision when implementation planning for that phase begins.
-- The WordPress PHP AI Client (`wordpress/php-ai-client`) alignment section in the architecture doc is treated as a forward-looking migration note, not a current requirement.
 - Third-party integrators are assumed to have PHP developer-level access to the plugin codebase to register custom providers via the defined extension points.
 
 ### 6.2 Open Issues

@@ -75,6 +75,7 @@ class My_Custom_AI_Provider implements GG_Data_AI_Provider_Interface {
 	}
 
 	public function get_llm_models(): array { return array( 'default-model' => 'Default Model' ); }
+	public function get_vision_models(): array { return array(); }
 	public function generate_embedding( string $text, array $options = array() ): array|WP_Error { return new WP_Error( 'unsupported', 'Embeddings not supported.' ); }
 	public function get_embedding_models(): array { return array(); }
 	public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error { return new WP_Error( 'unsupported', 'Rerank not supported.' ); }
@@ -149,6 +150,7 @@ Required methods:
 - `get_capabilities(): array`
 - `generate_text( string $prompt, array $options = array() ): array|WP_Error`
 - `get_llm_models(): array`
+- `get_vision_models(): array`
 - `generate_embedding( string $text, array $options = array() ): array|WP_Error`
 - `get_embedding_models(): array`
 - `rerank( string $query, array $documents, array $options = array() ): array|WP_Error`
@@ -283,7 +285,7 @@ if ( is_wp_error( $result ) ) {
 }
 ```
 
-### 5.3 DB Provider Retrieval Pattern
+### 5.3 DB Provider Method Pattern
 
 ```php
 $manager  = new GG_Data_Connection_Manager();
@@ -294,17 +296,14 @@ if ( ! $provider ) {
 	return;
 }
 
-$search_result = $provider->search(
-	'long-term care staffing retention',
-	array(
-		'limit' => 10,
-	)
-);
+$result = $provider->get_schema_version();
 
-if ( empty( $search_result['success'] ) ) {
+if ( empty( $result['success'] ) ) {
 	// Handle provider-level error.
 }
 ```
+
+Note: semantic search and vector generation are deliberately excluded from the DB provider interface (see PA-FR-04); retrieval is provided by the search service, not the provider.
 
 ### 5.4 Recipes
 
@@ -397,6 +396,6 @@ Tool strategy APIs:
 
 This document supports implementation and integration understanding for these SRS groups:
 - Functional requirements: PA-FR-01 to PA-FR-25
-- Data/contract requirements: PA-DR-01 to PA-DR-08
+- Data/contract requirements: PA-DR-01 to PA-DR-10
 - Operational requirements: PA-OR-01 to PA-OR-07
 - Quality requirements: PA-QR-01 to PA-QR-05

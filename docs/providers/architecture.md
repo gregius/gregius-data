@@ -70,7 +70,7 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
 │  │  │ ├─ Registry: GG_Data_LLM_Registry                  │ │ │
 │  │  │ ├─ Client Facade: GG_Data_Ai_Client               │ │ │
 │  │  │ ├─ OpenAI, Anthropic, Gemini, DeepSeek providers   │ │ │
-│  │  │ ├─ Cohere, Internal providers              │ │ │
+│  │  │ ├─ Cohere, Internal, TypeSafe providers             │ │ │
 │  │  │ └─ Tool Strategy Layer                              │ │ │
 │  │  │    ├─ OpenAI/DeepSeek native                       │ │ │
 │  │  │    ├─ Anthropic native                             │ │ │
@@ -89,7 +89,8 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
     └─────────────────┘          │ - Google Gemini      │
                                   │ - DeepSeek           │
     ┌─────────────────┐          │ - Cohere             │
-    │ Supabase        │          └──────────────────────┘
+    │ Supabase        │          │ - TypeSafe           │
+    │ (PostgREST)     │          └──────────────────────┘
     │ (PostgREST)     │
     └─────────────────┘
 ```
@@ -143,9 +144,10 @@ Connection Manager
 
 **Key Components:**
 
-1. **Interface** (`GG_Data_DB_Provider`) — defines contract:
+1. **Interface** (`GG_Data_DB_Provider`) — defines contract (10 methods):
    - Connection: `connect()`, `disconnect()`, `test_connection()`
    - Data: `sync_post()`, `delete_post()`
+   - Mirror maintenance: `get_ids()`, `delete_ids()`, `delete_term_relationship()`
    - Schema: `get_schema_version()`, `create_schema()`
 
 2. **Factory** (`GG_Data_Provider_Factory`) — handles instantiation:
@@ -198,8 +200,8 @@ AI Registry
     ┌────┴────┬────────────┬─────────────┬────────────┬────────────┐
     │          │            │             │            │            │
     ▼          ▼            ▼             ▼            ▼            ▼
-  OpenAI   Anthropic   Gemini      DeepSeek      Cohere
-   (LLM)   (LLM)       (LLM+E)     (LLM)         (Rerank)
+  OpenAI   Anthropic   Gemini      DeepSeek      Cohere     Internal   TypeSafe
+   (LLM)   (LLM)       (LLM+E)     (LLM)         (Rerank)   (Embed)    (Eval)
    │       │           │           │             │             │
    └───────┴───────────┴───────────┴─────────────┴─────────────┘
                  │
@@ -219,6 +221,7 @@ AI Registry
    - `get_name()` → display name
    - `generate_text($prompt, $options)` → LLM generation
    - `get_llm_models()` → available LLM models
+   - `get_vision_models()` → vision/document-capable models
    - `get_embedding_models()` → available embedding models
    - `get_rerank_models()` → available reranking models
    - `get_capabilities()` → capability flags
@@ -236,9 +239,10 @@ AI Registry
    - Fluent builder: `prompt()->setSystemMessage()->usingProvider()->usingModel()->generateText()`
    - Handles request orchestration
 
-4. **Concrete Providers** (6 implementations):
+4. **Concrete Providers** (7 implementations):
    - OpenAI, Anthropic, Gemini, DeepSeek: LLM support
    - Cohere: Embedding/reranking support
+   - TypeSafe: Retrieval-sufficiency evaluator (System One / Jev decision model)
    - Internal: HashingTF Murmur3 1024D embeddings (free, no API required)
 
 5. **Tool Strategy Layer** — per-provider adapters:
@@ -515,7 +519,7 @@ Plugin Code:
 **Decision:** Maintain chunk production and storage independent of the active DB provider.
 
 **Status:** Decided  
-**Linked Requirements:** PA-CR-01
+**Linked Requirements:** PA-DR-05
 
 **Alternatives Considered:**
 1. **Provider-specific chunking** — each provider defines its own chunk rules
@@ -545,7 +549,7 @@ Plugin Code:
 
 | Constraint | Impact | Rationale |
 |---|---|---|
-| PHP 7.4+ required | Minimum PHP version | WordPress core requirement; enables typed properties, typed return hints |
+| PHP 8.2+ required | Minimum PHP version | Enables typed properties and union return types (e.g. `array\|WP_Error`) used across the provider interfaces |
 | WordPress 6.9+ required | Core version | REST API stability; async/lazy loading support |
 | PDO with `pdo_pgsql` for PostgreSQL Direct | Optional dependency | VPS/cloud only; no extension = use PostgREST |
 | `wp_remote_post()` for HTTP providers | HTTP API requirement | WordPress HTTP client; handles proxies, SSL, authentication |
@@ -664,7 +668,6 @@ Plugin Code:
 - Semantic versioning: breaking changes only in major versions
 - Deprecation period before removal (e.g., 2+ minor versions)
 - Migration guide for breaking changes
-- Internal alias patterns (e.g., `GG_Data_LLM_Provider_Interface` → `GG_Data_AI_Provider_Interface`)
 
 ---
 
@@ -676,7 +679,7 @@ Plugin Code:
 |---|---|---|
 | PA-FR-01 (DB interface required) | 3.1 Interface, AD-01 | ✅ Covered |
 | PA-FR-02 (Connection methods) | 3.1 Key Components #1 | ✅ Covered |
-| PA-FR-03 (Data operations) | 3.1 Key Components #1 | ✅ Covered |
+| PA-FR-03 (Post data + mirror maintenance) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-04 (Interface scope) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-05 (Schema methods) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-06 (Factory pattern) | 3.1 Key Components #2, AD-02 | ✅ Covered |
@@ -686,33 +689,49 @@ Plugin Code:
 | PA-FR-10 (PostgREST provider) | 3.1 PostgREST Provider | ✅ Covered |
 | PA-FR-11 (AI interface required) | 3.2 Key Components #1 | ✅ Covered |
 | PA-FR-12 (AI interface methods) | 3.2 Key Components #1 | ✅ Covered |
-| PA-FR-13 (OpenAI provider) | 3.2 Concrete Providers | ✅ Covered |
-| PA-FR-14 (Anthropic provider) | 3.2 Concrete Providers | ✅ Covered |
-| PA-FR-15 (Gemini provider) | 3.2 Concrete Providers | ✅ Covered |
-| PA-FR-16 (DeepSeek provider) | 3.2 Concrete Providers | ✅ Covered |
-| PA-FR-17 (Registry + filter) | 3.2 Key Components #2, AD-03 | ✅ Covered |
-| PA-FR-18 (Client facade) | 3.2 Key Components #3 | ✅ Covered |
-| PA-FR-19 (Tool strategy layer) | 3.2 Tool Strategy Layer, AD-04 | ✅ Covered |
+| PA-FR-13 (AI registry) | 3.2 Key Components #2, AD-03 | ✅ Covered |
+| PA-FR-14 (Filter-based registration) | 3.2 Key Components #2, AD-03 | ✅ Covered |
+| PA-FR-15 (Client facade) | 3.2 Key Components #3 | ✅ Covered |
+| PA-FR-16 (Per-request connection) | 3.2 Key Components #3 | ✅ Covered |
+| PA-FR-17 (Native AI providers) | 3.2 Concrete Providers | ✅ Covered |
+| PA-FR-18 (Tool strategy interface) | 3.2 Tool Strategy Layer, AD-04 | ✅ Covered |
+| PA-FR-19 (Strategy interface methods) | 3.2 Tool Strategy Layer, AD-04 | ✅ Covered |
+| PA-FR-20 (Strategy factory) | 3.2 Tool Strategy Layer | ✅ Covered |
+| PA-FR-21 (Prompt-based fallback) | 3.2 Tool Strategy Layer | ✅ Covered |
+| PA-FR-22 (Native strategy implementations) | 3.2 Tool Strategy Layer | ✅ Covered |
+| PA-FR-23 (Prompt strategy) | 3.2 Tool Strategy Layer | ✅ Covered |
+| PA-FR-24 (Connection manager caching) | 4.1 Connection Manager | ✅ Covered |
+| PA-FR-25 (Connection manager retrieval) | 4.1 Connection Manager | ✅ Covered |
 
-### Interface Requirements Coverage
+### Data and Contract Requirements Coverage
 
 | Requirement | Architecture Item | Status |
 |---|---|---|
-| PA-IR-01 (Standard return formats) | 3.1, standardized responses | ✅ Covered |
-| PA-IR-02 (Error isolation) | Risk #1, #2 mitigation | ✅ Covered |
+| PA-DR-01–03 (Standardized return formats) | 3.1 standardized responses | ✅ Covered |
+| PA-DR-04 (AI text response contract) | 3.2 Key Components #1 | ✅ Covered |
+| PA-DR-05 (Chunk independence) | AD-05; 3.1 Shared Chunk | ✅ Covered |
+| PA-DR-06 (DB provider type alias) | 3.1 Factory, AD-02 | ✅ Covered |
+| PA-DR-08 (RPC consolidation) | 3.1 PostgREST Provider, Risk #1 | ✅ Covered |
+| PA-DR-09–10 (Canonical runtime keys) | 6.2 Interface Constraints | ✅ Covered |
+
+### Operations Requirements Coverage
+
+| Requirement | Architecture Item | Status |
+|---|---|---|
+| PA-OR-01–03 (HTTP API, PDO, credential safety) | 3.1 Providers, Risk #3 | ✅ Covered |
+| PA-OR-04 (Connection cleanup) | 4.1 Connection Manager | ✅ Covered |
+| PA-OR-05 (Lazy PostgREST connection) | 3.1 PostgREST Provider | ✅ Covered |
+| PA-OR-06–07 (PHP 8.2+, any host) | 6.1 Technology Constraints | ✅ Covered |
 
 ### Quality Requirements Coverage
 
 | Requirement | Architecture Item | Status |
 |---|---|---|
-| PA-QR-01 (Extensibility) | AD-02, AD-03; Factory & Filter | ✅ Covered |
-| PA-QR-02 (Performance parity) | Risk #1, Constraint 6.3 | ✅ Covered |
-
-### Constraint Requirements Coverage
-
-| Requirement | Architecture Item | Status |
-|---|---|---|
-| PA-CR-01 (Chunk independence) | AD-05; 3.1 Shared Chunk | ✅ Covered |
+| PA-QR-01 (Mockable interface) | 3.1 Interface, AD-01 | ✅ Covered |
+| PA-QR-02 (Parameterized queries) | 3.1 Providers | ✅ Covered |
+| PA-QR-03 (HTTP error handling) | 3.1 PostgREST Provider | ✅ Covered |
+| PA-QR-04 (Non-invasive extension) | AD-02, AD-03 | ✅ Covered |
+| PA-QR-05 (No performance regression) | Risk #1, Constraint 6.3 | ✅ Covered |
 
 ---
 

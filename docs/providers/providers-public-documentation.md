@@ -61,7 +61,7 @@ Key facts:
 - Works on any WordPress hosting environment, including shared hosting
 - Uses `wp_remote_post()` for all outbound requests
 - RPC functions handle bulk operations and complex queries efficiently
-- Supports `postgresql` and `supabase` as alias type names (both resolve to the same provider)
+- Supports `postgrest` and `supabase` as alias type names (both resolve to the PostgREST provider)
 
 <!-- IMAGE: database provider selection screen showing PostgreSQL and PostgREST options -->
 
@@ -71,7 +71,7 @@ Key facts:
 
 ## AI Providers
 
-Gregius Data ships with seven built-in AI providers covering text generation, embedding, and reranking capabilities. All providers are registered with the AI provider registry and are available for use by the RAG pipeline and other plugin features.
+Gregius Data ships with seven built-in AI providers covering text generation, embedding, reranking, and evaluation capabilities. All providers are registered with the AI provider registry and are available for use by the RAG pipeline and other plugin features.
 
 ### LLM Providers
 
@@ -79,10 +79,10 @@ These providers handle text generation and conversation:
 
 | Provider | Models | Capabilities |
 |---|---|---|
-| [OpenAI](https://openai.com) | GPT-4o, GPT-4o-mini, o-series | LLM, tool calling |
-| [Anthropic](https://www.anthropic.com) | Claude 3/4 series | LLM, tool calling |
-| [Google Gemini](https://deepmind.google/technologies/gemini/) | Gemini 1.5/2.0 series | LLM, embeddings, tool calling |
-| [DeepSeek](https://deepseek.com) | DeepSeek V2/V3 | LLM, tool calling |
+| [OpenAI](https://openai.com) | GPT-4o, GPT-4o-mini, GPT-6 Luna, GPT-6.1 Sol | LLM, embeddings, tool calling |
+| [Anthropic](https://www.anthropic.com) | Claude 4.5 (Opus, Sonnet, Haiku) | LLM, tool calling |
+| [Google Gemini](https://deepmind.google/technologies/gemini/) | Gemini 2.5 Flash/Pro, 2.0 Flash-Lite series | LLM, embeddings, tool calling |
+| [DeepSeek](https://deepseek.com) | DeepSeek Chat, DeepSeek Reasoner | LLM, tool calling |
 
 ### Embedding and Reranking Providers
 
@@ -90,7 +90,15 @@ These providers generate vector embeddings and rerank search results:
 
 | Provider | Purpose |
 |---|---|
-| [Cohere](https://cohere.com) | Embeddings and reranking |
+| [OpenAI](https://openai.com) | Embeddings (`text-embedding-3-small` / `-large`) |
+| [Google Gemini](https://deepmind.google/technologies/gemini/) | Embeddings (`gemini-embedding-001`) |
+| [Cohere](https://cohere.com) | Embeddings (`embed-v5.0`) and reranking (`rerank-v4.0`) |
+
+### Evaluation Providers
+
+| Provider | Purpose |
+|---|---|
+| [TypeSafe](https://docs.typesafe.ai) | Retrieval-sufficiency evaluation (System One / Jev decision model) |
 
 <!-- IMAGE: AI providers configuration page showing API key fields for each provider -->
 
@@ -135,7 +143,9 @@ If the test fails, check credentials, network access, and PHP extension availabi
 | Direct [PostgreSQL](https://www.postgresql.org/) access | **PostgreSQL (PDO)** - requires the `pdo_pgsql` PHP extension. Ask your host to enable it if not already available. |
 | HTTP-based access that works on any hosting | **PostgREST ([Supabase](https://supabase.com/))** - no PHP extensions required. Works on shared hosting, managed WordPress, and environments without database TCP access. |
 | External AI text generation (LLM) | **[OpenAI](https://openai.com), [Anthropic](https://www.anthropic.com), [Gemini](https://deepmind.google/technologies/gemini/), or [DeepSeek](https://deepseek.com)** |
-| External embeddings or reranking | **[Cohere](https://cohere.com)** (embeddings + reranking) |
+| External embeddings | **[OpenAI](https://openai.com), [Gemini](https://deepmind.google/technologies/gemini/), or [Cohere](https://cohere.com)** |
+| External reranking | **[Cohere](https://cohere.com)** (`rerank-v4.0`) |
+| Retrieval-sufficiency evaluation | **[TypeSafe](https://docs.typesafe.ai)** (Jev decision model) |
 | Local embeddings, zero setup | **[HashingTF Murmur3 1024D](https://en.wikipedia.org/wiki/MurmurHash)** (`hashingtf-murmur3-1024`) - stateless, no vocabulary needed |
 
 ---

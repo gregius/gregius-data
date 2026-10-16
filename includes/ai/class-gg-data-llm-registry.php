@@ -33,7 +33,7 @@ class GG_Data_LLM_Registry {
 	 * Get all registered providers.
 	 *
 	 * @since 1.0.0
-	 * @return array Array of GG_Data_LLM_Provider_Interface objects.
+	 * @return array Array of GG_Data_AI_Provider_Interface objects.
 	 */
 	public static function get_providers() {
 		if ( empty( self::$providers ) ) {
@@ -54,7 +54,7 @@ class GG_Data_LLM_Registry {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider_id Provider ID (e.g., 'openai').
-	 * @return GG_Data_LLM_Provider_Interface|WP_Error Provider instance or error.
+	 * @return GG_Data_AI_Provider_Interface|WP_Error Provider instance or error.
 	 */
 	public static function get_provider( $provider_id ) {
 		$providers = self::get_providers();
