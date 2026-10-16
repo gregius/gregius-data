@@ -271,11 +271,7 @@ Rules:
 			return $model_config['api_key'];
 		}
 
-		// Try settings manager as fallback.
-		$settings = new GG_Data_Settings_Manager();
-		$api_key  = $settings->get_with_category( 'rag_tfidf_300', 'gregius-data', 'openai_api_key' );
-
-		return ! empty( $api_key ) ? $api_key : '';
+		return '';
 	}
 
 	/**

@@ -93,11 +93,6 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 			}
 		}
 
-		// Fallback to legacy RAG settings.
-		if ( empty( $api_key ) ) {
-			$api_key = $settings->get_with_category( 'rag_tfidf_300', $connection, 'openai_api_key' );
-		}
-
 		if ( empty( $api_key ) ) {
 			return new WP_Error(
 				'gg_data_missing_api_key',
@@ -528,16 +523,6 @@ class GG_Data_OpenAI_Provider implements GG_Data_AI_Provider_Interface {
 					$api_key = $model_data['config']['api_key'] ?? '';
 				}
 			}
-		}
-
-		// Fallback to legacy RAG settings.
-		if ( empty( $api_key ) ) {
-			$api_key = $settings->get_with_category( 'rag_tfidf_300', $connection, 'openai_api_key' );
-		}
-
-		// Fallback to global OpenAI API key option (used by GG_Data_OpenAI_Client).
-		if ( empty( $api_key ) ) {
-			$api_key = get_option( 'gg_data_openai_api_key', '' );
 		}
 
 		if ( empty( $api_key ) ) {

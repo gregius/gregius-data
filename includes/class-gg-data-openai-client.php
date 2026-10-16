@@ -61,10 +61,10 @@ class GG_Data_OpenAI_Client {
 	 * Initialize the OpenAI client.
 	 *
 	 * @since 1.0.0
-	 * @param string $api_key Optional. OpenAI API key. If not provided, attempts to load from options.
+	 * @param string $api_key OpenAI API key.
 	 */
-	public function __construct( $api_key = null ) {
-		$this->api_key = ! empty( $api_key ) ? $api_key : get_option( 'gg_data_openai_api_key' );
+	public function __construct( $api_key = '' ) {
+		$this->api_key = (string) $api_key;
 	}
 
 	/**
