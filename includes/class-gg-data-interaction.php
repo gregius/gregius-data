@@ -1823,5 +1823,3 @@ class GG_Data_Interaction {
 		return $content;
 	}
 }
-
-require_once __DIR__ . '/class-gg-data-interaction-functions.php';

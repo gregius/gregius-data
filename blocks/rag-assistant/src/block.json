@@ -76,7 +76,7 @@
     },
     "embeddingModelKey": {
       "type": "string",
-      "default": "tfidf-300"
+      "default": "hashingtf-murmur3-1024"
     },
     "llmModelId": {
       "type": "string",

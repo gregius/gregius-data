@@ -192,24 +192,6 @@ class GG_Data_RAG_Service {
 	}
 
 	/**
-	 * Search and synthesize - shared capability for all tool handlers.
-	 *
-	 * CONTRACT v1: Stable method for retrieving relevant chunks and generating
-	 * a synthesized answer. Handlers call this to implement search-based tools.
-	 *
-	 * @since 1.0.0
-	 * @param string $query              User query.
-	 * @param string $llm_model_id       LLM model ID.
-	 * @param array  $options            RAG options (post_types, metadata_filter, etc).
-	 * @param float  $start_time         microtime(true) at caller's start.
-	 * @param bool   $fallback           Whether this is a fallback call. Default false.
-	 * @return array|WP_Error Response with 'answer', 'sources', 'metadata' keys.
-	 */
-	public function search_synthesize( $query, $llm_model_id, $options, $start_time, $fallback = false ) {
-		return $this->synthesize_search_content( $query, $llm_model_id, $options, $start_time, $fallback );
-	}
-
-	/**
 	 * Append manifest metadata to result - shared capability for all handlers.
 	 *
 	 * CONTRACT v1: Stable method for normalizing response metadata. All handlers
@@ -2927,43 +2909,6 @@ class GG_Data_RAG_Service {
 			$sections['context']['manifest_full']             = $manifest;
 		}
 
-		$legacy = array(
-			'interaction_id'      => isset( $result['interaction_id'] ) ? absint( $result['interaction_id'] ) : 0,
-			'conversation_id'     => isset( $metadata['conversation_id'] ) ? sanitize_text_field( (string) $metadata['conversation_id'] ) : '',
-			'type'                => 'rag',
-			'source'              => isset( $source['type'] ) ? sanitize_key( (string) $source['type'] ) : 'rest',
-			'query'               => array(
-				'original'  => isset( $metadata['original_query'] ) ? sanitize_text_field( (string) $metadata['original_query'] ) : '',
-				'rewritten' => isset( $metadata['search_query'] ) ? sanitize_text_field( (string) $metadata['search_query'] ) : '',
-			),
-			'response'            => isset( $result['answer'] ) ? (string) $result['answer'] : '',
-			'tool_selected'       => isset( $metadata['tool_selected'] ) ? sanitize_key( (string) $metadata['tool_selected'] ) : '',
-			'sources'             => isset( $result['sources'] ) && is_array( $result['sources'] ) ? $result['sources'] : array(),
-			'models'              => $sections['execution']['models'],
-			'search'              => array(
-				'post_types'      => $metadata['post_types'] ?? array(),
-				'metadata_filter' => $metadata['metadata_filter'] ?? array(),
-			),
-			'latency'             => array(
-				'total_ms' => isset( $metadata['execution_time'] ) ? (int) $metadata['execution_time'] : 0,
-			),
-			'retrieval'           => isset( $metadata['retrieval'] ) && is_array( $metadata['retrieval'] ) ? $metadata['retrieval'] : array(),
-			'prompt'              => isset( $metadata['prompt'] ) && is_array( $metadata['prompt'] ) ? $metadata['prompt'] : array(),
-			'security_check'      => isset( $metadata['security_check'] ) && is_array( $metadata['security_check'] ) ? $metadata['security_check'] : array(),
-			'usage'               => isset( $metadata['usage'] ) && is_array( $metadata['usage'] ) ? $metadata['usage'] : array(),
-			'provider'            => isset( $metadata['provider'] ) ? sanitize_key( (string) $metadata['provider'] ) : '',
-			'model_used'          => isset( $metadata['model_used'] ) ? sanitize_text_field( (string) $metadata['model_used'] ) : '',
-			'reasoning_content'   => isset( $metadata['reasoning_content'] ) ? (string) $metadata['reasoning_content'] : '',
-			'manifest'            => $manifest,
-			'manifest_hash'       => isset( $metadata['manifest_hash'] ) ? sanitize_text_field( (string) $metadata['manifest_hash'] ) : '',
-			'manifest_size_bytes' => isset( $metadata['manifest_size_bytes'] ) ? (int) $metadata['manifest_size_bytes'] : 0,
-			'manifest_version'    => isset( $metadata['manifest_version'] ) ? sanitize_text_field( (string) $metadata['manifest_version'] ) : '',
-			'answer'              => isset( $result['answer'] ) ? (string) $result['answer'] : '',
-			'metadata'            => $metadata,
-		);
-
-		$sections['legacy'] = $legacy;
-
 		// Merge enterprise sections additively onto the original result.
 		// Top-level contract fields (answer, sources, metadata, interaction_id) remain
 		// intact for internal hooks, guards, logging, and SSE consumers downstream
@@ -3059,188 +3004,6 @@ class GG_Data_RAG_Service {
 	}
 
 	/**
-	 * Summarize the current entity identified by the request manifest.
-	 *
-	 * @since 1.0.0
-	 * @param string $query        User query.
-	 * @param string $llm_model_id LLM model ID.
-	 * @param array  $options      RAG options.
-	 * @return array|WP_Error
-	 */
-	private function handle_summarize_current_entity( $query, $llm_model_id, $options ) {
-		$start_time = microtime( true );
-		$manifest   = isset( $options['manifest'] ) && is_array( $options['manifest'] ) ? $options['manifest'] : array();
-
-		$entity         = isset( $manifest['entity'] ) && is_array( $manifest['entity'] ) ? $manifest['entity'] : array();
-		$entity_id      = isset( $entity['id'] ) ? absint( $entity['id'] ) : 0;
-		$entity_type    = isset( $entity['type'] ) ? sanitize_key( (string) $entity['type'] ) : '';
-		$entity_title   = isset( $entity['title']['rendered'] ) ? sanitize_text_field( (string) $entity['title']['rendered'] ) : '';
-		$source_post_id = isset( $options['source']['post_id'] ) ? absint( $options['source']['post_id'] ) : 0;
-
-		if ( $entity_id <= 0 && $source_post_id > 0 ) {
-			$entity_id = $source_post_id;
-		}
-
-		if ( '' === $entity_type && $entity_id > 0 ) {
-			$entity_type = (string) get_post_type( $entity_id );
-		}
-
-		if ( $entity_id <= 0 ) {
-			return array(
-				'answer'   => __( 'I could not determine which content to summarize.', 'gregius-data' ),
-				'sources'  => array(),
-				'metadata' => array(
-					'tool'            => 'summarize_current_entity',
-					'tool_selected'   => 'summarize_current_entity',
-					'chunks_used'     => 0,
-					'conversation_id' => $options['conversation_id'] ?? null,
-					'source'          => $options['source'] ?? array( 'type' => 'rest' ),
-					'connection'      => $this->connection_name,
-					'embedding_model' => $this->embedding_model_key,
-					'llm_model'       => $llm_model_id,
-					'execution_time'  => round( ( microtime( true ) - $start_time ) * 1000 ),
-					'security_check'  => $options['security_check'] ?? array(),
-				),
-			);
-		}
-
-		$summary_meta_key = apply_filters( 'gg_data_rag_entity_summary_meta_key', '_gg_manifest_summary', $entity_type, $entity_id );
-		$cached_summary   = get_post_meta( $entity_id, $summary_meta_key, true );
-
-		if ( is_string( $cached_summary ) && '' !== trim( $cached_summary ) ) {
-			return array(
-				'answer'   => trim( $cached_summary ),
-				'sources'  => array(),
-				'metadata' => array(
-					'tool'             => 'summarize_current_entity',
-					'tool_selected'    => 'summarize_current_entity',
-					'cache_hit'        => true,
-					'summary_meta_key' => $summary_meta_key,
-					'entity_id'        => $entity_id,
-					'entity_type'      => $entity_type,
-					'chunks_used'      => 0,
-					'conversation_id'  => $options['conversation_id'] ?? null,
-					'source'           => $options['source'] ?? array( 'type' => 'rest' ),
-					'connection'       => $this->connection_name,
-					'embedding_model'  => $this->embedding_model_key,
-					'llm_model'        => $llm_model_id,
-					'execution_time'   => round( ( microtime( true ) - $start_time ) * 1000 ),
-					'security_check'   => $options['security_check'] ?? array(),
-				),
-			);
-		}
-
-		$entity_content = $this->get_entity_content_for_summary( $entity_id );
-
-		if ( '' === $entity_content ) {
-			return array(
-				'answer'   => __( 'I could not load enough content to generate a summary.', 'gregius-data' ),
-				'sources'  => array(),
-				'metadata' => array(
-					'tool'            => 'summarize_current_entity',
-					'tool_selected'   => 'summarize_current_entity',
-					'cache_hit'       => false,
-					'entity_id'       => $entity_id,
-					'entity_type'     => $entity_type,
-					'chunks_used'     => 0,
-					'conversation_id' => $options['conversation_id'] ?? null,
-					'source'          => $options['source'] ?? array( 'type' => 'rest' ),
-					'connection'      => $this->connection_name,
-					'embedding_model' => $this->embedding_model_key,
-					'llm_model'       => $llm_model_id,
-					'execution_time'  => round( ( microtime( true ) - $start_time ) * 1000 ),
-					'security_check'  => $options['security_check'] ?? array(),
-				),
-			);
-		}
-
-		$summary_prompt = sprintf(
-			"Entity type: %s\nEntity title: %s\n\nSummarize the content below in 2-4 short paragraphs. Prioritize key facts, purpose, and concrete next steps if present.\n\n%s",
-			$entity_type,
-			$entity_title,
-			$entity_content
-		);
-
-		$response = $this->stream_llm_response(
-			$summary_prompt,
-			$llm_model_id,
-			'You summarize WordPress content clearly and faithfully. Do not invent facts and do not include information not present in the source.',
-			$options['progress_callback'] ?? null
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$summary_text = trim( (string) ( $response['text'] ?? '' ) );
-		if ( '' !== $summary_text ) {
-			update_post_meta( $entity_id, $summary_meta_key, $summary_text );
-		}
-
-		return array(
-			'answer'   => $summary_text,
-			'sources'  => array(),
-			'metadata' => array(
-				'tool'              => 'summarize_current_entity',
-				'tool_selected'     => 'summarize_current_entity',
-				'cache_hit'         => false,
-				'summary_meta_key'  => $summary_meta_key,
-				'entity_id'         => $entity_id,
-				'entity_type'       => $entity_type,
-				'chunks_used'       => 0,
-				'conversation_id'   => $options['conversation_id'] ?? null,
-				'source'            => $options['source'] ?? array( 'type' => 'rest' ),
-				'connection'        => $this->connection_name,
-				'embedding_model'   => $this->embedding_model_key,
-				'llm_model'         => $llm_model_id,
-				'execution_time'    => round( ( microtime( true ) - $start_time ) * 1000 ),
-				'reasoning_content' => $response['reasoning_content'] ?? '',
-				'usage'             => $response['usage'] ?? array(),
-				'provider'          => $response['provider'] ?? '',
-				'model_used'        => $response['model'] ?? '',
-				'raw_response'      => $response['raw_response'] ?? array(),
-				'security_check'    => $options['security_check'] ?? array(),
-			),
-		);
-	}
-
-	/**
-	 * Recommend related content using manifest-derived metadata filtering.
-	 *
-	 * @since 1.0.0
-	 * @param string $query        User query.
-	 * @param string $llm_model_id LLM model ID.
-	 * @param array  $options      RAG options.
-	 * @return array|WP_Error
-	 */
-	private function handle_recommend_related_content( $query, $llm_model_id, $options ) {
-		$start_time     = microtime( true );
-		$manifest       = isset( $options['manifest'] ) && is_array( $options['manifest'] ) ? $options['manifest'] : array();
-		$derived_filter = $this->build_manifest_related_filter( $manifest );
-		$search_query   = '' !== trim( $query ) ? $query : __( 'Recommend related content for the current item', 'gregius-data' );
-
-		$search_options = $options;
-		if ( ! empty( $derived_filter ) ) {
-			$current_filter                    = isset( $search_options['metadata_filter'] ) && is_array( $search_options['metadata_filter'] ) ? $search_options['metadata_filter'] : array();
-			$search_options['metadata_filter'] = array_merge( $current_filter, $derived_filter );
-		}
-
-		$result = $this->synthesize_search_content( $search_query, $llm_model_id, $search_options, $start_time, false );
-
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		if ( isset( $result['metadata'] ) && is_array( $result['metadata'] ) ) {
-			$result['metadata']['tool']                    = 'recommend_related_content';
-			$result['metadata']['tool_selected']           = 'recommend_related_content';
-			$result['metadata']['manifest_derived_filter'] = $derived_filter;
-		}
-
-		return $result;
-	}
-
-	/**
 	 * Load the entity's title + cleaned content, optionally capped.
 	 *
 	 * Prefers the synchronized `wp_posts_clean` row by id; falls back to the raw
@@ -3298,17 +3061,6 @@ class GG_Data_RAG_Service {
 		}
 
 		return $max_chars > 0 ? mb_substr( $text, 0, $max_chars ) : $text;
-	}
-
-	/**
-	 * Load canonical content used for deterministic entity summaries (capped).
-	 *
-	 * @since 1.0.0
-	 * @param int $entity_id Post ID.
-	 * @return string
-	 */
-	private function get_entity_content_for_summary( $entity_id ) {
-		return $this->fetch_entity_content( $entity_id, 12000 );
 	}
 
 	/**
@@ -3435,69 +3187,6 @@ class GG_Data_RAG_Service {
 			'questions' => $questions,
 		);
 	}
-
-	/**
-	 * Build a metadata_filter payload from manifest taxonomies.
-	 *
-	 * @since 1.0.0
-	 * @param array $manifest Manifest payload.
-	 * @return array
-	 */
-	private function build_manifest_related_filter( $manifest ) {
-		if ( ! is_array( $manifest ) ) {
-			return array();
-		}
-
-		$entity      = isset( $manifest['entity'] ) && is_array( $manifest['entity'] ) ? $manifest['entity'] : array();
-		$taxonomies  = isset( $entity['taxonomies'] ) && is_array( $entity['taxonomies'] ) ? $entity['taxonomies'] : array();
-		$entity_type = isset( $entity['type'] ) ? sanitize_key( (string) $entity['type'] ) : '';
-		$terms       = array();
-
-		foreach ( $taxonomies as $taxonomy_key => $taxonomy_terms ) {
-			if ( ! is_array( $taxonomy_terms ) ) {
-				continue;
-			}
-
-			$taxonomy = sanitize_key( (string) $taxonomy_key );
-			if ( 'categories' === $taxonomy ) {
-				$taxonomy = 'category';
-			} elseif ( 'tags' === $taxonomy ) {
-				$taxonomy = 'post_tag';
-			}
-
-			foreach ( $taxonomy_terms as $term ) {
-				if ( ! is_array( $term ) ) {
-					continue;
-				}
-
-				$term_id   = isset( $term['id'] ) ? absint( $term['id'] ) : 0;
-				$term_slug = isset( $term['slug'] ) ? sanitize_title( (string) $term['slug'] ) : '';
-				if ( $term_id <= 0 || '' === $term_slug || '' === $taxonomy ) {
-					continue;
-				}
-
-				$terms[] = array(
-					'taxonomy'  => $taxonomy,
-					'term_slug' => $term_slug,
-					'term_id'   => $term_id,
-				);
-			}
-		}
-
-		$terms  = array_slice( $terms, 0, 6 );
-		$filter = array();
-
-		if ( '' !== $entity_type ) {
-			$filter['post_type'] = $entity_type;
-		}
-
-		if ( ! empty( $terms ) ) {
-			$filter['taxonomy_manifest'] = $terms;
-		}
-
-		return $filter;
-	}
-
 
 	/**
 	 * Handle respond_directly tool - respond without searching.

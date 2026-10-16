@@ -1053,7 +1053,9 @@ class GG_Data_REST_RAG_Controller extends WP_REST_Controller {
 			'security',
 			'context',
 			'diagnostics',
-			'legacy',
+			'answer',
+			'sources',
+			'metadata',
 			'references',
 		);
 
