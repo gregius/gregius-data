@@ -885,12 +885,9 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				ON $table_name
 				USING GIN (metadata_manifest jsonb_path_ops)",
 
-				// Title trigram GIN (typo tolerance) + GiST (similarity KNN pushdown).
+				// Title trigram GiST (typo tolerance via <-> distance KNN ordering).
 				// Trigram is title-only: a trigram index over post_content_clean exceeds
 				// PostgreSQL's 8191-byte index-row limit (SQLSTATE 54000) and does not scale.
-				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_trigram_title 
-				ON $table_name 
-				USING GIN (post_title_clean gin_trgm_ops)",
 				"CREATE INDEX IF NOT EXISTS idx_{$prefix}posts_clean_trigram_title_gist 
 				ON $table_name 
 				USING GIST (post_title_clean gist_trgm_ops)",
@@ -900,13 +897,16 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 				$conn->exec( $index_sql );
 			}
 
-			// Remove the retired trigram indexes on post_content_clean: a GIST
-			// trigram index over long documents exceeds PostgreSQL's 8191-byte
-			// index-row limit (clean writes fail with SQLSTATE 54000), and content
-			// trigrams do not scale. Trigram is now title-only.
+			// Remove retired trigram indexes:
+			// - post_content_clean GIN/GiST: a trigram index over long documents
+			//   exceeds PostgreSQL's 8191-byte index-row limit (clean writes fail with
+			//   SQLSTATE 54000), and content trigrams do not scale. Trigram is title-only.
+			// - post_title_clean GIN: superseded by the title GiST index; typo tolerance
+			//   now uses the <-> distance operator, which GiST serves.
 			$removed_indexes = array(
 				"idx_{$prefix}posts_clean_trigram_content",
 				"idx_{$prefix}posts_clean_trigram_content_gist",
+				"idx_{$prefix}posts_clean_trigram_title",
 			);
 			foreach ( $removed_indexes as $removed_index ) {
 				$conn->exec( "DROP INDEX IF EXISTS {$removed_index}" );

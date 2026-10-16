@@ -82,13 +82,20 @@ Primary entrypoints:
 - `search_native_orchestrate(...)` (native search with parallel RRF)
 - `search_rag_orchestrate(...)` (RAG-oriented orchestration path with supplementary metadata filter)
 
-The schema file is **idempotent and create-only**: it provisions the full schema on
-a brand-new connection via `CREATE [OR REPLACE]` / `CREATE ... IF NOT EXISTS`. The
-only `DROP` statements are the trigger-function `CASCADE` (PostgreSQL has no
-`CREATE OR REPLACE TRIGGER`) and the `DROP POLICY IF EXISTS` pairs (RLS policies
-have no `CREATE OR REPLACE` form). There are no migration/overload `DROP`s — a
-pre-1.0 connection that predates a signature or return-type change must drop the
-affected functions once, or be recreated from scratch.
+The schema file is **idempotent**: it provisions the full schema on a brand-new
+connection via `CREATE [OR REPLACE]` / `CREATE ... IF NOT EXISTS`. Besides those
+idempotent creates, it contains:
+- `DROP FUNCTION IF EXISTS ... CASCADE` for the trigger function (PostgreSQL has no
+  `CREATE OR REPLACE TRIGGER`).
+- `DROP POLICY IF EXISTS` pairs for RLS policies (RLS policies have no
+  `CREATE OR REPLACE` form).
+- `DROP TABLE IF EXISTS` / `DROP INDEX IF EXISTS` for retired artifacts: embedding
+  tables from removed models (e.g. `wp_posts_voyage_voyage_4_1024`,
+  `wp_posts_cohere_embed_v40_1536`) and the retired GIN title trigram index.
+
+There are no function-overload `DROP`s — a pre-1.0 connection that predates a
+signature or return-type change must drop the affected functions once, or be
+recreated from scratch.
 
 > **Schema/registry lockstep:** when you add or change an embedding model, update
 > both the model registry (`GG_Data_Model_Registry`) and this `postgrest-schema.sql`
@@ -339,18 +346,18 @@ Legacy pills using `pill.anchor` (single `taxonomy:slug:id` string) are handled 
   - Admin users (`manage_options` capability) bypass rate limiting automatically.
 
 - `gg_data_search_title_weight` / `gg_data_search_content_weight`
-  - Applied in schema manager (lines 934-935) when creating tsvector indexes.
+  - Applied in the schema manager when creating tsvector indexes.
   - Defaults: `'A'` (title weight) and `'B'` (content weight).
   - Override to adjust ranking contribution of title vs body text in FTS scoring.
 
 - `gg_data_rag_pre_retrieval_filter`
-  - Applied in RAG service `generate_answer()` (line 1544) before chunk retrieval.
+  - Applied in RAG service `generate_answer()` before chunk retrieval.
   - Receives empty array, original query, and options; returns filter criteria array.
   - Returned array is merged into RAG options as `$options['retrieval_filters']`, which flows through to `search_rag_orchestrate`'s `metadata_filter` parameter.
   - Use to inject date ranges, taxonomy filters, or document-class constraints into RAG-oriented retrieval.
 
 - `gg_data_rag_chunks`
-  - Applied in RAG service `retrieve_chunks_pdo()` (line 697) and `retrieve_chunks()` (lines 449, 559).
+  - Applied in RAG service `retrieve_chunks_pdo()` and `retrieve_chunks()`.
   - Receives the resolved chunk array, query, and RAG options.
   - Use to re-rank, filter, or annotate retrieved chunks before context assembly.
 
@@ -433,15 +440,15 @@ Search SQL functions are shared across native (frontend search) and RAG-oriented
 
 | Method | Provider | Params | Notes |
 |---|---|---|---|
-| `retrieve_chunks()` / `retrieve_chunks_pdo()` (lines 405, 595) | PDO | 10 params (no `rrf_k` — uses SQL default 60) | Main RAG retrieval path; supports `$options['disable_vector']` to skip vector search |
-| `retrieve_chunks_fallback()` (line 729) | WordPress native | N/A | Used when PDO/PostgREST are unavailable; no PostgreSQL function called |
-| PostgREST provider RPC call (line ~476) | PostgREST | 11 params | Supabase RPC invocation of `search_rag_orchestrate` |
+| `retrieve_chunks()` / `retrieve_chunks_pdo()` | PDO | 10 params (no `rrf_k` — uses SQL default 60) | Main RAG retrieval path; supports `$options['disable_vector']` to skip vector search |
+| `retrieve_chunks_fallback()` | WordPress native | N/A | Used when PDO/PostgREST are unavailable; no PostgreSQL function called |
+| PostgREST provider RPC call | PostgREST | 11 params | Supabase RPC invocation of `search_rag_orchestrate` |
 
 **Search-adjacent RAG hooks:**
 
-- `gg_data_rag_pre_retrieval_filter` — applied in `generate_answer()` (line 1544). Receives the original query and options; returns an array of filter criteria (`metadata_filter`) that flows into `search_rag_orchestrate`. Use this hook to inject date ranges, taxonomy filters, or document-class constraints into RAG retrieval.
+- `gg_data_rag_pre_retrieval_filter` — applied in `generate_answer()`. Receives the original query and options; returns an array of filter criteria (`metadata_filter`) that flows into `search_rag_orchestrate`. Use this hook to inject date ranges, taxonomy filters, or document-class constraints into RAG retrieval.
 
-- `gg_data_rag_chunks` — applied in `retrieve_chunks_pdo()` (line 697), and twice in `retrieve_chunks()` (lines 449, 559). Receives the resolved chunk array, query, and options. Use this hook to re-rank, filter, or annotate retrieved chunks before context assembly.
+- `gg_data_rag_chunks` — applied in `retrieve_chunks_pdo()`, and twice in `retrieve_chunks()`. Receives the resolved chunk array, query, and options. Use this hook to re-rank, filter, or annotate retrieved chunks before context assembly.
 
 **Search settings governing RAG retrieval:**
 
@@ -502,8 +509,8 @@ Checklist:
 ### 11.7 Missing Search Functions Auto-Repair
 
 The integration class (`GG_Data_Search_Integration`) includes automatic detection and repair of missing SQL functions:
-- `is_missing_function_error()` (line 839) — checks if a PDO exception indicates a missing `search_native_orchestrate` function.
-- `repair_missing_search_functions()` (line 859) — recreates the missing function by re-running the SQL definition from `postgrest-schema.sql`; called automatically when a missing-function error is detected during a search request.
+- `is_missing_function_error()` — checks if a PDO exception indicates a missing `search_native_orchestrate` function.
+- `repair_missing_search_functions()` — recreates the missing function by re-running the SQL definition from `postgrest-schema.sql`; called automatically when a missing-function error is detected during a search request.
 
 This means a single failed request due to a dropped function (e.g. after a DB restore) can self-heal on the next search attempt. If auto-repair fails, the search falls back to MySQL.
 

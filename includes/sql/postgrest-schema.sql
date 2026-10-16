@@ -1293,11 +1293,12 @@ $$;
 -- over post_content_clean exceeds PostgreSQL's 8191-byte index-row limit (clean
 -- writes fail with SQLSTATE 54000), and content trigrams do not scale.
 
--- GIN Trigram Indexes (for typo tolerance)
-CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title 
-ON wp_posts_clean USING GIN (post_title_clean gin_trgm_ops);
+-- Retired: the GIN title trigram index (gin_trgm_ops) served the previous
+-- %/word_similarity typo-tolerance path. Typo tolerance now uses the <-> trigram
+-- distance operator (ORDER BY ... <-> ... LIMIT), which is served by a GiST index.
+DROP INDEX IF EXISTS idx_wp_posts_clean_trigram_title;
 
--- GiST Trigram Indexes (for efficient ORDER BY similarity with LIMIT pushdown)
+-- GiST Trigram Index (title-only; allows ORDER BY <-> with LIMIT index pushdown)
 CREATE INDEX IF NOT EXISTS idx_wp_posts_clean_trigram_title_gist 
 ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 
@@ -1341,7 +1342,7 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 -- - post_excerpt: Post excerpt or first 200 chars
 -- - post_type: WordPress post type
 -- - post_status: WordPress post status
--- - match_type: 'fts' (exact match), 'trigram' (similarity match), or 'vector' (semantic match)
+-- - match_type: 'blended_rrf' (multi-branch fusion), 'fts' (lexical match), 'trigram' (typo match), or 'vector' (semantic match)
 --
 -- ============================================
 -- Features
@@ -1349,18 +1350,20 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 -- 1. Row-per-embedding schema: field_type ('title', 'excerpt', 'chunk'), chunk_index, embedding
 -- 2. Language-specific stemming and stop words (15+ languages)
 -- 3. Field weighting (title matches rank higher than content)
--- 4. Typo tolerance using word_similarity (<%>) operator
+-- 4. Typo tolerance using the trigram <-> distance operator (GiST, title-only)
 -- 5. Semantic vector search (finds conceptually related content)
--- 6. Progressive enhancement (FTS → trigram → vector)
+-- 6. Parallel hybrid retrieval: FTS + trigram + vector CTEs fused via reciprocal rank fusion (RRF)
 -- 7. Graceful degradation (works without pg_trgm/pgvector if disabled)
--- 8. Deduplication (each post appears once, prioritizing FTS > trigram > vector)
+-- 8. Deduplication (each post appears once; branches are fused, not cascaded)
 --
 -- ============================================
--- Search Priority
+-- Retrieval Model
 -- ============================================
--- Tier 1 (FTS): Exact matches with stemming (highest priority)
--- Tier 2 (Trigram): Typo-tolerant matches (medium priority) - triggered when FTS < 5 results
--- Tier 3 (Vector): Semantic/conceptual matches - triggered when FTS+Trigram < 5 results
+-- The three branches (FTS, trigram, vector) run as independent parallel CTEs over the
+-- same state. Candidates are fused via reciprocal rank fusion (RRF); the fused ranking
+-- is returned with a per-row match_type. Branches are capability-gated (trigram needs
+-- pg_trgm + a title, vector needs pgvector + a populated vector table), not cascaded by
+-- a running result count.
 --
 -- ============================================
 -- Supported Languages
