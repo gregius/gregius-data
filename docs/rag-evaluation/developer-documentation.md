@@ -29,6 +29,7 @@ Scope:
 2. Populate required config values:
    - `connection`
    - `framework`
+   - `models` with `embedding` and `answer` (optional: `agentic`, `rerank`, `evaluator`)
    - `prompts[]` with at least one entry containing `id` and `user_input`
 
 3. Run evaluation (full corpus):
@@ -62,7 +63,18 @@ Scope:
 |---|---|---|
 | `connection` | string | Named RAG connection to evaluate. |
 | `framework` | string | Target evaluation framework. Accepted: `ragas`. |
+| `models` | object | Model selection object (sub-fields below). |
 | `prompts` | array | Non-empty array of prompt objects. |
+
+`models` sub-fields:
+
+| Sub-field | Required | Description |
+|---|---|---|
+| `embedding` | Yes | Embedding model key used for retrieval. |
+| `answer` | Yes | LLM model ID for answer generation. |
+| `agentic` | No | Agentic model ID for query routing and tool selection. |
+| `rerank` | No | Rerank model ID. |
+| `evaluator` | No | Evaluator model ID for retrieval-sufficiency grading. |
 
 ### 3.2 Optional top-level fields
 
@@ -104,13 +116,15 @@ Behavioral notes:
 
 ## 4. CLI Flag Contract
 
-| Flag | Value | Default | Description |
+| Flag | Subcommand(s) | Value | Default | Description |
 |---|---|---|---|---|
-| `--only <ID>` | Sample ID string | (empty) | Process a single prompt by ID. |
-| `--framework <name>` | `ragas` | (from config) | Override the target evaluation framework. |
-| `--output-dir <path>` | Absolute path | (timestamped in artifact root) | Write artifacts to a timestamped subdirectory under the specified path. |
-| `--skip-connection-check` | (none) | (unset) | Skip database connection validation. Only applies to `validate-config` and `run` subcommands. |
-| `--help` / `-h` | (none) | | Print usage and exit. |
+| `--config <path>` | run, list-prompts, validate-config | Absolute path | (default local config) | Path to the evaluation config file. |
+| `--only <ID>` | run | Sample ID string | (empty) | Process a single prompt by ID. |
+| `--framework <name>` | run | `ragas` | (from config) | Override the target evaluation framework. |
+| `--output-dir <path>` | run | Absolute path | (timestamped in artifact root) | Write artifacts to a timestamped subdirectory under the specified path. |
+| `--format <format>` | list-prompts | `table`, `json`, `csv` | `table` | Output format for the prompt list. |
+| `--skip-connection-check` | validate-config | (none) | (unset) | Skip database connection validation. |
+| `--help` / `-h` | all | (none) | | Print usage and exit. |
 
 Framework flag behavior:
 1. If `--framework` is provided, it overrides the `framework` field in config.
