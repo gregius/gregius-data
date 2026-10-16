@@ -19,7 +19,7 @@ Standard: ISO/IEC/IEEE 29148:2018
 
 ### 1.1 System Purpose
 
-This SRS defines what the Gregius Data REST API subsystem must do to expose administrative and runtime operations for settings, connections, schema, sync, vectors, search, RAG, models, prompts, logs, and interactions.
+This SRS defines what the Gregius Data REST API subsystem must do to expose administrative and runtime operations for settings, connections, connection health, connection models, schema, sync, sync validation, search, vectors, retry queue, RAG, RAG journey, prompts, models, logs, interactions, and data retention.
 
 ### 1.2 System Scope
 
@@ -89,10 +89,12 @@ The REST API is the primary integration boundary between plugin internals and ex
 - includes/api/class-gg-data-rest-vector-queue-controller.php
 - includes/api/class-gg-data-rest-retry-queue-controller.php
 - includes/api/class-gg-data-rest-rag-controller.php
+- includes/api/class-gg-data-rest-rag-journey-controller.php
 - includes/api/class-gg-data-rest-prompts-controller.php
 - includes/api/class-gg-data-rest-models-controller.php
 - includes/api/class-gg-data-rest-logs-controller.php
 - includes/api/class-gg-data-rest-interactions-controller.php
+- includes/api/class-gg-data-rest-data-retention-controller.php
 - includes/api/class-gg-data-sse-handler.php
 
 ## 3. Software Requirements
@@ -107,7 +109,7 @@ Requirement notation:
 | ID | Requirement | Priority |
 |---|---|---|
 | REST-FR-01 | The software MUST register all Gregius REST routes under namespace `gg-data/v1`. | Must |
-| REST-FR-02 | The software MUST expose endpoint groups for settings, connections, connection health, connection models, schema, sync, sync validation, search, vectors, retry queue, RAG, prompts, models, logs, and interactions. | Must |
+| REST-FR-02 | The software MUST expose endpoint groups for settings, connections, connection health, connection models, schema, sync, sync validation, search, vectors, retry queue, RAG, RAG journey, prompts, models, logs, interactions, and data retention. | Must |
 | REST-FR-03 | The software MUST provide route contracts for listing, retrieval, creation, update, and deletion where supported by each endpoint group. | Must |
 | REST-FR-04 | The software MUST enforce a permission callback for each registered route before endpoint execution. | Must |
 | REST-FR-05 | The software MUST support admin-gated endpoint groups that require privileged access for configuration and operational actions. | Must |

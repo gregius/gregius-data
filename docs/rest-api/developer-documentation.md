@@ -134,7 +134,6 @@ Key routes:
 - `POST /sync/taxonomy/taxonomies`
 - `POST /sync/taxonomy/relationships`
 - `GET /sync/taxonomy/validation`
-- `POST /sync/post-type/{type}`
 - `POST /sync/post-type/{type}/clean`
 - `DELETE /sync/post-type/{type}/orphans`
 - `DELETE /sync/postmeta/orphans`
@@ -144,6 +143,7 @@ Key routes:
 - `POST /sync/batch-sync-postmeta`
 - `POST /sync/postmeta`
 - `POST /sync/batch-sync-post-type/{type}`
+- `POST /sync/regenerate-attachments`
 - `POST /sync/batch-sync-terms`
 - `POST /sync/batch-sync-term-taxonomies`
 - `POST /sync/batch-sync-term-relationships`
@@ -207,6 +207,19 @@ Contract notes:
 - Response includes batch progress fields: `deleted`, `total_deleted`, `has_more`, `next_offset`, `duration_ms`, and `errors`.
 - For destructive deletes, backend selects from the current remaining set each batch to avoid offset drift.
 
+### 4.10 Data Retention Controller
+
+Source: [../../includes/api/class-gg-data-rest-data-retention-controller.php](../../includes/api/class-gg-data-rest-data-retention-controller.php)
+
+Key routes:
+- `POST /data-retention`
+
+Contract notes:
+- Records the admin's "remove data on uninstall" preference, surfaced through the deactivation modal.
+- Request arg: `remove_data` (boolean, required).
+- Deactivation never deletes data; deletion only occurs at uninstall when `remove_data` is enabled.
+- Permission: `manage_network_options` on multisite, otherwise `manage_options`.
+
 ### 4.11 Retry Queue Controller
 
 Source: [../../includes/api/class-gg-data-rest-retry-queue-controller.php](../../includes/api/class-gg-data-rest-retry-queue-controller.php)
@@ -224,6 +237,7 @@ Key routes:
 - `GET /models`
 - `POST /models`
 - `GET /models/providers`
+- `POST /models/refresh`
 - `POST /models/test`
 - `POST /models/{id}/reset-usage`
 - `GET /models/{id}`
@@ -276,33 +290,44 @@ Key notes:
 - Request payloads include required and optional model and context fields.
 - `POST /rag/chat` accepts optional structured `metadata_filter` and `metadata_manifest` fields for scoped retrieval context.
 - `POST /rag/chat` accepts optional `manifest` (object) and `forced_tool` (string) to enable deterministic tool execution and manifest-aware context handling.
-- Supported deterministic overrides currently include `summarize_current_entity` and `recommend_related_content`; unsupported values fall back to normal routing.
+- `forced_tool` executes a tool deterministically when it matches one registered via `gg_data_rag_tools` (for example `search_entity_content`, `search_content`, `compare_content`); unsupported values fall back to normal routing.
 
 ### 4.16 RAG Journey Controller
 
 Source: [../../includes/api/class-gg-data-rest-rag-journey-controller.php](../../includes/api/class-gg-data-rest-rag-journey-controller.php)
 
-Key routes:
+Key routes (all `POST`):
 - `POST /rag/journey/issue`
 - `POST /rag/journey/consume`
-- `GET /rag/journey/history`
+- `POST /rag/journey/history`
 
 Key notes:
-- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-closed evaluation (default deny) for journey endpoints.
-- Caller authentication: guest users identified by session-hash credentials derived from WordPress authentication salts.
-- Session ownership is enforced on consume and history routes: caller's current session hash must match the stored journey owner hash.
-- First-claim binding: legacy journey records without session hashes can be claimed on first interaction by any guest session.
-- `POST /rag/journey/issue` creates or retrieves a journey and returns a unique `interaction_id` and `session_hash`.
-- `POST /rag/journey/consume` appends a RAG turn (query + answer + metadata) and validates session ownership.
-- `GET /rag/journey/history` retrieves all turns in a journey, paginated and filtered by session ownership.
-- No fixed-window throttling on journey endpoints; per-scope default rate-limit filter applies.
+- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-closed evaluation (default deny).
+- Caller context: `issue` binds a one-time continuation token to the caller's user account or guest session (hashed credential derived from WordPress authentication salts).
+- `consume` redeems the one-time token, validating the caller's user account or guest session, and returns the hydration payload.
+- `history` returns the hydration payload directly by `conversation_id`, enforcing read permission (`manage_options`, the interaction author, or a matching guest session hash — with first-claim binding for legacy guest records).
+- The hydration payload shape is `{ conversation_id, interaction_id, messages[] }`.
+- No fixed-window throttling on journey endpoints; the per-scope default rate-limit filter applies.
+
+See [docs/rag §5.4](../rag/developer-documentation.md) for the canonical journey continuity contract (request/response details and error codes).
 
 ### 4.17 Interactions Controller
 
 Source: [../../includes/api/class-gg-data-rest-interactions-controller.php](../../includes/api/class-gg-data-rest-interactions-controller.php)
 
+Key routes:
+- `GET /interactions`
+- `POST /interactions`
+- `GET /interactions/{id}`
+- `PUT/PATCH /interactions/{id}`
+- `DELETE /interactions/{id}`
+- `POST /interactions/{id}/feedback`
+
+Contract notes:
+- `POST /interactions/{id}/feedback` accepts `feedback_type` (`helpful`, `unhelpful`, `rating`, `correction`) and `feedback_value`, and fires the `gg_data_interaction_feedback_received` action; `rating` values are clamped to `1..5`.
+- This controller extends `WP_REST_Posts_Controller` (standard CPT collection/single-item routes) and adds the feedback route.
+
 Notes:
-- This is a `WP_REST_Posts_Controller` implementation for interactions.
 - Access policy is ownership-aware:
   - logged-in users can access their own interactions (read/update/delete)
   - direct `POST /interactions` is admin-only (non-admin create is chat-flow driven)
