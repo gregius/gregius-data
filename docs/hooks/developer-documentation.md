@@ -659,16 +659,6 @@ add_filter( 'gg_data_rag_endpoint_permission', function( $allowed, $request ) {
 - Signature: `(string $error_type, int $elapsed_ms, int $partial_content_length, string $model_id, string $connection_id): void`
 - Emitted in: `includes/api/class-gg-data-sse-handler.php`
 
-#### `gg_data_token_usage_tracked`
-- Type: Action
-- Signature: `(int $tokens_used, string $model, string $query, string $connection_name, string $rag_type): void`
-- Emitted in: `includes/class-gg-data-token-counter.php`
-
-#### `gg_data_token_usage_reset`
-- Type: Action
-- Signature: `(string $connection_name, string $rag_type): void`
-- Emitted in: `includes/class-gg-data-token-counter.php`
-
 #### `gg_data_search_slow_log_ms`
 - Type: Filter
 - Signature: `(float $threshold_ms, string $search_term, string $connection_name, string $retrieval_mode): float`
