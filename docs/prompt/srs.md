@@ -39,19 +39,19 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 
 - Register and persist prompt definitions as `gg_prompt` posts with type classification via `gg_prompt_type` taxonomy.
 - Store prompt control metadata (`status`, `version`, `hash`, `selected`, `factory`).
-- Resolve effective prompt content by deterministic fallback order, type-scoped to ('system' or 'security').
+- Resolve effective prompt content by deterministic fallback order, type-scoped to ('system', 'security', or 'evaluation').
 - Expand date/time tokens at runtime.
 - Classify user queries via LLM-based security gatekeeper before retrieval (pre-RAG check).
 - Block queries classified as unsafe; allow safe queries to proceed to answer generation.
 - Expose prompt CRUD and activation operations via REST with type-aware support.
-- Seed factory prompts (system and security) and run placeholder migration idempotently.
+- Seed factory prompts (system, security, and evaluation) and run placeholder migration idempotently.
 - Store security check results in interaction metadata for audit and analysis.
 
 #### 1.3.3 User Characteristics
 
 | User Class | Technical Level | Primary Interaction Point |
 |---|---|---|
-| Site Administrator | Technical/Operational | WordPress admin prompt UI + REST; views prompt types (system/security) and activation status. |
+| Site Administrator | Technical/Operational | WordPress admin prompt UI + REST; views prompt types (system/security/evaluation) and activation status. |
 | Content Moderator / Security Lead | Technical | REST API to create/update security prompts; views security check audit logs in interactions. |
 | Plugin Developer | Technical | Prompt resolver API with type parameter; security gatekeeper integration points. |
 | Integrator | Technical | CLI and Abilities prompt override contracts with prompt type support; security check result inspection. |
@@ -60,12 +60,12 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 
 | Term | Definition |
 |---|---|
-| Prompt | A `gg_prompt` post assigned to a prompt type (system or security) |
-| Prompt type | Classification of a prompt into ('system' for answer generation or 'security' for query classification) via `gg_prompt_type` taxonomy |
+| Prompt | A `gg_prompt` post assigned to a prompt type (system, security, or evaluation) |
+| Prompt type | Classification of a prompt into ('system' for answer generation, 'security' for query classification, or 'evaluation' for retrieval-sufficiency evaluation) via `gg_prompt_type` taxonomy |
 | Effective prompt | The final prompt content returned by resolver after type filtering, fallback, and token expansion |
 | Explicit prompt | Prompt chosen by a provided prompt ID override (must match requested type) |
 | Selected prompt | Prompt marked by `_gg_prompt_selected=1` and `_gg_prompt_status=published` within a type |
-| Factory prompt | Activation-seeded prompt marked by `_gg_prompt_is_factory=1` (one per type: System Default for system, Security Default for security) |
+| Factory prompt | Activation-seeded prompt marked by `_gg_prompt_is_factory=1` (one per type: System Default for system, Security Default for security, Evaluation Default for evaluation) |
 | Prompt hash | SHA256 hash of normalized prompt content |
 | Security gatekeeper | LLM-based pre-retrieval query classifier using 'security' type prompt; classifies query as safe or unsafe |
 | Security check | The execution of the security gatekeeper LLM call; returns status (safe/unsafe), reason, and LLM usage metadata |
@@ -101,13 +101,13 @@ Requirement notation:
 |---|---|---|
 | PROMPT-FR-01 | The software MUST register and persist prompts as WordPress posts of type `gg_prompt`. | Must |
 | PROMPT-FR-02 | The software MUST register prompt metadata fields for version, status, hash, notes, selected marker, and factory marker. | Must |
-| PROMPT-FR-03 | The software MUST register a `gg_prompt_type` taxonomy with 'system' and 'security' terms to classify prompts by purpose. | Must |
+| PROMPT-FR-03 | The software MUST register a `gg_prompt_type` taxonomy with 'system', 'security', and 'evaluation' terms to classify prompts by purpose. | Must |
 | PROMPT-FR-04 | The software MUST resolve an effective prompt using type-scoped fallback order: explicit prompt (of requested type), then selected prompt (of requested type), then factory prompt (of requested type). | Must |
 | PROMPT-FR-05 | The software MUST reject prompt candidates that are missing, empty, wrong post type, marked draft status, or do not have the requested type assigned. | Must |
 | PROMPT-FR-06 | The software MUST expand `{{date}}`, `{{time}}`, and `{{datetime}}` tokens in resolved prompt content at runtime. | Must |
 | PROMPT-FR-07 | The software MUST expose REST routes for prompt listing, retrieval, creation, update, deletion, and activation; routes MUST accept and validate `prompt_type` parameter. | Must |
 | PROMPT-FR-08 | The software MUST enforce administrative permission checks on prompt REST operations. | Must |
-| PROMPT-FR-09 | Activation flows MUST seed exactly two factory prompts when not already seeded: 'System Default' (type='system', selected=true) and 'Security Default' (type='security', selected=true). | Must |
+| PROMPT-FR-09 | Activation flows MUST seed exactly three factory prompts when not already seeded: 'System Default' (type='system', selected=true), 'Security Default' (type='security', selected=true), and 'Evaluation Default' (type='evaluation', selected=true). | Must |
 | PROMPT-FR-10 | Activation/version-check flows MUST migrate legacy prompts without type assignment to type='system' idempotently. | Must |
 | PROMPT-FR-11 | Activation/version-check flows MUST migrate legacy baked date/time values in factory prompts to placeholder tokens idempotently. | Must |
 | PROMPT-FR-12 | RAG generation MUST resolve system prompt content through the type-scoped prompt resolver with prompt_type='system' before model invocation. | Must |
@@ -123,7 +123,7 @@ Requirement notation:
 |---|---|---|
 | PROMPT-DR-01 | Prompt post type contract MUST use `gg_prompt`. | Must |
 | PROMPT-DR-02 | Prompt metadata contract MUST use `_gg_prompt_*` prefixed keys. | Must |
-| PROMPT-DR-03 | Prompt type taxonomy MUST be registered as `gg_prompt_type` with terms 'system' and 'security'. | Must |
+| PROMPT-DR-03 | Prompt type taxonomy MUST be registered as `gg_prompt_type` with terms 'system', 'security', and 'evaluation'. | Must |
 | PROMPT-DR-04 | Effective prompt result MUST return content and metadata including prompt ID, version, hash, resolution source, and prompt type. | Must |
 | PROMPT-DR-05 | Prompt hashing MUST normalize line endings and trim content before SHA256 computation. | Must |
 | PROMPT-DR-06 | Resolution source metadata SHOULD indicate one of `explicit`, `selected`, or `factory`. | Should |
@@ -141,7 +141,7 @@ Requirement notation:
 | PROMPT-OR-04 | Prompt lifecycle operations MUST remain idempotent across repeated activation/version-check invocations. | Must |
 | PROMPT-OR-05 | Security gatekeeper LLM invocation MUST use dedicated security prompt (type='security'); MUST not use answer generation prompt. | Must |
 | PROMPT-OR-06 | Security gatekeeper response parsing MUST handle JSON parse failures gracefully; MUST default to 'unsafe' on parse error (fail-safe). | Must |
-| PROMPT-OR-07 | Prompt activation via REST MUST only deselect prompts of the same type, allowing system and security selections to coexist independently. | Must |
+| PROMPT-OR-07 | Prompt activation via REST MUST only deselect prompts of the same type, allowing system, security, and evaluation selections to coexist independently. | Must |
 
 ### 3.4 Quality Requirements
 

@@ -14,13 +14,13 @@ In scope:
 - Prompt resolver fallback and token expansion behavior, type-scoped.
 - Security gatekeeper LLM-based query classification mechanism.
 - Prompt REST management interface and permissions.
-- Lifecycle seed and migration behavior for factory system and security prompts (System Default and Security Default).
+- Lifecycle seed and migration behavior for factory system, security, and evaluation prompts (System Default, Security Default, and Evaluation Default).
 - Integration contracts with RAG, CLI, and Abilities flows.
 
 Out of scope:
 - End-user chat UX.
 - LLM provider-specific request semantics beyond gatekeeper classification.
-- Evaluation subsystem execution logic.
+- Evaluation subsystem execution logic (the 'evaluation' prompt type and its factory seed are in scope; see `docs/rag-evaluation/` for execution).
 
 ## 2. Stakeholders and Concerns
 
@@ -35,7 +35,7 @@ Out of scope:
 ## 3. Architecture Context (AV-01)
 
 System context summary:
-The Prompt subsystem is an internal service consumed by RAG generation and upstream command/ability entrypoints. It stores prompt records as WordPress posts organized by type (system vs. security), resolves effective prompt content with controlled fallback and runtime expansion, and enforces security gatekeeper LLM-based classification before retrieval.
+The Prompt subsystem is an internal service consumed by RAG generation and upstream command/ability entrypoints. It stores prompt records as WordPress posts organized by type (system, security, evaluation), resolves effective prompt content with controlled fallback and runtime expansion, and enforces security gatekeeper LLM-based classification before retrieval.
 
 Interfaces at context level:
 - WordPress post/meta storage for `gg_prompt` data with `gg_prompt_type` taxonomy.
@@ -61,16 +61,16 @@ Element responsibilities:
 
 | Element | Responsibility |
 |---|---|
-| Prompt CPT + Taxonomy Registrar | Registers `gg_prompt` post type, metadata schema, and `gg_prompt_type` hierarchical taxonomy with 'system' and 'security' terms. |
+| Prompt CPT + Taxonomy Registrar | Registers `gg_prompt` post type, metadata schema, and `gg_prompt_type` hierarchical taxonomy with 'system', 'security', and 'evaluation' terms. |
 | Prompt Resolver | Resolves effective prompt by fallback order, validity rules, token expansion, hash maintenance, and type-scoping (e.g., resolve('system') or resolve('security')). |
 | Prompt REST Controller | Exposes prompt CRUD + activate routes with capability checks, prompt_type parameter handling, type-scoped activation (deselects only prompts of same type). |
 | Security Gatekeeper Check | Pre-retrieval LLM-based query classifier; resolves 'security' prompt, invokes LLM with security prompt as system message, parses classify response (safe/unsafe), blocks unsafe queries. |
-| Lifecycle Seed/Migration | Seeds System Default (system, active) and Security Default (security, active) prompts idempotently; migrates legacy prompts to 'system' type; migrates baked date/time text to placeholders. |
+| Lifecycle Seed/Migration | Seeds System Default (system, active), Security Default (security, active), and Evaluation Default (evaluation, active) prompts idempotently; migrates legacy prompts to 'system' type; migrates baked date/time text to placeholders. |
 | Prompt Consumers | Supply optional prompt override context, request type-scoped resolution, consume resolved prompt output, integrate security check results into interaction logs. |
 
 ### 4.2 Runtime Interaction View (AV-03)
 
-Type-scoped prompt resolution flow (used for system or security prompts):
+Type-scoped prompt resolution flow (used for system, security, or evaluation prompts):
 1. Consumer calls resolver with prompt type ('system' or 'security') and optional explicit prompt ID.
 2. Resolver filters candidates by type via taxonomy query.
 3. Resolver attempts explicit prompt (validated against requested type).
@@ -81,7 +81,7 @@ Type-scoped prompt resolution flow (used for system or security prompts):
 8. Resolver returns content plus prompt metadata (`id`, `version`, `hash`, `source`, `prompt_type`) or structured error.
 
 Security gatekeeper query classification flow (pre-retrieval check in RAG):
-1. RAG service receives user query after tool selection.
+1. RAG service receives user query before tool selection.
 2. RAG service calls `run_security_gatekeeper_check($query, $llm_model_id, $options)`.
 3. Gatekeeper resolves 'security' type prompt via type-scoped resolver.
 4. Gatekeeper invokes LLM with security prompt as system message, query as user message.
@@ -92,8 +92,8 @@ Security gatekeeper query classification flow (pre-retrieval check in RAG):
 
 Lifecycle flow:
 1. Activation/version-check paths execute seed and migration routines.
-2. Prompt type terms ('system', 'security') are created once via `ensure_prompt_type_terms()`.
-3. Factory prompts are created once: System Default (system, active) and Security Default (security, active).
+2. Prompt type terms ('system', 'security', 'evaluation') are created once via `ensure_prompt_type_terms()`.
+3. Factory prompts are created once: System Default (system, active), Security Default (security, active), and Evaluation Default (evaluation, active).
 4. Legacy prompts without type assignment are migrated to 'system' type via `migrate_prompt_types()`.
 5. Placeholder migration rewrites legacy baked date/time fragments into token placeholders once.
 6. Subsequent runs no-op via guard options.
@@ -108,7 +108,7 @@ Environment assumptions:
 Persistence dependencies:
 - `wp_posts` for `gg_prompt` records.
 - `wp_postmeta` for `_gg_prompt_*` contracts.
-- `wp_term_taxonomy` and `wp_terms` for `gg_prompt_type` taxonomy terms ('system', 'security').
+- `wp_term_taxonomy` and `wp_terms` for `gg_prompt_type` taxonomy terms ('system', 'security', 'evaluation').
 - `wp_term_relationships` for post-to-type term associations.
 - `wp_options` for seed/migration idempotency flags.
 - Interaction metadata storage for security check results.
@@ -171,13 +171,13 @@ Persistence dependencies:
 
 - Status: Accepted
 - Decision: Resolve and activate prompts independently per type via `gg_prompt_type` taxonomy; resolver accepts `$prompt_type` parameter; REST activation deselects only prompts of same type.
-- Rationale: Allows independent selection of system and security prompts without conflict; prevents accidental hijacking of one prompt type by activating another.
+- Rationale: Allows independent selection of system, security, and evaluation prompts without conflict; prevents accidental hijacking of one prompt type by activating another.
 - Alternatives considered:
-  - Single merged system/security prompt.
+  - Single merged system/security/evaluation prompt.
   - Global activation affecting all types.
   - Separate database tables per type.
 - Consequences:
-  - Positive: Independent lifecycle for system and security concerns; clean separation of concerns; admin dashboard can manage both without coupling.
+  - Positive: Independent lifecycle for system, security, and evaluation concerns; clean separation of concerns; admin dashboard can manage all without coupling.
   - Tradeoff: Taxonomy queries add slight performance overhead; developers must remember to pass `$prompt_type` parameter.
 - Traceability: PROMPT-FR-12, PROMPT-FR-13, PROMPT-DR-07.
 

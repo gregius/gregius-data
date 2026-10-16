@@ -57,6 +57,7 @@ Prompt types are classified using the `gg_prompt_type` hierarchical taxonomy.
 Terms (fixed):
 - `system` — Prompts used for answer generation in RAG pipeline
 - `security` — Prompts used for pre-retrieval security gatekeeper classification
+- `evaluation` — Prompts used for retrieval-sufficiency evaluation (evaluator)
 
 Every prompt post MUST be assigned exactly one type term via `wp_set_object_terms()`.
 
@@ -258,13 +259,14 @@ Source:
 Activation creates taxonomy terms via `ensure_prompt_type_terms()`:
 - Creates 'system' term if not present
 - Creates 'security' term if not present
+- Creates 'evaluation' term if not present
 - Idempotent via `gg_data_prompt_type_terms_seeded` option guard
 
 [SRS: PROMPT-FR-03]
 
 ### 6.2 Factory prompt seeding
 
-Activation seeds TWO factory prompts via `seed_default_prompts()`:
+Activation seeds THREE factory prompts via `seed_default_prompts()`:
 
 **System Default** (system type):
 - Title: 'System Default'
@@ -282,7 +284,15 @@ Activation seeds TWO factory prompts via `seed_default_prompts()`:
 - Content: Prompt to classify queries as safe/unsafe
 - Guard option: `gg_data_security_prompt_seeded`
 
-Both are marked as factory prompts (`_gg_prompt_is_factory=1`) for identification.
+**Evaluation Default** (evaluation type):
+- Title: 'Evaluation Default'
+- Type: 'evaluation'
+- Status: 'published'
+- Selected: true (active by default)
+- Content: Prompt judging whether the retrieved context is sufficient for the query
+- Guard option: `gg_data_evaluation_prompt_seeded`
+
+All are marked as factory prompts (`_gg_prompt_is_factory=1`) for identification.
 
 ### 6.3 Legacy migration
 
@@ -297,6 +307,8 @@ Lifecycle migration rewrites legacy baked date/time text in factory prompt conte
 - `Current time: {{time}}.`
 
 Both routines are idempotent through option guards.
+
+## 7. Integration with RAG, CLI, and Abilities
 
 ### 7.1 RAG service integration
 
@@ -389,7 +401,7 @@ Check:
 1. Resolver path has run at least once to backfill missing hash.
 2. Content normalization assumptions match subsystem hash contract.
 
-## 9. Parity Coverage Snapshot
+## 10. Parity Coverage Snapshot
 
 Documented and code-backed:
 - Prompt CPT + metadata contract
