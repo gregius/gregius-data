@@ -119,13 +119,11 @@ Requirement notation:
 | RAG-FR-23 | The software MUST accept optional structured metadata inputs (`metadata_filter`, `metadata_manifest`) and preserve deterministic retrieval behavior when those fields are absent. | Must |
 | RAG-FR-24 | The software MUST accept an optional request `manifest` payload and normalize it against a canonical schema contract before downstream tool handlers consume it. | Must |
 | RAG-FR-25 | The software MUST support an optional deterministic tool override (`forced_tool`) that executes prior to agentic routing when the value matches an allowed tool. | Must |
-| RAG-FR-26 | The software MUST expose `summarize_current_entity` as a first-party tool that summarizes the active entity identified by request manifest or source context. | Must |
-| RAG-FR-27 | The software MUST expose `recommend_related_content` as a first-party tool that derives scoped retrieval filters from manifest taxonomies. | Must |
 | RAG-FR-28 | The software MUST enforce deterministic no-op behavior for unknown or unsupported `forced_tool` values by continuing standard tool-selection flow. | Must |
 | RAG-FR-29 | The software MUST keep deterministic tool and manifest contracts reusable by external clients without requiring Gregius Intelligence-specific runtime dependencies. | Must |
-| RAG-FR-30 | The software MUST expose a REST endpoint for session-bound guest journey continuity that accepts a reference identifier, optional block metadata, and returns a journey interaction record for first-time or prior session users. | Must |
-| RAG-FR-31 | The software MUST expose a REST endpoint to retrieve and append RAG interactions to an existing session-bound journey record via a session hash ownership mechanism that validates caller session state. | Must |
-| RAG-FR-32 | The software MUST expose a REST endpoint to list RAG interactions within a session-bound journey that applies guest session hash validation and returns interaction history scoped to the caller's session. | Must |
+| RAG-FR-30 | The software MUST expose a POST endpoint that issues a one-time continuation token for a conversation, binding the token to the caller's user account or guest session. | Must |
+| RAG-FR-31 | The software MUST expose a POST endpoint that consumes a continuation token (single use) and returns the conversation hydration payload, validating the caller's user account or guest session before returning data. | Must |
+| RAG-FR-32 | The software MUST expose a POST endpoint that returns the conversation hydration payload for a conversation id, enforcing read permission (administrator, interaction author, or guest session ownership, with first-claim binding for legacy guest records). | Must |
 | RAG-FR-33 | The software MUST support per-surface permission seed behavior where RAG chat and action endpoints use fail-closed default permission (deny unless explicitly allowed), and journey and SSE endpoints use fail-closed default permission (deny unless explicitly allowed). | Must |
 
 ### 3.2 Data and Contract Requirements
@@ -145,8 +143,8 @@ Requirement notation:
 | RAG-DR-11 | RAG chat and action endpoints MUST return structured 429 responses when route-scoped rate limits are exceeded, including retry and window metadata for clients. | Must |
 | RAG-DR-12 | Metadata-filter transport MUST preserve empty-filter object semantics for JSONB containment (`{}`), and response metadata used by interaction tracking MUST expose the effective filter payload for observability. | Must |
 | RAG-DR-13 | Successful tool or response payload metadata MUST include manifest observability fields (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`) when manifest context is present. | Must |
-| RAG-DR-14 | Guest journey interactions MUST be persisted with a session-hash ownership credential that identifies the guest user, and all subsequent reads or appends MUST validate that the caller's current session hash matches the stored hash or qualifies as a first-claim legacy record before granting access. | Must |
-| RAG-DR-15 | The software MUST support first-claim binding semantics for legacy guest conversation records (records created before session-hash ownership was implemented) such that a guest without a stored hash can assume ownership on first interaction only, and subsequent reads enforce session-hash validation. | Must |
+| RAG-DR-14 | Guest interactions MUST carry a session-hash ownership credential, and journey reads MUST grant access only when the caller is an administrator, the interaction author, or a guest whose current session hash equals the stored hash (compared in constant time). | Must |
+| RAG-DR-15 | The software MUST support first-claim binding for legacy guest interactions that lack a stored session hash: the first guest to read such an interaction assumes ownership (its stored hash is set to the caller's hash), and subsequent reads enforce session-hash validation. | Must |
 
 ### 3.3 Software Operations and Control Requirements
 
@@ -160,7 +158,7 @@ Requirement notation:
 | RAG-OR-06 | The software SHOULD support request origins from multiple plugin interfaces while preserving a unified interaction and metadata contract. | Should |
 | RAG-OR-07 | The software MUST preserve deterministic behavior when optional retrieval-enhancement capabilities are disabled or unavailable. | Must |
 | RAG-OR-08 | The software MUST enforce route-scoped fixed-window throttling for RAG `POST /rag/chat` and `POST /rag/action`, with extension hooks for per-scope limits and time window values. | Must |
-| RAG-OR-09 | The software MUST compute and validate guest session hashes using WordPress authentication salts to prevent tampering and MUST enforce hash validation on all journey endpoint requests from unauthenticated callers. | Must |
+| RAG-OR-09 | The software MUST compute guest session hashes using WordPress authentication salts to prevent tampering, and MUST validate the caller's user account or guest session on continuation-token consume and on conversation-history reads. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -197,7 +195,7 @@ Acceptance baseline for current implemented subsystem:
 | RAG-FR-01 to RAG-FR-04 | docs/rag/architecture.md (Overview, Context View), includes/api/class-gg-data-rest-rag-controller.php | Chat input contract and default retrieval scope |
 | RAG-FR-05 to RAG-FR-17 | docs/rag/architecture.md (Component View, Runtime View, ADRs), includes/rag/class-gg-data-rag-service.php, includes/rag/class-gg-data-coverage-gate.php | Retrieval, passage selection, governance, abstain, and source behavior |
 | RAG-FR-18 to RAG-FR-23 | docs/rag/architecture.md (Component responsibilities and extension boundaries), includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php, includes/rag/class-gg-data-rag-service.php | External endpoints, metadata transport, and extension behavior |
-| RAG-FR-24 to RAG-FR-29 | docs/rag/architecture.md (manifest contract and deterministic routing), includes/rag/class-gg-data-manifest-validator.php, includes/rag/class-gg-data-rag-service.php | Manifest normalization contract and deterministic tool execution behavior |
+| RAG-FR-24, RAG-FR-25, RAG-FR-28, RAG-FR-29 | docs/rag/architecture.md (manifest contract and deterministic routing), includes/rag/class-gg-data-manifest-validator.php, includes/rag/class-gg-data-rag-service.php | Manifest normalization contract and deterministic tool execution behavior |
 | RAG-FR-30 to RAG-FR-33 | docs/rag/architecture.md (Journey continuity component and per-surface permission policy), includes/api/class-gg-data-rest-rag-journey-controller.php, includes/class-gg-data-interaction.php | Guest journey endpoints, session-bound continuity, and permission seed semantics |
 | RAG-FR-22, RAG-DR-01 to RAG-DR-12 | docs/rag/architecture.md (Runtime flow and metadata architecture), includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php, includes/rag/class-gg-data-rag-service.php, includes/class-gg-data-interaction.php | Response schema, metadata, sanitation, observability, and errors |
 | RAG-DR-13 | docs/rag/architecture.md (response metadata contract), includes/rag/class-gg-data-rag-service.php, includes/class-gg-data-interaction.php | Manifest metadata observability and persistence |
@@ -227,4 +225,3 @@ Acceptance baseline for current implemented subsystem:
 | Date | Decision | Rationale | Decided By |
 |---|---|---|---|
 | 2026-03-30 | Use an SRS-only package first for RAG | Fastest path to separate requirements from the legacy architecture narrative and create a clean handoff for later architecture and developer docs | Product and engineering direction |
-| 2026-03-30 | Keep the legacy root RAG architecture doc during the first migration step | It remains the most complete reverse-engineering source until the split package is complete | Documentation migration decision |

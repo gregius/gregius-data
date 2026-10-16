@@ -43,7 +43,7 @@ $result = $rag->generate_answer(
 	array(
 		'num_chunks'      => 5,
 		'temperature'     => 0.7,
-		'rewrite_model'   => '',
+		'agentic_model'   => '',
 		'rerank_model_id' => '',
 		'messages'        => array(),
 	)
@@ -99,11 +99,11 @@ Canonical contract reference:
 $rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 
 $result = $rag->generate_answer(
-	'Summarize this post',
+	'What does this page say about eligibility?',
 	'gpt-4o-mini',
 	array(
 		'conversation_id' => '2f4e0f0c-0d52-4886-a919-4d7774f5ecb0',
-		'forced_tool'     => 'summarize_current_entity',
+		'forced_tool'     => 'search_entity_content',
 		'source'          => array(
 			'type'    => 'frontend',
 			'post_id' => 377,
@@ -111,7 +111,8 @@ $result = $rag->generate_answer(
 		'manifest'        => array(
 			'schema_version' => '1.0',
 			'entity'         => array(
-				'post_id' => 377,
+				'id'   => 377,
+				'type' => 'page',
 			),
 		),
 	)
@@ -158,14 +159,14 @@ This class is an internal governance component rather than the primary integrati
 
 Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
 
-`generate_answer()` dispatches to one of three tool handlers based on tool selection or deterministic rules:
+`generate_answer()` dispatches to a tool handler based on tool selection or deterministic rules. The base tools are `search_content`, `compare_content`, `summarize_conversation`, `respond_directly`, and `clarify_previous`; `search_entity_content` is registered separately by `GG_Data_Entity_Content_Tool` via the `gg_data_rag_tools` filter.
 
-**`handle_search_content()`**
+**`synthesize_search_content()`** (tool `search_content`)
 - Return contract: `{ answer, sources, chunks, metadata }`
 - Standard single-entity retrieval and answer generation.
 - `chunks` contains the final selected chunk set used for context assembly.
 
-**`handle_compare_content()`**
+**`handle_compare_content()`** (tool `compare_content`)
 - Return contract: `{ answer, sources, chunks, metadata }`
 - Per-entity retrieval with merge/dedup/rerank, coverage gate evaluation, and comparison synthesis.
 - `chunks` is populated in all three return paths:
@@ -174,9 +175,7 @@ Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg
   - **Success**: uses `$synthesis_chunks` — the balanced synthesis chunk set.
 - The `chunks` key feeds `format_json_output()` (via the `GG_Data_Format_Json_Output` trait), which extracts `retrieved_contexts` for evaluation dataset capture. Without it, `compare_content` tool results would record empty retrieved contexts.
 
-**`handle_assistant_actions()`**
-- Return contract varies by action type (callback confirmation, metadata, etc.).
-- Not relevant for evaluation capture.
+**`handle_summarize_conversation()`** (tool `summarize_conversation`), **`handle_respond_directly()`** (tool `respond_directly`), and **`handle_clarify_previous()`** (tool `clarify_previous`) handle conversation summary, direct (no-search) responses, and clarification of the prior answer respectively.
 
 [SRS: RAG-FR-05 to RAG-FR-17]
 
@@ -216,7 +215,7 @@ Optional request fields:
 - `num_chunks`
 - `post_types`
 - `temperature`
-- `rewrite_model`
+- `agentic_model`
 - `rerank_model_id`
 - `conversation_id`
 - `prompt_id`
@@ -232,7 +231,7 @@ Key behavior:
 - `messages` are sanitized to allow only supported roles and sanitized content.
 - `metadata_filter` and `metadata_manifest` are accepted as structured arrays and normalized to array defaults when absent or invalid.
 - `manifest` is accepted as a structured payload and normalized by the canonical validator before tool handlers consume it.
-- `forced_tool` executes deterministically when it matches an allowed tool (`summarize_current_entity`, `recommend_related_content`); unsupported values fall back to standard routing.
+- `forced_tool` executes deterministically when it matches a registered tool (`gg_data_rag_tools`; for example `search_content`, `compare_content`, `search_entity_content`); unsupported values fall back to standard routing.
 - Retrieval providers must preserve empty metadata filter object semantics (`{}`) at SQL transport boundaries for JSONB containment parity.
 - Fixed-window route throttling is applied before generation and returns HTTP 429 (`gg_data_rate_limited`) when exceeded.
 - Successful responses return `success: true` and a `data` payload.
@@ -278,131 +277,99 @@ Response behavior:
 
 Use this endpoint to drive client-side menus or action buttons without hardcoding available actions. [SRS: RAG-FR-20, RAG-DR-09]
 
-## 5.4 Journey Continuity Endpoints (`POST`, `GET /wp-json/gg-data/v1/rag/journey/...`)
+## 5.4 Journey Continuity Endpoints (`POST /wp-json/gg-data/v1/rag/journey/...`)
 
 Source: [includes/api/class-gg-data-rest-rag-journey-controller.php](../../includes/api/class-gg-data-rest-rag-journey-controller.php)
 
 **Purpose:**
-Guest users without WordPress accounts can maintain a persistent conversation history within their browser session. Journey endpoints implement session-bound interaction persistence that prevents cross-session access while supporting first-time and returning visitor workflows.
+Guest users without WordPress accounts can resume a conversation across page loads or block instances. The journey controller hydrates conversation history from canonical interaction storage and supports a one-time continuation token so a decoupled frontend can hand a conversation to a new page or view. All three routes are `POST`.
 
 **Guest Session Ownership:**
-- Guests are identified by a hashed session credential derived from WordPress authentication salts.
-- Guest session hashes are stored in a secure, httponly cookie.
-- All journey operations validate that the caller's current session hash matches the stored ownership hash.
-- First-claim binding: legacy conversations without session-hash credentials can be claimed by first interaction.
+- Guests are identified by a hashed session credential (`GG_Data_Interaction::get_guest_session_hash()`) derived from WordPress authentication salts and stored in a cookie.
+- Journey reads (`consume`, `history`) validate that the caller may read the interaction: an administrator always may; a logged-in user must be the interaction author; a guest must match the stored `_gg_interaction_guest_session_hash` via constant-time `hash_equals`.
+- First-claim binding: legacy guest interactions without a stored hash are claimed by the first guest to read them (the stored hash is set to the caller's hash on first read).
 
 ### 5.4.1 `POST /wp-json/gg-data/v1/rag/journey/issue`
 
 **Purpose:**
-Create a new journey record or retrieve an existing guest session's journey for first-time or returning visits.
+Issue a one-time continuation token for a conversation.
 
-**Required request fields:**
-- `reference` (string): A unique identifier for the conversation thread (e.g., post slug, custom ID).
+**Required request field:**
+- `conversation_id` (string): Conversation UUID.
 
 **Request behavior:**
-- If the caller's session hash matches an existing journey for the reference, the record is returned.
-- If the caller has no session hash yet, a new journey record is created and a session hash is issued.
-- First-claim binding: if the reference matches a legacy record without a session hash, it is claimed by the current guest on first interaction.
+- Validates `conversation_id` and resolves its hydration payload (which also enforces read permission for the caller).
+- Stores a transient token bound to `{ conversation_id, user_id, guest_session, created_at }` with a fixed TTL.
 
 **Response:**
 ```json
-{
-  "success": true,
-  "data": {
-    "interaction_id": "uuid",
-    "reference": "post-slug",
-    "session_hash": "sha256-hash",
-    "created_at": "2026-03-30T10:00:00Z",
-    "state": "active"
-  }
-}
+{ "success": true, "data": { "token": "uuid" } }
 ```
 
 **Errors:**
-- `gg_data_journey_blocked`: Guest journey access is denied by policy.
-- `gg_data_journey_invalid_reference`: Reference is malformed.
+- Invalid/unknown conversation id (`WP_Error`).
 
-**Implements:** [SRS: RAG-FR-30, RAG-DR-14, RAG-DR-15, RAG-OR-09]
+**Implements:** [SRS: RAG-FR-30, RAG-OR-09]
 
 ### 5.4.2 `POST /wp-json/gg-data/v1/rag/journey/consume`
 
 **Purpose:**
-Append a new RAG interaction (question + answer) to a session-bound journey.
+Redeem a one-time continuation token and return the conversation hydration payload.
 
-**Required request fields:**
-- `interaction_id` (string): The journey record UUID from `issue` response.
-- `query` (string): The user query.
-- `answer` (string): The generated answer or response text.
-
-**Optional request fields:**
-- `sources` (array): Citation/reference data for the answer.
-- `metadata` (object): Retrieval and governance metadata.
+**Required request field:**
+- `token` (string): One-time continuation token from `issue`.
 
 **Request behavior:**
-- Session hash validation: caller's current session hash must match the stored journey owner hash.
-- First-claim fallback: if the stored journey has no session hash (legacy record), the caller claims ownership and sets the session hash on first append.
-- Subsequent appends must validate session hash.
+- Validates the token (must exist and not be consumed), then deletes it (single use).
+- For a user-bound token the current user must match; for a guest-bound token the current guest session hash must match (`hash_equals`).
 
-**Response:**
+**Response:** `{ "success": true, "data": <hydration payload> }` (shape in 5.4.4).
+
+**Errors:**
+- `gg_data_rag_journey_token_invalid` (404): token missing or already consumed.
+- `gg_data_rag_journey_user_mismatch` (403): user-bound token used by a different user.
+- `gg_data_rag_journey_guest_session_mismatch` (403): guest-bound token used by a different session.
+
+**Implements:** [SRS: RAG-FR-31, RAG-DR-14, RAG-OR-09]
+
+### 5.4.3 `POST /wp-json/gg-data/v1/rag/journey/history`
+
+**Purpose:**
+Return the conversation hydration payload directly by conversation id (no token required).
+
+**Required request field:**
+- `conversation_id` (string): Conversation UUID.
+
+**Request behavior:**
+- Resolves the canonical RAG interaction for the conversation and enforces read permission (`can_read_interaction_post`), including guest first-claim binding.
+
+**Response:** `{ "success": true, "data": <hydration payload> }` (shape in 5.4.4).
+
+**Errors:**
+- `gg_data_rag_journey_not_found` (404): conversation not found.
+- `rest_forbidden` (401/403): caller cannot read the interaction.
+
+**Implements:** [SRS: RAG-FR-32, RAG-DR-14, RAG-OR-09]
+
+### 5.4.4 Hydration payload
+
+`consume` and `history` return the same hydration shape (`issue` returns a token instead):
+
 ```json
 {
   "success": true,
   "data": {
-    "turn_id": "uuid",
-    "interaction_id": "uuid",
-    "query": "...",
-    "answer": "...",
-    "created_at": "2026-03-30T10:00:01Z"
+    "conversation_id": "uuid",
+    "interaction_id": 1234,
+    "messages": [
+      { "role": "user", "content": "...", "timestamp": "..." },
+      { "role": "assistant", "content": "...", "sources": [], "references": [], "metadata": {}, "thinking": "", "timestamp": "..." }
+    ]
   }
 }
 ```
 
-**Errors:**
-- `gg_data_journey_not_found`: Journey record does not exist.
-- `gg_data_journey_session_mismatch`: Caller session hash does not match journey owner hash.
-- `gg_data_journey_ownership_denied`: Cannot claim ownership (journey already claimed or invalid state).
-
-**Implements:** [SRS: RAG-FR-31, RAG-DR-14, RAG-DR-15, RAG-OR-09]
-
-### 5.4.3 `GET /wp-json/gg-data/v1/rag/journey/history`
-
-**Purpose:**
-Retrieve the complete interaction history for a session-bound journey.
-
-**Required query fields:**
-- `interaction_id` (string): The journey record UUID.
-
-**Optional query fields:**
-- `page` (integer): Pagination page number (default: 1).
-- `per_page` (integer): Items per page (default: 20).
-
-**Request behavior:**
-- Session hash validation: caller's current session hash must match the stored journey owner hash.
-- Returns only interactions owned by the validated session.
-- Pagination and ordering follow WordPress REST conventions.
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "turn_id": "uuid",
-      "query": "...",
-      "answer": "...",
-      "sources": [...],
-      "created_at": "2026-03-30T10:00:01Z"
-    },
-    ...
-  ]
-}
-```
-
-**Errors:**
-- `gg_data_journey_not_found`: Journey record does not exist.
-- `gg_data_journey_session_mismatch`: Caller session hash does not match journey owner hash.
-
-**Implements:** [SRS: RAG-FR-32, RAG-DR-14, RAG-OR-09]
+The payload is reconstructed from the stored interaction turns (`_gg_interaction_data.turns`), with `GG_Data_Citation_Resolver` rebuilding assistant `references`.
 
 ## 6. Extension Points
 
@@ -618,35 +585,34 @@ Fix:
 - Confirm provider transport keeps empty-filter object semantics for JSONB containment bypass.
 - Confirm response metadata and interaction payload include `search.metadata_filter` for diagnostics.
 
-### 7.8 `gg_data_journey_session_mismatch` or ownership errors on journey endpoints
+### 7.8 `gg_data_rag_journey_guest_session_mismatch` or ownership errors on journey endpoints
 
 Cause:
-- The guest caller's session hash does not match the stored journey owner hash, or the journey is already claimed by another session.
+- The guest caller's current session hash does not match the stored ownership hash for the interaction, or the interaction belongs to another user.
 
 Investigation:
-- Verify that the guest is using the same browser/tab as the original journey creation request.
-- Check that session cookies are preserved across requests (browser should not clear cookies mid-session).
-- Inspect browser developer tools for `gg_data_guest_session` or similar session-hash cookies.
+- Verify the guest is using the same browser/tab as the original request.
+- Check that session cookies are preserved across requests (the browser should not clear them mid-session).
+- Inspect browser developer tools for the guest session-hash cookie.
 
 Fix:
-- For new visitors, call `POST /rag/journey/issue` to create a new journey with the current session hash.
+- For a fresh start, call `POST /rag/journey/issue` to obtain a continuation token bound to the current session.
 - For returning visitors, ensure the same session hash is present when calling `/consume` or `/history`.
-- If the session has been cleared, the guest can create a new journey with a fresh session hash, but previous interactions will be unavailable (privacy by design).
+- If the session was cleared, the guest cannot recover the prior conversation (ownership is session-bound by design).
 
-**First-Claim Binding:** If the journey is a legacy record without a stored session hash, the first caller to append via `/consume` automatically claims ownership. Subsequent access will require session-hash validation.
+**First-Claim Binding:** A legacy guest interaction without a stored hash is claimed by the first guest to read it (via `consume` or `history`); subsequent reads require session-hash validation.
 
-### 7.9 `gg_data_journey_blocked` on issue or consume requests
+### 7.9 Journey permission denials
 
 Cause:
-- Guest journey access is denied by policy filter.
+- Journey endpoints are fail-closed: a request is denied unless the `gg_data_rag_endpoint_permission` filter explicitly allows it, or (for `consume`/`history`) the caller is authorized for the interaction.
 
 Check:
 - Verify the `gg_data_rag_endpoint_permission` filter for journey endpoints; journey surfaces default to fail-closed (deny unless explicitly allowed).
-- Confirm no custom filter is overriding the permission on journey routes.
+- For `consume`/`history`, confirm the caller is the interaction author or a matching guest session.
 
 Fix:
-- Review and adjust access control policy if guest journey access should be permitted in your deployment.
-- If blocking is intentional, provide clear user messaging to explain why guest conversations are not available.
+- Adjust the access policy if guest journey access should be permitted in your deployment; otherwise surface clear user messaging.
 
 ## 8. RAG Assistant Block (`gregius-data/rag-assistant`)
 
@@ -662,10 +628,12 @@ The RAG Assistant is the foundation Gutenberg block that exposes the RAG endpoin
 | `connectionId` | string | `""` | PostgreSQL connection name |
 | `embeddingModelKey` | string | `"hashingtf-murmur3-1024"` | Embedding model key for retrieval |
 | `llmModelId` | string | `""` | LLM model ID for answer generation |
-| `rewriteModelId` | string | `""` | Agentic/rewrite model ID (optional) |
+| `agenticModelId` | string | `""` | Agentic model ID for query routing and tool selection (optional) |
 | `rerankModelId` | string | `""` | Rerank model ID (optional) |
+| `evaluatorModelId` | string | `""` | Evaluator model ID for retrieval-sufficiency grading (optional) |
 | `promptId` | number | `0` | System prompt post ID (0 = active/default) |
 | `securityPromptId` | number | `0` | Security prompt post ID (0 = active/default) |
+| `evaluationPromptId` | number | `0` | Evaluation prompt post ID (0 = active/default) |
 | `placeholder` | string | `"Ask a question..."` | Input placeholder text |
 | `enableStreaming` | boolean | `true` | Stream responses via SSE |
 | `requireLogin` | boolean | `true` | Gate block render to logged-in users only |

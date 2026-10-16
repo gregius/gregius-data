@@ -37,9 +37,7 @@ Out of scope:
   - Normalized before downstream tool handlers consume it.
 - `forced_tool` (string, optional)
   - Deterministic tool override.
-  - Valid values currently include:
-    - `summarize_current_entity`
-    - `recommend_related_content`
+  - Valid values are any tool registered via the `gg_data_rag_tools` filter (for example `search_content`, `compare_content`, `search_entity_content`).
 
 ### 3.2 Deterministic Override Behavior
 
@@ -57,7 +55,8 @@ Example normalized shape:
 {
   "schema_version": "1.0",
   "entity": {
-    "post_id": 377
+    "id": 377,
+    "type": "page"
   },
   "taxonomy": {
     "terms": [
@@ -135,7 +134,7 @@ This applies to REST and SSE transport surfaces so deterministic behavior does n
 ## 11. Traceability
 
 Primary requirement references:
-- `RAG-FR-24` to `RAG-FR-29`
+- `RAG-FR-24` to `RAG-FR-25`
 - `RAG-DR-13`
 - `REST-FR-18`
 - `REST-DR-13`

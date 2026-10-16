@@ -183,7 +183,7 @@ Security Gatekeeper Check
     ▼
 Deterministic Forced Tool Check
     │
-    ├─ summarize_current_entity / recommend_related_content -> execute selected tool directly
+    ├─ forced_tool (any tool registered via gg_data_rag_tools) -> execute selected tool directly
     │
     ▼
 Optional Agentic Tool Selection
@@ -355,18 +355,18 @@ The RAG subsystem exposes multiple surface entry points (REST chat/action/action
 | `POST /rag/chat` | RAG Controller | POST | Caller (logged-in or guest session) | Fail-Closed (False) | Fixed-window per-route | Chat may be public-eligible; guest session validates ownership via session hash |
 | `POST /rag/action` | RAG Controller | POST | Caller (logged-in or guest session) | Fail-Closed (False) | Fixed-window per-route | Action execution requires caller capability or public override; guest session validates ownership |
 | `GET /rag/actions` | RAG Controller | GET | Caller (logged-in or guest session) | Fail-Closed (False) | Per-scope default | Action discovery lists available tools; guest session does not require ownership for discovery |
-| `POST /rag/journey/issue` | Journey Controller | POST | Caller (guest session or new visitor) | Fail-Closed (False) | Throttled by default | New or existing journey entry point; first-time users granted access unless blocked by override hook |
-| `POST /rag/journey/consume` | Journey Controller | POST | Caller (guest session only) | Fail-Closed (False) | Per-scope default | Append to journey; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
-| `GET /rag/journey/history` | Journey Controller | GET | Caller (guest session only) | Fail-Closed (False) | Per-scope default | Journey interaction history; must validate caller session hash matches stored journey ownership hash; supports first-claim legacy binding |
-| `GET /rag/stream` (SSE) | SSE Handler | GET | Caller (logged-in or guest session) | Fail-Closed (False) | Generic rate-limit filter | SSE streaming; guest session hashed for session-bound continuity when applicable |
+| `POST /rag/journey/issue` | Journey Controller | POST | Caller (logged-in or guest) | Fail-Closed (False) | Throttled by default | Issues a one-time continuation token bound to the caller's user account or guest session |
+| `POST /rag/journey/consume` | Journey Controller | POST | Caller (token owner) | Fail-Closed (False) | Per-scope default | Redeems a one-time continuation token; validates the caller's user or guest session; returns the hydration payload |
+| `POST /rag/journey/history` | Journey Controller | POST | Caller (logged-in or guest) | Fail-Closed (False) | Per-scope default | Returns the hydration payload by conversation id; enforces read permission (author or guest session ownership, first-claim for legacy) |
+| `admin-ajax.php?action=gg_data_rag_stream` (SSE) | SSE Handler | POST (`wp_ajax`) | Caller (logged-in or guest) | Fail-Closed (False) | Guest rate-limit filter | SSE streaming is served over admin-ajax, not a REST route; guest session hashed for continuity when applicable |
 
 **Permission Seed Semantics:**
 - **Fail-Closed (False)**: Default deny. Endpoint returns 403 Forbidden unless the `gg_data_rag_endpoint_permission` filter explicitly grants access (e.g., for public chat or capability-gated actions).
 
 **Guest Session Ownership:**
-- Guest callers are identified by a hashed session credential computed from the WordPress authentication salts and stored in a browser cookie.
-- Journey endpoints use this hash to enforce session-bound interaction visibility (RAG-DR-14, RAG-OR-09).
-- First-claim binding for legacy records allows a guest without a stored session hash to claim ownership on first interaction (RAG-DR-15).
+- Guest callers are identified by a hashed session credential computed from the WordPress authentication salts (`GG_Data_Interaction::get_guest_session_hash()`), stored in a browser cookie.
+- Journey reads validate this hash (constant-time `hash_equals`) to enforce session-bound visibility (RAG-DR-14, RAG-OR-09).
+- First-claim binding for legacy records allows a guest without a stored session hash to claim ownership on first read (RAG-DR-15).
 
 **Mapping to Requirements:**
 - AV-05 -> RAG-FR-30 to RAG-FR-33
@@ -388,7 +388,6 @@ The RAG subsystem exposes multiple surface entry points (REST chat/action/action
 
 - The RAG subsystem operates inside the broader plugin and depends on configured connections, model registry data, and synchronized content.
 - Upstream requirements are represented only by the RAG SRS and planning artifacts; no separate SyRS currently exists.
-- Legacy narrative content in the root RAG architecture document remains available during migration but is no longer the target final architecture artifact.
 
 ---
 
