@@ -100,9 +100,6 @@ class GG_Data_CLI_Answer {
 	 * [--prompt=<identifier>]
 	 * : Use a prompt by identifier (post ID, slug, or exact title).
 	 *
-	 * [--no-track]
-	 * : Skip interaction recording (dev/testing).
-	 *
 	 * [--format=<format>]
 	 * : Output format.
 	 * ---
@@ -122,9 +119,6 @@ class GG_Data_CLI_Answer {
 	 *         --connection=gregius-data \
 	 *         --embedding-model=hashingtf-murmur3-1024 \
 	 *         --answer-model=gpt-4
-	 *
-	 *     # Dev/testing - skip interaction recording
-	 *     $ wp gg-data answer "test query" --no-track
 	 *
 	 *     # Output as JSON for automation
 	 *     $ wp gg-data answer "What services do you offer?" --format=json
@@ -155,7 +149,6 @@ class GG_Data_CLI_Answer {
 		$evaluator_model      = $assoc_args['evaluator-model'] ?? '';
 		$evaluation_prompt_id = absint( $assoc_args['evaluation-prompt'] ?? 0 );
 		$answer_model         = $assoc_args['answer-model'] ?? 'gpt-4o-mini';
-		$no_track             = isset( $assoc_args['no-track'] );
 		$format               = $assoc_args['format'] ?? 'table';
 		$prompt_id            = $this->resolve_prompt_id( $assoc_args );
 		$conversation_id      = '';
@@ -182,12 +175,7 @@ class GG_Data_CLI_Answer {
 			WP_CLI::log( sprintf( 'Using prompt override: #%d', $prompt_id ) );
 		}
 
-		// Optionally disable tracking for dev/testing.
-		if ( $no_track ) {
-			add_filter( 'gg_data_track_interaction', '__return_false' );
-		} else {
-			$conversation_id = wp_generate_uuid4();
-		}
+		$conversation_id = wp_generate_uuid4();
 
 		// Execute RAG answer via Abilities Manager.
 		$result = $this->get_abilities()->execute_rag_answer(
