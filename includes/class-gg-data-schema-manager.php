@@ -1615,9 +1615,7 @@ if ( ! class_exists( 'GG_Data_Schema_Manager' ) ) {
 		/**
 		 * Create HashingTF Murmur3 1024D embedding table
 		 *
-		 * Stateless internal model — uses tokenizer_version (not vocabulary_version).
-		 * The search function detects absence of vocabulary_version at runtime
-		 * and automatically uses the dense/stateless path.
+	 * Stateless internal model — uses tokenizer_version, no vocabulary state.
 		 *
 		 * @param PDO $conn Database connection.
 		 * @return bool True on success.

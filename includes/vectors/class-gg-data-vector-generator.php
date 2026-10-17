@@ -272,19 +272,4 @@ class GG_Data_Vector_Generator {
 		return isset( $this->strategies[ $strategy_id ] ) ? $this->strategies[ $strategy_id ] : null;
 	}
 
-	/**
-	 * Check if model has compatible strategy
-	 *
-	 * @since 1.0.0
-	 * @param array $model Model configuration.
-	 * @return bool True if strategy exists for model.
-	 */
-	public function has_strategy_for_model( array $model ): bool {
-		foreach ( $this->strategies as $strategy ) {
-			if ( $strategy->supports_model( $model ) ) {
-				return true;
-			}
-		}
-		return false;
-	}
 }
