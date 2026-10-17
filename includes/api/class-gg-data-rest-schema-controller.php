@@ -207,9 +207,9 @@ class GG_Data_REST_Schema_Controller extends WP_REST_Controller {
 					'pg_trgm_extension' => $schema_exists,  // Assume extensions are installed if schema exists
 					'schema_version'    => $schema_version,
 					'version'           => $schema_version,
-					'plugin_version'    => defined( 'GG_DATA_VERSION' ) ? GG_DATA_VERSION : '1.0.0',
-					'requires_update'   => $schema_exists && version_compare( $schema_version, defined( 'GG_DATA_VERSION' ) ? GG_DATA_VERSION : '1.0.0', '<' ),
-					'update_available'  => $schema_exists && version_compare( $schema_version, defined( 'GG_DATA_VERSION' ) ? GG_DATA_VERSION : '1.0.0', '<' ),
+					'plugin_version'    => GG_DATA_VERSION,
+					'requires_update'   => $schema_exists && version_compare( $schema_version, GG_DATA_VERSION, '<' ),
+					'update_available'  => $schema_exists && version_compare( $schema_version, GG_DATA_VERSION, '<' ),
 				);
 
 				return new WP_REST_Response( $status, 200 );

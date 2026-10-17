@@ -18,11 +18,6 @@ if ( ! class_exists( 'GG_Data_Activator' ) ) {
 	class GG_Data_Activator {
 
 		/**
-		 * Plugin version constant (must match header Version in gregius-data.php)
-		 */
-		const VERSION = '1.0.0';
-
-		/**
 		 * WordPress option name for storing database version
 		 */
 		const VERSION_OPTION = 'gg_data_db_version';
@@ -866,7 +861,7 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 		public static function check_version() {
 			$installed_version = get_option( self::VERSION_OPTION, '0.0.0' );
 
-			if ( version_compare( $installed_version, self::VERSION, '<' ) ) {
+			if ( version_compare( $installed_version, GG_DATA_VERSION, '<' ) ) {
 				self::run_upgrades();
 
 				if ( function_exists( 'gg_data_migrate_search_settings_scope' ) ) {
@@ -901,10 +896,10 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 			$installed_version = get_option( self::VERSION_OPTION, '0.0.0' );
 
 			// Update version number only after successful upgrades.
-			update_option( self::VERSION_OPTION, self::VERSION );
+			update_option( self::VERSION_OPTION, GG_DATA_VERSION );
 
 			// Show admin notice for successful upgrade.
-			if ( version_compare( $installed_version, self::VERSION, '<' ) ) {
+			if ( version_compare( $installed_version, GG_DATA_VERSION, '<' ) ) {
 				add_action(
 					'admin_notices',
 					function () use ( $installed_version ) {
@@ -913,7 +908,7 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 							/* translators: 1: old version, 2: new version */
 							__( 'Gregius Data updated from version %1$s to %2$s successfully.', 'gregius-data' ),
 							$installed_version,
-							self::VERSION
+							GG_DATA_VERSION
 						);
 						printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
 					}

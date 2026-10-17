@@ -55,6 +55,7 @@ if ( version_compare( $GLOBALS['wp_version'], '6.9', '<' ) ) {
 }
 
 // Define plugin constants.
+// GG_DATA_VERSION must match the plugin header Version in gregius-data.php.
 define( 'GG_DATA_VERSION', '1.0.0' );
 define( 'GG_DATA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GG_DATA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

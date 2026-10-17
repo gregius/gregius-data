@@ -3,6 +3,10 @@
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 
+if ( ! defined( 'GG_DATA_VERSION' ) ) {
+    define( 'GG_DATA_VERSION', '1.0.0' );
+}
+
 require_once __DIR__ . '/../../includes/class-gg-data-activator.php';
 
 class Test_GG_Data_Activator extends PHPUnit\Framework\TestCase {
@@ -19,7 +23,8 @@ class Test_GG_Data_Activator extends PHPUnit\Framework\TestCase {
     }
 
     public function test_constant_version_is_defined() {
-        $this->assertSame( '1.0.0', GG_Data_Activator::VERSION );
+        $this->assertTrue( defined( 'GG_DATA_VERSION' ) );
+        $this->assertSame( '1.0.0', GG_DATA_VERSION );
     }
 
     public function test_constant_version_option_is_correct() {
