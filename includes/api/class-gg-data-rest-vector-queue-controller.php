@@ -106,27 +106,22 @@ class GG_Data_REST_Vector_Queue_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'batch_generate_vectors' ),
 					'permission_callback' => array( $this, 'check_permissions' ),
 					'args'                => array(
-						'connection_name'  => array(
+						'connection_name' => array(
 							'required'          => true,
 							'type'              => 'string',
 							'sanitize_callback' => 'sanitize_text_field',
 						),
-						'model_key'        => array(
+						'model_key'       => array(
 							'required'          => true,
 							'type'              => 'string',
 							'sanitize_callback' => 'sanitize_text_field',
 							'description'       => 'Model identifier from registry',
 						),
-						'batch_size'       => array(
+						'batch_size'      => array(
 							'required'          => false,
 							'type'              => 'integer',
 							'default'           => 25,
 							'sanitize_callback' => 'absint',
-						),
-						'regenerate_since' => array(
-							'required'          => false,
-							'type'              => 'string',
-							'sanitize_callback' => 'sanitize_text_field',
 						),
 					),
 				),

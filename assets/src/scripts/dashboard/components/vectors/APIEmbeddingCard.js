@@ -146,7 +146,6 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 					data: {
 						connection_name: connection,
 						batch_size: 10, // Smaller batches for API calls
-						regenerate_since: regenerateSince,
 						model_key: model.model_key,
 					},
 					signal: controller.signal,
