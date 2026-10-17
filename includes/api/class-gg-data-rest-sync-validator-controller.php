@@ -607,7 +607,7 @@ class GG_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
 						// Count eligible attachments whose extraction FAILED (post meta),
-						// so the UI can prompt a regenerate instead of silently skipping.
+						// so the UI can surface failed extractions as a diagnostic.
 						// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are generated dynamically from the enabled type/status arrays.
 						$failed_query = $wpdb->prepare(
 							"SELECT COUNT(*) FROM {$wpdb->posts} a

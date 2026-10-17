@@ -360,42 +360,4 @@ class GG_Data_Content_Source {
 			array( 'post_id' => $post_id )
 		);
 	}
-
-	/**
-	 * Clear the cached extraction state for all eligible attachments.
-	 *
-	 * Forces re-extraction (e.g. after changing the document model): deletes the
-	 * source hash / cached text / version / status so the resolver re-runs.
-	 *
-	 * @since 1.0.0
-	 * @param string $connection_name Connection name.
-	 * @return int Number of attachments whose cache was cleared.
-	 */
-	public static function reset_extraction_cache( $connection_name = 'default' ) {
-		$post_ids = get_posts(
-			array(
-				'post_type'      => 'attachment',
-				'post_status'    => 'inherit',
-				'posts_per_page' => -1,
-				'fields'         => 'ids',
-				'post_mime_type' => 'application/pdf',
-			)
-		);
-
-		$cleared = 0;
-
-		foreach ( $post_ids as $post_id ) {
-			if ( ! self::is_eligible_attachment( $post_id, $connection_name ) ) {
-				continue;
-			}
-
-			delete_post_meta( $post_id, self::META_SOURCE_HASH );
-			delete_post_meta( $post_id, self::META_EXTRACTED_TEXT );
-			delete_post_meta( $post_id, self::META_EXTRACTION_VERSION );
-			delete_post_meta( $post_id, self::META_STATUS );
-			++$cleared;
-		}
-
-		return $cleared;
-	}
 }

@@ -162,19 +162,6 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
         }
     };
 
-    const handleRegenerateAttachments = async () => {
-        try {
-            await apiFetch({
-                path: '/gg-data/v1/sync/regenerate-attachments',
-                method: 'POST',
-                data: { connection_name: selectedConnectionId }
-            });
-            refreshValidationData();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const currentModel = visionModels.find((model) => model.value === documentModel);
     const modelMenuLabel = currentModel
         ? sprintf(__('Model (%s)', 'gregius-data'), currentModel.label)
@@ -448,7 +435,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                                                 {row.validation.failed_count > 0 && (
                                                     <div style={{ marginTop: '4px' }}>
                                                         <span className="components-badge is-warning">
-                                                            {sprintf(__('%d extraction failed — regenerate', 'gregius-data'), row.validation.failed_count)}
+                                                            {sprintf(__('%d extraction failed', 'gregius-data'), row.validation.failed_count)}
                                                         </span>
                                                     </div>
                                                 )}
@@ -468,17 +455,6 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
                                                                     } }
                                                                 >
                                                                     { modelMenuLabel }
-                                                                </MenuItem>
-                                                            ) }
-                                                            { row.name === 'attachment' && (
-                                                                <MenuItem
-                                                                    onClick={ () => {
-                                                                        onClose();
-                                                                        handleRegenerateAttachments();
-                                                                    } }
-                                                                    disabled={ !row.enabled || !documentModel }
-                                                                >
-                                                                    { __('Regenerate', 'gregius-data') }
                                                                 </MenuItem>
                                                             ) }
                                                             <MenuItem

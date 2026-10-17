@@ -143,7 +143,6 @@ Key routes:
 - `POST /sync/batch-sync-postmeta`
 - `POST /sync/postmeta`
 - `POST /sync/batch-sync-post-type/{type}`
-- `POST /sync/regenerate-attachments`
 - `POST /sync/batch-sync-terms`
 - `POST /sync/batch-sync-term-taxonomies`
 - `POST /sync/batch-sync-term-relationships`
