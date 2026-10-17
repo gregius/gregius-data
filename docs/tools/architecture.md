@@ -65,7 +65,8 @@ RAG Service (generate_answer)
     │    ├─ respond_directly → LLM response only
     │    ├─ clarify_previous → elaboration
     │    ├─ compare_content → comparison analysis
-    │    └─ custom_tool_{name} → developer extension
+    │    ├─ search_entity_content → entity-grounded answer
+    │    └─ gg_data_rag_tool_{name} → developer extension
     │
     └─ Step 3: Response assembly (answer + sources + metadata)
 
@@ -83,7 +84,7 @@ Canonical Contracts
 
 **Mapping to requirements:**
 - AV-01 → FR-T01 through FR-T08 (tool workflow)
-- AV-01 → FR-T-STRAT-01 through FR-T-STRAT-05 (strategy pattern)
+- AV-01 → FR-T-STRAT-01 through FR-T-STRAT-06 (strategy pattern)
 
 ---
 
@@ -170,15 +171,12 @@ To enable premium tool providers (e.g., gregius-intelligence) to extend RAG tool
    - Visibility: public
    - Returns: array with `{text, reasoning_content, usage, provider, model, execution_time_ms}`
 
-2. `GG_Data_RAG_Service::search_synthesize($query, $llm_model_id, $options, $start_time, $fallback)`
-   - Purpose: Hybrid retrieval + LLM synthesis (mirrored search_content logic)
-   - Visibility: public
-   - Returns: array with `{answer, sources, metadata}`
-
-3. `GG_Data_RAG_Service::append_manifest_metadata($result, $options)`
+2. `GG_Data_RAG_Service::append_manifest_metadata($result, $options)`
    - Purpose: Normalize response metadata with manifest tracking
    - Visibility: public
    - Returns: array with manifest metadata appended to `$result['metadata']`
+
+> **Note:** search synthesis is performed by the internal (private) `synthesize_search_content()` method and is not part of the public extension contract.
 
 **Contract Guarantees:**
 - Method signatures remain stable across v1 minor versions (additive changes only)
@@ -189,7 +187,7 @@ To enable premium tool providers (e.g., gregius-intelligence) to extend RAG tool
 **Premium Tool Registration:**
 - Tool definitions registered via `gg_data_rag_tools` filter
 - Tool handlers hooked via `gg_data_rag_tool_{name}` filter
-- No hardcoded tool cases in foundation (forced-tool or agentic routing)
+- No hardcoded cases for premium/custom tools; the five core tools (search_content, summarize_conversation, respond_directly, clarify_previous, compare_content) remain hardcoded, while premium/custom tools route through the generic `gg_data_rag_tool_{name}` filter
 
 **Migration Example (gregius-intelligence):**
 ```
@@ -197,7 +195,7 @@ Phase E: Premium tool provider initializes on gg_intelligence_init hook
 ├─ Hooks filter 'gg_data_rag_tools' → register summarize_current_entity + recommend_related_content
 ├─ Hooks filter 'gg_data_rag_tool_summarize_current_entity' → handler method
 ├─ Hooks filter 'gg_data_rag_tool_recommend_related_content' → handler method
-└─ Handlers use contract methods: stream_llm(), search_synthesize(), append_manifest_metadata()
+└─ Handlers use contract methods: stream_llm(), append_manifest_metadata()
 ```
 
 ### 3.5 Extensibility Layer
@@ -351,7 +349,7 @@ Deployment is transparent to developers:
 
 ### AD-T05: Agnostic Extension Contract for Premium Tools
 
-**Decision:** Define stable v1 handler capability contract (stream_llm, search_synthesize, append_manifest_metadata) exposed as public methods in foundation RAG service.
+**Decision:** Define stable v1 handler capability contract (stream_llm, append_manifest_metadata) exposed as public methods in foundation RAG service.
 
 **Rationale:**
 - Decouples premium tool implementations from foundation architecture
@@ -405,7 +403,7 @@ Deployment is transparent to developers:
 - AV-02 → FR-T04 (fallback for unsupported providers)
 - AV-03 → FR-T05 (tool selection filtering)
 - AV-03 → FR-T06 (consistent response structure)
-- AD-T01 → FR-T-STRAT-01 through FR-T-STRAT-05 (strategy interface requirements)
+- AD-T01 → FR-T-STRAT-01 through FR-T-STRAT-06 (strategy interface requirements)
 
 ---
 

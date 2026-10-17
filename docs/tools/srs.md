@@ -129,6 +129,7 @@ Requirement notation:
 |---|---|---|---|---|
 | `gg_data_rag_tools` | Filter | 1 | `(array $tools): array` | Register or modify tools |
 | `gg_data_rag_tool_selection` | Filter | 1 | `(array $result, string $query, array $messages): array` | Override tool selection logic |
+| `gg_data_rag_tool_selection_system_prompt` | Filter | 2 | `(string $prompt): string` | Modify tool-selection system prompt (entity grounding) |
 | `gg_data_rag_tool_{name}` | Filter | 2 | `(?array $result, string $tool_name, array $context): ?array` | Custom tool handler |
 | `gg_data_rag_tool_executed` | Action | 1 | `(string $tool_name, array $result, array $context): void` | Tool execution notification |
 
@@ -140,7 +141,8 @@ Requirement notation:
 | FR-T-STRAT-02 | Strategies MUST provide `select_tool(query, messages, tools, model_id)` method |
 | FR-T-STRAT-03 | Strategies MUST provide `format_tools(tools)` method for API-specific formatting |
 | FR-T-STRAT-04 | Strategies MUST provide `parse_response(response)` method to extract tool selection |
-| FR-T-STRAT-05 | Strategies SHOULD provide graceful fallback on provider API errors |
+| FR-T-STRAT-05 | Strategies MUST provide `get_id()` method returning the strategy identifier |
+| FR-T-STRAT-06 | Strategies SHOULD provide graceful fallback on provider API errors |
 
 ### 3.5 Non-Functional Requirements
 
@@ -155,7 +157,7 @@ Requirement notation:
 
 Tool subsystem is complete when:
 
-1. ✓ All 5 built-in Tier 1 tools are defined and emit stable signatures
+1. ✓ All 6 built-in Tier 1 tools are defined and emit stable signatures
 2. ✓ Tool selection works with OpenAI, Anthropic, Gemini, DeepSeek via native tool calling
 3. ✓ Fallback prompt-based routing works for any provider
 4. ✓ Custom tools can be registered without modifying core code

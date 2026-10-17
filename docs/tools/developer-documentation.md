@@ -654,6 +654,13 @@ interface GG_Data_Tool_Calling_Strategy {
      * @return array Parsed tool selection.
      */
     public function parse_response( $response ): array;
+
+    /**
+     * Get the strategy identifier.
+     *
+     * @return string Strategy ID (e.g., 'openai', 'anthropic', 'prompt').
+     */
+    public function get_id(): string;
 }
 ```
 
@@ -670,7 +677,7 @@ interface GG_Data_Tool_Calling_Strategy {
 - Parser: Extracts `tool_use` content block with name and input
 
 **Gemini Strategy** (`GG_Data_Gemini_Tool_Strategy`)
-- Used for: Google Gemini 2.5, 2.0, 1.5 models
+- Used for: Google Gemini 2.5, 2.0 models
 - Format: Gemini `tools` with `function_declarations` array
 - Parser: Extracts `functionCall` from response parts
 
@@ -712,7 +719,7 @@ Detection logic:
    ```
 
 2. ✓ Does the agentic model (rewrite_model) exist and have provider support?
-   - Check: `wp db query "SELECT * FROM wp_gg_data_models WHERE model_key='your_agentic_model'"`
+   - Verify the model is registered in the catalog (`GG_Data_Model_Registry::get_model('gregius-data', $model_id)`)
    - Provider must be in: openai, anthropic, gemini, deepseek
 
 3. ✓ Is the tool description clear enough for the LLM to select it?
@@ -720,8 +727,8 @@ Detection logic:
    - Use active, clear language: "Search for product pricing information"
 
 4. ✓ Are you checking logs for tool selection?
-   - Enable debug logging: `define('GG_DATA_DEBUG', true);`
-   - Check: `wp debug.log` for "Tool selected: my_tool"
+   - Enable debug logging: set `GG_DATA_DEBUG_MODE` to `true` in `gregius-data.php`
+   - Check: `wp-content/debug.log` for "Tool selected: my_tool"
 
 ### "Tool selection always defaults to search_content"
 
@@ -853,8 +860,8 @@ $selection = $strategy->select_tool($query, $messages, $tools, 'gpt-4o-mini');
 
 ## 9. Compatibility Notes
 
-- **WordPress:** 6.0+
-- **PHP:** 7.4+
+- **WordPress:** 6.9+
+- **PHP:** 8.2+
 - **LLM Providers:** OpenAI (GPT-4o, 4o-mini), Anthropic (Claude), Google (Gemini), DeepSeek
 - **Other providers:** Supported via fallback prompt-based routing
 
