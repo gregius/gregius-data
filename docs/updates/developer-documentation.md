@@ -34,7 +34,7 @@ Not covered:
 
 ```php
 $installed_version = get_option( GG_Data_Activator::VERSION_OPTION, '0.0.0' );
-$runtime_version   = GG_Data_Activator::VERSION;
+$runtime_version   = GG_DATA_VERSION;
 
 $schema_manager = new GG_Data_Schema_Manager();
 $schema_version = $schema_manager->get_schema_version( 'default' );
@@ -69,16 +69,17 @@ Look for `requires_update` / `update_available` in the response payload.
 Source: `includes/class-gg-data-activator.php`
 
 Constants:
-- `VERSION`
 - `VERSION_OPTION` (`gg_data_db_version`)
+
+Runtime plugin version is the `GG_DATA_VERSION` constant defined in `gregius-data.php`.
 
 Key methods:
 - `activate()`
 - `check_version()`
-- `run_upgrades()`
+- `run_upgrades()` (internal dispatcher — invoked by `activate()` / `check_version()`)
 
 Behavior notes:
-- `check_version()` compares stored plugin version with `VERSION` and runs upgrades when outdated.
+- `check_version()` compares stored plugin version with `GG_DATA_VERSION` and runs upgrades when outdated.
 - `run_upgrades()` updates the plugin version option and emits admin success notice when version changes.
 
 [SRS: UPD-FR-02, UPD-FR-03, UPD-DR-01]
@@ -100,7 +101,6 @@ Upgrade flow internals:
 - Runs transaction-wrapped migration path:
   - `migrate_postmeta_table()`
   - `migrate_posts_table_for_sync()`
-  - `migrate_taxonomy_tables()`
   - `install_pgvector_extension()`
 - Commits and updates schema version on success.
 - Rolls back and returns error payload on exceptions.

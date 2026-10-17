@@ -127,7 +127,7 @@ Mapping:
 Activation or admin_init
    -> GG_Data_Activator::check_version()
    -> read installed version (gg_data_db_version)
-   -> compare against GG_Data_Activator::VERSION
+   -> compare against GG_DATA_VERSION
    -> run_upgrades() when installed < runtime version
    -> update plugin version option
    -> emit success notice on version change
