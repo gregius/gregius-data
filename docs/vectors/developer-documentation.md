@@ -62,11 +62,10 @@ Required generation response keys:
 - `total_tokens`
 
 
+Connection awareness:
+- Strategy implementations route execution by connection provider type (PDO vs PostgREST/Supabase compatible).
 
-Core responsibilities:
-- Route execution by connection provider type (PDO vs PostgREST/Supabase compatible).
-
-### 3.4 Vector Queue REST Controller (`GG_Data_REST_Vector_Queue_Controller`)
+### 3.3 Vector Queue REST Controller (`GG_Data_REST_Vector_Queue_Controller`)
 
 Source: [../../includes/api/class-gg-data-rest-vector-queue-controller.php](../../includes/api/class-gg-data-rest-vector-queue-controller.php)
 
@@ -75,12 +74,7 @@ Core responsibilities:
 - Expose status and posts-list diagnostics.
 - Expose vector clear operation.
 
-
-
-Core responsibilities:
-- Return connection-scoped status metadata for operators.
-
-### 3.6 Connection Models REST Controller (`GG_Data_REST_Connection_Models_Controller`)
+### 3.4 Connection Models REST Controller (`GG_Data_REST_Connection_Models_Controller`)
 
 Source: [../../includes/api/class-gg-data-rest-connection-models-controller.php](../../includes/api/class-gg-data-rest-connection-models-controller.php)
 
@@ -89,7 +83,7 @@ Core responsibilities:
 - Add/remove model associations per connection.
 - Mask API key material in response payloads.
 
-### 3.7 HashingTF Generator (`GG_Data_HashingTF_Embeddings`) and Strategy (`GG_Data_HashingTF_Strategy`)
+### 3.5 HashingTF Generator (`GG_Data_HashingTF_Embeddings`) and Strategy (`GG_Data_HashingTF_Strategy`)
 
 Sources:
 - [../../includes/vectors/class-gg-data-hashingtf-embeddings.php](../../includes/vectors/class-gg-data-hashingtf-embeddings.php)
@@ -225,21 +219,21 @@ Checklist:
 - Verify expected fallback/global model scope when connection-local model is missing.
 - Verify model key supplied to route matches registry entry exactly.
 
-### 9.3 Connection-Based Endpoint Errors
+### 9.2 Connection-Based Endpoint Errors
 
 Checklist:
 - Verify connection exists and credentials are valid.
 - Verify connection type has required transport credentials (PDO or API settings).
 - Check plugin logs for provider-specific connection failures.
 
-### 9.4 Vector Coverage Appears Incomplete
+### 9.3 Vector Coverage Appears Incomplete
 
 Checklist:
 - Inspect `GET /vectors/status` and `GET /vectors/posts` for pending/failure indicators.
 - Verify cleaned/chunked content exists for target posts.
 - Validate model table name and table readiness for active model.
 
-### 9.5 Batch Delete Stops Before Completion
+### 9.4 Batch Delete Stops Before Completion
 
 Checklist:
 - Use `POST /vectors/batch-delete` for large datasets instead of `DELETE /vectors`.
@@ -248,7 +242,7 @@ Checklist:
 - If a response includes zero deleted rows with remaining rows, inspect `errors` field; backend now aborts to prevent infinite polling.
 - Re-run delete to continue from remaining rows.
 
-### 9.6 HashingTF Vectors Missing After Tokenizer Version Bump
+### 9.5 HashingTF Vectors Missing After Tokenizer Version Bump
 
 Checklist:
 - HashingTF does not use vocabulary state. If `TOKENIZER_VERSION` is incremented in `GG_Data_HashingTF_Embeddings`, existing rows are NOT automatically invalidated.
@@ -259,6 +253,6 @@ Checklist:
 ## 10. Traceability (SRS Mapping)
 
 - Orchestration and strategy behavior: [SRS: VEC-FR-01, VEC-FR-02, VEC-FR-03, VEC-DR-01, VEC-DR-02]
-- Route and permissions controls: [SRS: VEC-FR-07, VEC-FR-08, VEC-FR-09, VEC-OR-01]
-- Storage and contract invariants: [SRS: VEC-FR-10, VEC-DR-03, VEC-DR-04, VEC-QR-02]
-- Quality/parity expectations: [SRS: VEC-QR-03, VEC-QR-04, VEC-QR-05, VEC-QR-08]
+- Route and permissions controls: [SRS: VEC-FR-04, VEC-FR-05, VEC-FR-06, VEC-OR-01]
+- Storage and contract invariants: [SRS: VEC-FR-07, VEC-DR-03, VEC-DR-04, VEC-QR-02]
+- Quality/parity expectations: [SRS: VEC-QR-03, VEC-QR-04, VEC-QR-07]

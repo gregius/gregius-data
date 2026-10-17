@@ -97,15 +97,15 @@ Requirement notation:
 | VEC-FR-01 | The software MUST provide a vector generation orchestrator that selects an appropriate generation strategy from model configuration. | Must |
 | VEC-FR-02 | The software MUST support at least one internal stateless hashing strategy and one API embeddings strategy. | Must |
 | VEC-FR-03 | The software MUST support batch vector generation by model key and connection name. | Must |
-| VEC-FR-07 | The software MUST expose vector queue and vector status endpoints for operators. | Must |
-| VEC-FR-08 | The software MUST support clearing vectors for a connection and optional model context. | Must |
-| VEC-FR-09 | The software MUST support per-connection model association retrieval, addition, and removal. | Must |
-| VEC-FR-10 | The software MUST support row-per-embedding generation for title, excerpt, and chunk payloads. | Must |
-| VEC-FR-12 | The software MUST support model lookup fallback from connection-specific to global model registry scope when configured. | Must |
-| VEC-FR-13 | The software MUST preserve compatibility with downstream retrieval consumers that expect vector table and embedding contract stability. | Must |
-| VEC-FR-14 | The software SHOULD support incremental regeneration controls (for example regenerate_since windows) for operational batch workflows. | Should |
-| VEC-FR-15 | The software MUST support at least one stateless internal embedding strategy that requires no vocabulary preparation before generation. | Must |
-| VEC-FR-16 | The software MUST expose a batch vector deletion endpoint for large vector tables and support both direct PostgreSQL and PostgREST/Supabase execution paths. | Must |
+| VEC-FR-04 | The software MUST expose vector queue and vector status endpoints for operators. | Must |
+| VEC-FR-05 | The software MUST support clearing vectors for a connection and optional model context. | Must |
+| VEC-FR-06 | The software MUST support per-connection model association retrieval, addition, and removal. | Must |
+| VEC-FR-07 | The software MUST support row-per-embedding generation for title, excerpt, and chunk payloads. | Must |
+| VEC-FR-08 | The software MUST support model lookup fallback from connection-specific to global model registry scope when configured. | Must |
+| VEC-FR-09 | The software MUST preserve compatibility with downstream retrieval consumers that expect vector table and embedding contract stability. | Must |
+| VEC-FR-10 | The software SHOULD support operator-initiated re-generation by re-running batch generation for a model so vectors can be refreshed after they are cleared. | Should |
+| VEC-FR-11 | The software MUST support at least one stateless internal embedding strategy that requires no vocabulary preparation before generation. | Must |
+| VEC-FR-12 | The software MUST expose a batch vector deletion endpoint for large vector tables and support both direct PostgreSQL and PostgREST/Supabase execution paths. | Must |
 
 ### 3.2 Data and Contract Requirements
 
@@ -117,10 +117,10 @@ Requirement notation:
 | VEC-DR-04 | Field-type contracts MUST distinguish title, excerpt, and chunk rows in storage and retrieval operations. | Must |
 | VEC-DR-05 | Vector REST endpoints MUST return structured success/error payloads with operator-actionable messages. | Must |
 | VEC-DR-06 | Connection-model endpoint contracts MUST mask sensitive API key material in response payloads. | Must |
-| VEC-DR-08 | Model contracts MUST identify target vector table names deterministically for each active embedding model. | Must |
-| VEC-DR-09 | Chunk payload contracts consumed by vector strategies MUST be model-agnostic and connection-aware. | Must |
-| VEC-DR-10 | Error payload contracts MUST preserve machine-actionable error codes for route clients. | Must |
-| VEC-DR-11 | Batch delete responses MUST include progress fields sufficient for iterative clients: deleted, total_deleted, has_more, next_offset, duration_ms, and errors. | Must |
+| VEC-DR-07 | Model contracts MUST identify target vector table names deterministically for each active embedding model. | Must |
+| VEC-DR-08 | Chunk payload contracts consumed by vector strategies MUST be model-agnostic and connection-aware. | Must |
+| VEC-DR-09 | Error payload contracts MUST preserve machine-actionable error codes for route clients. | Must |
+| VEC-DR-10 | Batch delete responses MUST include progress fields sufficient for iterative clients: deleted, total_deleted, has_more, next_offset, duration_ms, and errors. | Must |
 
 ### 3.3 Operations and Security Requirements
 
@@ -131,9 +131,9 @@ Requirement notation:
 | VEC-OR-03 | The subsystem SHOULD cap queue/list request limits to protect runtime stability. | Should |
 | VEC-OR-04 | The subsystem MUST log strategy registration and generation outcomes with operational context. | Must |
 | VEC-OR-05 | The subsystem MUST allow connection-specific model activation and deactivation without requiring plugin code changes. | Must |
-| VEC-OR-07 | The subsystem SHOULD support safe vector regeneration workflows without requiring full schema recreation. | Should |
-| VEC-OR-08 | The subsystem MUST preserve compatibility with multisite-aware content contracts where applicable. | Must |
-| VEC-OR-09 | Batch delete behavior MUST avoid destructive offset drift and MUST terminate safely if no rows are deleted while rows remain. | Must |
+| VEC-OR-06 | The subsystem SHOULD support safe vector regeneration workflows without requiring full schema recreation. | Should |
+| VEC-OR-07 | The subsystem MUST preserve compatibility with multisite-aware content contracts where applicable. | Must |
+| VEC-OR-08 | Batch delete behavior MUST avoid destructive offset drift and MUST terminate safely if no rows are deleted while rows remain. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -141,12 +141,12 @@ Requirement notation:
 |---|---|---|
 | VEC-QR-01 | Vector generation pathways SHOULD preserve deterministic model-to-strategy routing for equivalent model metadata. | Routing behavior tests |
 | VEC-QR-02 | The subsystem MUST preserve row-level deduplication guarantees through storage uniqueness constraints. | Schema and integration checks |
-| VEC-QR-04 | API embeddings pathways SHOULD preserve token observability for operator reporting. | Payload and stats checks |
-| VEC-QR-05 | Provider-path behavior for generation SHOULD remain parity-aligned between direct and HTTP-backed connections. | Cross-provider parity checks |
-| VEC-QR-06 | Vector status and posts-list endpoints SHOULD remain responsive under normal operational batch sizes. | Endpoint runtime measurement |
-| VEC-QR-07 | The subsystem MUST avoid hard failures in Search/RAG consumers when a specific model table is unavailable and fallback conditions are met upstream. | Integration tests with degraded model availability |
-| VEC-QR-08 | Extension points for adding future vector strategies SHOULD remain stable and discoverable through interface-driven contracts. | Interface contract review |
-| VEC-QR-09 | Batch deletion SHOULD remain parity-aligned across PDO and PostgREST/Supabase providers for equivalent datasets and batch sizes. | Cross-provider batch delete verification |
+| VEC-QR-03 | API embeddings pathways SHOULD preserve token observability for operator reporting. | Payload and stats checks |
+| VEC-QR-04 | Provider-path behavior for generation SHOULD remain parity-aligned between direct and HTTP-backed connections. | Cross-provider parity checks |
+| VEC-QR-05 | Vector status and posts-list endpoints SHOULD remain responsive under normal operational batch sizes. | Endpoint runtime measurement |
+| VEC-QR-06 | The subsystem MUST avoid hard failures in Search/RAG consumers when a specific model table is unavailable and fallback conditions are met upstream. | Integration tests with degraded model availability |
+| VEC-QR-07 | Extension points for adding future vector strategies SHOULD remain stable and discoverable through interface-driven contracts. | Interface contract review |
+| VEC-QR-08 | Batch deletion SHOULD remain parity-aligned across PDO and PostgREST/Supabase providers for equivalent datasets and batch sizes. | Cross-provider batch delete verification |
 
 ## 4. Verification and Acceptance
 
@@ -166,13 +166,13 @@ Acceptance baseline for migration phase:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| VEC-FR-01 to VEC-FR-03, VEC-FR-12 | includes/vectors/class-gg-data-vector-generator.php, includes/vectors/interface-gg-data-vector-strategy.php | Strategy orchestration and model routing behavior |
-| VEC-FR-07 to VEC-FR-10, VEC-FR-14, VEC-FR-16 | includes/api/class-gg-data-rest-vector-queue-controller.php, includes/vectors/class-gg-data-hashingtf-embeddings.php | Queue/generation/status/delete behavior and row-per-embedding model |
-| VEC-FR-15 | includes/vectors/class-gg-data-hashingtf-embeddings.php, includes/vectors/strategies/class-gg-data-hashingtf-strategy.php | Stateless internal model — no vocabulary preparation required |
-| VEC-FR-09, VEC-DR-06 | includes/api/class-gg-data-rest-connection-models-controller.php, includes/class-gg-data-connection-model-manager.php | Connection-model management and response masking |
-| VEC-DR-01 to VEC-DR-11 | includes/vectors/interface-gg-data-vector-strategy.php, REST controllers, model registry and embeddings contracts | Data and payload obligations |
-| VEC-OR-01 to VEC-OR-09 | REST controllers, vector generator | Permissions, operations, and lifecycle constraints |
-| VEC-QR-01 to VEC-QR-09 | docs/vectors/architecture.md, implementation files listed in References | Quality, parity, observability, and extension expectations |
+| VEC-FR-01 to VEC-FR-03, VEC-FR-08 | includes/vectors/class-gg-data-vector-generator.php, includes/vectors/interface-gg-data-vector-strategy.php | Strategy orchestration and model routing behavior |
+| VEC-FR-04 to VEC-FR-07, VEC-FR-10, VEC-FR-12 | includes/api/class-gg-data-rest-vector-queue-controller.php, includes/vectors/class-gg-data-hashingtf-embeddings.php | Queue/generation/status/delete behavior and row-per-embedding model |
+| VEC-FR-11 | includes/vectors/class-gg-data-hashingtf-embeddings.php, includes/vectors/strategies/class-gg-data-hashingtf-strategy.php | Stateless internal model — no vocabulary preparation required |
+| VEC-FR-06, VEC-DR-06 | includes/api/class-gg-data-rest-connection-models-controller.php, includes/class-gg-data-connection-model-manager.php | Connection-model management and response masking |
+| VEC-DR-01 to VEC-DR-10 | includes/vectors/interface-gg-data-vector-strategy.php, REST controllers, model registry and embeddings contracts | Data and payload obligations |
+| VEC-OR-01 to VEC-OR-08 | REST controllers, vector generator | Permissions, operations, and lifecycle constraints |
+| VEC-QR-01 to VEC-QR-08 | docs/vectors/architecture.md, implementation files listed in References | Quality, parity, observability, and extension expectations |
 
 ## 6. Appendices
 

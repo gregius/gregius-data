@@ -76,8 +76,8 @@ Architecture intent:
 - Keep operational control explicit through dedicated vector endpoints.
 
 Mapping:
-- AV-01 -> VEC-FR-01 to VEC-FR-10
-- AV-01 -> VEC-OR-01 to VEC-OR-07
+- AV-01 -> VEC-FR-01 to VEC-FR-07
+- AV-01 -> VEC-OR-01 to VEC-OR-06
 
 ---
 
@@ -94,20 +94,17 @@ Mapping:
 - `GG_Data_HashingTF_Strategy` for internal stateless hashing model workflows (no vocabulary prerequisite).
 - `GG_Data_API_Embeddings_Strategy` for provider-backed embeddings.
 - Shared result contract (`success`, `message`, `processed`, `failed`, `total_tokens`).
-
 - Supports provider-path-aware execution (PDO and PostgREST/Supabase style).
-- Exposes status and cache clear operations.
 
-4. Vector REST Management Component (`GG_Data_REST_Vector_Queue_Controller`)
+3. Vector REST Management Component (`GG_Data_REST_Vector_Queue_Controller`)
 - Queue visibility, single item generation, batch generation, batch deletion, status, and clear operations.
 - Posts-list status endpoint for operational inspection.
 
-
-6. Connection-Model REST Component (`GG_Data_REST_Connection_Models_Controller`)
+4. Connection-Model REST Component (`GG_Data_REST_Connection_Models_Controller`)
 - Lists, adds, and removes active models per connection.
 - Masks sensitive model config data in responses.
 
-7. Storage Contract Component (PostgreSQL vector tables)
+5. Storage Contract Component (PostgreSQL vector tables)
 - Row-per-embedding model with `post_id + field_type + chunk_index` uniqueness.
 - Supports title, excerpt, and chunk embeddings under one table per model.
 - Each model family owns independent DDL columns: Provider-backed tables may use `model_used`; HashingTF uses `tokenizer_version`. No column uniformity is required across model families.
@@ -119,8 +116,8 @@ Mapping:
 - Operational boundaries: admin-authorized endpoints for all state-changing operations.
 
 Mapping:
-- AV-02 -> VEC-FR-01 to VEC-FR-13
-- AV-02 -> VEC-DR-01 to VEC-DR-10
+- AV-02 -> VEC-FR-01 to VEC-FR-09
+- AV-02 -> VEC-DR-01 to VEC-DR-09
 
 ---
 
@@ -200,7 +197,7 @@ Resolve connection provider type
     │
     ▼
 Return progress payload
-(`deleted`, `total_deleted`, `has_more`, `duration_ms`, `errors`)
+(`deleted`, `total_deleted`, `has_more`, `next_offset`, `duration_ms`, `errors`)
 ```
 
 Runtime intent:
@@ -209,9 +206,9 @@ Runtime intent:
 - Stop explicitly if zero rows are deleted while rows remain, preventing endless polling loops.
 
 Mapping:
-- AV-03 -> VEC-FR-03 to VEC-FR-12
-- AV-03 -> VEC-OR-01 to VEC-OR-06
-- AV-03 -> VEC-QR-04 to VEC-QR-06
+- AV-03 -> VEC-FR-03 to VEC-FR-08
+- AV-03 -> VEC-OR-01 to VEC-OR-05
+- AV-03 -> VEC-QR-03 to VEC-QR-05
 
 ---
 
@@ -231,7 +228,7 @@ Consequences:
 - Error handling and result contracts must remain normalized.
 
 Linked requirements:
-- AD-01 -> VEC-FR-01, VEC-FR-02, VEC-DR-01, VEC-DR-02, VEC-QR-08
+- AD-01 -> VEC-FR-01, VEC-FR-02, VEC-DR-01, VEC-DR-02, VEC-QR-07
 
 ### AD-02: Row-Per-Embedding Storage Model
 
@@ -247,9 +244,9 @@ Consequences:
 - Storage and indexing strategy must be tuned for mixed field types.
 
 Linked requirements:
-- AD-02 -> VEC-FR-10, VEC-DR-03, VEC-DR-04, VEC-QR-02
+- AD-02 -> VEC-FR-07, VEC-DR-03, VEC-DR-04, VEC-QR-02
 
-### AD-04: Connection-Aware Model Activation
+### AD-03: Connection-Aware Model Activation
 
 Decision:
 - Maintain active model associations per connection instead of global activation only.
@@ -263,9 +260,9 @@ Consequences:
 - Increases metadata management complexity.
 
 Linked requirements:
-- AD-04 -> VEC-FR-09, VEC-FR-12, VEC-OR-05, VEC-DR-08
+- AD-03 -> VEC-FR-06, VEC-FR-08, VEC-OR-05, VEC-DR-07
 
-### AD-05: Admin-Gated Operational Endpoints
+### AD-04: Admin-Gated Operational Endpoints
 
 Decision:
 - Require administrative authorization for vector mutation paths.
@@ -279,9 +276,9 @@ Consequences:
 - UX and automation tooling must surface auth failures clearly.
 
 Linked requirements:
-- AD-05 -> VEC-OR-01, VEC-DR-10, VEC-QR-04
+- AD-04 -> VEC-OR-01, VEC-DR-09, VEC-QR-03
 
-### AD-06: Stateless Hashing Model Requires No Vocabulary Prerequisite
+### AD-05: Stateless Hashing Model Requires No Vocabulary Prerequisite
 
 Decision:
 - HashingTF Murmur3 model uses feature hashing (PHP `hash('murmur3a')`) instead of corpus vocabulary, making it immediately usable without any preparation step.
@@ -295,9 +292,9 @@ Consequences:
 - Tokenizer version bumps (instead of vocabulary version bumps) trigger regeneration workflows.
 
 Linked requirements:
-- AD-06 -> VEC-FR-02, VEC-FR-15, VEC-DR-03, VEC-DR-04
+- AD-05 -> VEC-FR-02, VEC-FR-11, VEC-DR-03, VEC-DR-04
 
-### AD-07: Destructive Pagination Uses Head-Of-Remaining Selection
+### AD-06: Destructive Pagination Uses Head-Of-Remaining Selection
 
 Decision:
 - Batch delete operations always select from offset `0` of the current remaining dataset rather than using a client-supplied shifting offset.
@@ -310,7 +307,7 @@ Consequences:
 - Backend must own loop-safety checks when deleted count is zero and rows still remain.
 
 Linked requirements:
-- AD-07 -> VEC-FR-16, VEC-DR-11, VEC-OR-09, VEC-QR-09
+- AD-06 -> VEC-FR-12, VEC-DR-10, VEC-OR-08, VEC-QR-08
 
 ---
 
@@ -339,15 +336,15 @@ Linked requirements:
 
 | Architecture Item | SRS IDs Covered |
 |---|---|
-| AV-01 (Context View) | VEC-FR-01 to VEC-FR-10, VEC-OR-01 to VEC-OR-07 |
-| AV-02 (Component View) | VEC-FR-01 to VEC-FR-13, VEC-DR-01 to VEC-DR-10 |
-| AV-03 (Runtime View) | VEC-FR-03 to VEC-FR-12, VEC-OR-01 to VEC-OR-06, VEC-QR-04 to VEC-QR-06 |
-| AD-01 | VEC-FR-01, VEC-FR-02, VEC-DR-01, VEC-DR-02, VEC-QR-08 |
-| AD-02 | VEC-FR-10, VEC-DR-03, VEC-DR-04, VEC-QR-02 |
-| AD-03 | VEC-FR-04, VEC-FR-05, VEC-FR-06, VEC-OR-06, VEC-QR-03 |
-| AD-04 | VEC-FR-09, VEC-FR-12, VEC-OR-05, VEC-DR-08 |
-| AD-05 | VEC-OR-01, VEC-DR-10, VEC-QR-04 |
-| AD-06 | VEC-FR-02, VEC-FR-15, VEC-DR-03, VEC-DR-04 |
+| AV-01 (Context View) | VEC-FR-01 to VEC-FR-07, VEC-OR-01 to VEC-OR-06 |
+| AV-02 (Component View) | VEC-FR-01 to VEC-FR-09, VEC-DR-01 to VEC-DR-09 |
+| AV-03 (Runtime View) | VEC-FR-03 to VEC-FR-08, VEC-OR-01 to VEC-OR-05, VEC-QR-03 to VEC-QR-05 |
+| AD-01 | VEC-FR-01, VEC-FR-02, VEC-DR-01, VEC-DR-02, VEC-QR-07 |
+| AD-02 | VEC-FR-07, VEC-DR-03, VEC-DR-04, VEC-QR-02 |
+| AD-03 | VEC-FR-06, VEC-FR-08, VEC-OR-05, VEC-DR-07 |
+| AD-04 | VEC-OR-01, VEC-DR-09, VEC-QR-03 |
+| AD-05 | VEC-FR-02, VEC-FR-11, VEC-DR-03, VEC-DR-04 |
+| AD-06 | VEC-FR-12, VEC-DR-10, VEC-OR-08, VEC-QR-08 |
 
 ---
 
