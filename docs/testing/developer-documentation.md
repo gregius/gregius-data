@@ -45,10 +45,10 @@ svn co https://develop.svn.wordpress.org/trunk/tests/phpunit tests/wp-phpunit
 ### 3.2 Run Tests
 
 ```bash
-# Unit + Integration (119 tests, always available)
+# Unit + Integration (always available, no Docker)
 ./bin/test
 
-# Full WpIntegration suite (50 tests, Docker required)
+# Full WpIntegration suite (Docker required)
 ./bin/test --wp
 
 # Individual suites
@@ -69,10 +69,10 @@ Source: `bin/test`
 
 Two execution modes:
 
-| Mode | Command | Tiers | Tests | Prerequisites |
-|---|---|---|---|---|
-| Local | `./bin/test` | Unit + Integration | 119 | PHP 8.2 + composer install --dev |
-| Full stack | `./bin/test --wp` | WpIntegration | 51 | Docker (gregius-wordpress + gregius-db) |
+| Mode | Command | Tiers | Prerequisites |
+|---|---|---|---|
+| Local | `./bin/test` | Unit + Integration | PHP 8.2 + composer install --dev |
+| Full stack | `./bin/test --wp` | WpIntegration | Docker (gregius-wordpress + gregius-db) |
 
 Environment variable overrides for `--wp` mode:
 
@@ -327,7 +327,7 @@ $instance = (new ReflectionClass(GG_Data_HashingTF_Embeddings::class))
 
 ### Issue: `Call to undefined method PHPUnit\Util\Test::parseTestMethodAnnotations()`
 
-**Symptom:** All 51 WpIntegration tests error with this message.
+**Symptom:** All WpIntegration tests error with this message.
 
 **Cause:** wp-phpunit has not been patched for PHPUnit 11 compatibility.
 
@@ -416,5 +416,5 @@ A: `./bin/test` (Unit + Integration) followed by `./bin/test --wp` (WpIntegratio
 
 ---
 
-**Document last updated:** 2026-06-15  
+**Document last updated:** 2026-10-17  
 **Traceability:** [SRS: TEST-FR-01..04, TEST-DR-01..08]

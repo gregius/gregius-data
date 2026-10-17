@@ -3,7 +3,7 @@
 **Standard:** ISO/IEC/IEEE 42010:2022  
 **Component:** Testing  
 **Version:** 1.0.0  
-**Date:** 2026-06-15  
+**Date:** 2026-10-17  
 **Upstream Specification:** [Software Requirements Specification](srs.md)
 
 ---
@@ -56,7 +56,6 @@ This architecture describes how the Gregius Data plugin implements automated tes
     No WordPress         Monkey + Mockery       Container (gregius-wordpress)
           |                    |                    |
    tests/Unit/         tests/Integration/    tests/WpIntegration/
-   69 tests             50 tests              50 tests
 ```
 
 ```
@@ -83,7 +82,7 @@ Tier 3 expanded:
 
 Tier 1 and Tier 2 run locally in PHP without WordPress. They provide fast feedback during development. Tier 3 requires Docker for a real WordPress + MySQL stack and validates activation, REST routes, database operations, and full plugin lifecycle.
 
-The `bin/test` script abstracts all three tiers behind two commands: `./bin/test` for tiers 1+2 (119 tests, <1s) and `./bin/test --wp` for tier 3 (50 tests, ~5s with warm containers).
+The `bin/test` script abstracts all three tiers behind two commands: `./bin/test` for tiers 1+2 and `./bin/test --wp` for tier 3. Test counts are tracked in the [SRS](srs.md) §4 coverage matrix.
 
 ---
 
@@ -132,12 +131,12 @@ gregius-data/
 ├── tests/
 │   ├── bootstrap.php           # Conditional bootstrap (all tiers)
 │   ├── helpers.php             # Shared stubs (tier 1-2 only)
-│   ├── phpunit.xml.dist        # Default: unit + integration suites
-│   ├── phpunit-wp.xml.dist     # WP tests: WpIntegration suite
 │   ├── wp-phpunit/             # SVN checkout (gitignored)
-│   ├── Unit/                   # Tier 1: 8 files, 69 tests
-│   ├── Integration/            # Tier 2: 7 files, 50 tests
-│   └── WpIntegration/          # Tier 3: 11 files, 50 tests
+│   ├── Unit/                   # Tier 1 (see srs.md §4.1)
+│   ├── Integration/            # Tier 2 (see srs.md §4.2)
+│   └── WpIntegration/          # Tier 3 (see srs.md §4.3)
+├── phpunit.xml.dist            # Default: unit + integration suites
+├── phpunit-wp.xml.dist         # WP tests: WpIntegration suite
 ├── composer.json               # require-dev: phpunit, brain/monkey, mockery, polyfills
 └── vendor/                     # Composer dev dependencies (gitignored)
 ```
@@ -175,7 +174,7 @@ svn co https://develop.svn.wordpress.org/trunk/tests/phpunit tests/wp-phpunit
 ### 5.2 Local Execution
 
 ```bash
-./bin/test           # Unit + Integration (119 tests, no Docker)
+./bin/test           # Unit + Integration (no Docker)
 ./bin/test --wp      # All tiers including WpIntegration (Docker required)
 ```
 
@@ -193,7 +192,7 @@ svn co https://develop.svn.wordpress.org/trunk/tests/phpunit tests/wp-phpunit
 
 ## 6. Deployment View (AV-05)
 
-Tests are excluded from the production plugin zip via `bin/plugin-zip.js` exclusions: `tests/`, `phpunit.xml.dist`, `phpunit-wp.xml.dist`, `vendor/`, `composer.json`, `composer.lock`.
+Tests are excluded from the production plugin zip via `bin/plugin-zip.js` exclusions: `tests/`, `phpunit.xml`, `phpunit.xml.dist`, `phpunit-wp.xml.dist`, `.phpunit.result.cache`, `vendor/`, `composer.json`, `composer.lock`.
 
 The production zip contains only runtime plugin files. Testing infrastructure lives in the git repository only.
 

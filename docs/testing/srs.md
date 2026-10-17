@@ -9,7 +9,7 @@ Standard: ISO/IEC/IEEE 29148:2018
 | Project | Gregius Data |
 | Software Component | Testing Subsystem |
 | Version | 1.0 |
-| Date | 2026-06-15 |
+| Date | 2026-10-17 |
 | Author | Gregius |
 | StRS Reference | N/A |
 | SyRS Reference | N/A |
@@ -79,9 +79,9 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| TEST-FR-01 | The software MUST support unit-level test execution without WordPress loaded, targeting 8 classes with 69 test methods. | Must |
-| TEST-FR-02 | The software MUST support integration-level test execution using Brain Monkey for WP function mocking, targeting 7 classes with 50 test methods. | Must |
-| TEST-FR-03 | The software MUST support full WordPress integration test execution inside a Docker container with real WordPress and MySQL, targeting 11 classes with 51 test methods. | Must |
+| TEST-FR-01 | The software MUST support unit-level test execution without WordPress loaded, covering the classes in the §4.1 coverage matrix. | Must |
+| TEST-FR-02 | The software MUST support integration-level test execution using Brain Monkey for WP function mocking, covering the classes in the §4.2 coverage matrix. | Must |
+| TEST-FR-03 | The software MUST support full WordPress integration test execution inside a Docker container with real WordPress and MySQL, covering the classes in the §4.3 coverage matrix. | Must |
 | TEST-FR-04 | The software MUST provide a single-command test runner (`./bin/test`) that executes all available test tiers without manual configuration. | Must |
 | TEST-FR-05 | The software MUST support running individual test suites via PHPUnit CLI (`--testsuite unit`, `--testsuite integration`). | Must |
 | TEST-FR-06 | The software MUST support environment variable overrides for Docker container names (`TEST_WP_CONTAINER`, `TEST_DB_CONTAINER`). | Must |
@@ -119,40 +119,46 @@ Requirement notation:
 | TEST-QR-01 | Unit tests MUST complete in under 1 second. | Timing baseline |
 | TEST-QR-02 | Integration tests MUST complete in under 2 seconds. | Timing baseline |
 | TEST-QR-03 | WpIntegration tests MUST complete in under 30 seconds with warm Docker containers. | Timing baseline |
-| TEST-QR-04 | All 169 tests MUST produce zero failures on the `main` branch. | `./bin/test && ./bin/test --wp` |
+| TEST-QR-04 | All tests across the three tiers (see §4 coverage matrix) MUST produce zero failures on the `main` branch. | `./bin/test && ./bin/test --wp` |
 | TEST-QR-05 | Production plugin zip MUST be under 1 MB (excluding test and dev artifacts). | `node bin/plugin-zip.js` output |
 
 ## 4. Test Coverage Matrix
 
 ### 4.1 Tier 1 — Unit Tests (tests/Unit/)
 
-| Source Class | Test File | Assertions |
+| Source Class | Test File | Tests |
 |---|---|---|
 | GG_Data_Activator | Test_GG_Data_Activator.php | 6 |
 | GG_Data_Chunker | Test_GG_Data_Chunker.php | 12 |
 | GG_Data_Content_Processor | Test_GG_Data_Content_Processor.php | 8 |
+| GG_Data_Document_Extractor | Test_GG_Data_Document_Extractor.php | 4 |
 | GG_Data_Error_Handler | Test_GG_Data_Error_Handler.php | 13 |
-| GG_Data_Format_Json_Output | Test_GG_Data_Format_Json_Output.php | 8 |
+| GG_Data_Format_Json_Output (trait) | Test_GG_Data_Format_Json_Output.php | 8 |
+| GG_Data_Model_Catalog | Test_GG_Data_Model_Catalog.php | 10 |
+| GG_Data_Model_Discovery | Test_GG_Data_Model_Discovery.php | 6 |
 | GG_Data_Prompt_Resolver | Test_GG_Data_Prompt_Resolver.php | 8 |
+| GG_Data_Search_Schema | Test_GG_Data_Search_Schema.php | 4 |
 | GG_Data_Table_Prefix_Resolver | Test_GG_Data_Table_Prefix_Resolver.php | 8 |
 | GG_Data_Token_Counter | Test_GG_Data_Token_Counter.php | 6 |
-| **Total** | **8 files** | **69 tests** |
+| **Total** | **12 files** | **93 tests** |
 
 ### 4.2 Tier 2 — Integration Tests (tests/Integration/)
 
-| Source Class | Test File | Assertions |
+| Source Class | Test File | Tests |
 |---|---|---|
 | GG_Data_Content_Cleaner | Test_GG_Data_Content_Cleaner.php | 10 |
 | GG_Data_DB | Test_GG_Data_DB.php | 4 |
-| GG_Data_HashingTF_Embeddings | Test_GG_Data_HashingTF_Embeddings.php | 9 |
+| GG_Data_Gemini_Provider | Test_GG_Data_Gemini_Provider.php | 1 |
+| GG_Data_HashingTF_Embeddings | Test_GG_Data_HashingTF_Embeddings.php | 8 |
 | GG_Data_LLM_Registry | Test_GG_Data_LLM_Registry.php | 5 |
-| GG_Data_Settings_Manager | Test_GG_Data_Settings_Manager.php | 13 |
+| GG_Data_RAG_Service | Test_GG_Data_RAG_Service_QueryVector.php | 3 |
+| GG_Data_Settings_Manager | Test_GG_Data_Settings_Manager.php | 9 |
 | GG_Data_Vector_Generator | Test_GG_Data_Vector_Generator.php | 6 |
-| **Total** | **7 files** | **50 tests** |
+| **Total** | **8 files** | **46 tests** |
 
 ### 4.3 Tier 3 — WpIntegration Tests (tests/WpIntegration/)
 
-| Source Class | Test File | Assertions |
+| Source Class | Test File | Tests |
 |---|---|---|
 | GG_Data_Abilities_Manager | Test_GG_Data_Abilities_Manager.php | 4 |
 | GG_Data_Connection_Health | Test_GG_Data_Connection_Health.php | 7 |
@@ -171,9 +177,9 @@ Requirement notation:
 
 | Class | Reason |
 |---|---|
-| GG_Data_Citation_Resolver | Class file does not exist in the codebase |
-| AI Provider classes (OpenAI, Anthropic, Gemini, DeepSeek, Cohere) | Deferred — require external API mocking |
-| GG_Data_PostgREST_Provider | Deferred — requires Supabase/PostgREST endpoint mocking |
+| GG_Data_Citation_Resolver | Not covered — no test file (class exists in `includes/rag/`) |
+| AI Provider classes (OpenAI, Anthropic, DeepSeek, Cohere, TypeSafe) | Not covered — no test files (Gemini is covered; see §4.2) |
+| GG_Data_PostgREST_Provider | Not covered — requires Supabase/PostgREST endpoint mocking |
 
 ## 5. Verification and Acceptance
 
