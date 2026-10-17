@@ -27,16 +27,15 @@ import BatchDeleteModal from './BatchDeleteModal';
  * @return {JSX.Element} Card component.
  */
 const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
-	// Unified operation state for all actions (generate, regenerate)
+	// Unified operation state for generation.
 	const [operationState, setOperationState] = useState({
 		status: 'idle', // 'idle' | 'processing' | 'completed' | 'stopped' | 'error'
-		type: null, // 'generate' | 'regenerate'
 		data: null,
 		result: null,
 	});
 
-	// Modal state
-	const [modalState, setModalState] = useState(null); // { type: 'generate' | 'regenerate', data: ... }
+	// Generate modal open state
+	const [showGenerateModal, setShowGenerateModal] = useState(false);
 
 	// Delete modal state
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -80,49 +79,26 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 	 * Handle Generate Vectors action
 	 */
 	const handleGenerateClick = () => {
-		setModalState({
-			type: 'generate',
-			data: vectorStatus,
-		});
+		setShowGenerateModal(true);
 		setOperationState({
 			status: 'idle',
-			type: 'generate',
 			data: vectorStatus,
 			result: null,
 		});
 	};
 
 	/**
-	 * Handle Regenerate All Vectors action
-	 */
-	const handleRegenerateClick = () => {
-		setModalState({
-			type: 'regenerate',
-			data: vectorStatus,
-		});
-		setOperationState({
-			status: 'idle',
-			type: 'regenerate',
-			data: vectorStatus,
-			result: null,
-		});
-	};
-
-	/**
-	 * Start batch vector generation/regeneration loop
+	 * Start batch vector generation loop
 	 * Processes posts in batches until all complete, accumulating tokens
 	 */
-	const startBatchProcessing = async (regenerateSince = null) => {
+	const startBatchProcessing = async () => {
 		const startTime = Date.now();
-		const totalPending = regenerateSince
-			? (vectorStatus?.total_posts || 0)
-			: (vectorStatus?.posts_pending_vectors || 0);
+		const totalPending = vectorStatus?.posts_pending_vectors || 0;
 		const controller = new AbortController();
 		setAbortController(controller);
 
 		setOperationState({
 			status: 'processing',
-			type: regenerateSince ? 'regenerate' : 'generate',
 			data: vectorStatus,
 			result: {
 				processed: 0,
@@ -255,10 +231,9 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 		if (operationState.status === 'processing') {
 			return;
 		}
-		setModalState(null);
+		setShowGenerateModal(false);
 		setOperationState({
 			status: 'idle',
-			type: null,
 			data: null,
 			result: null,
 		});
@@ -348,10 +323,6 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 									disabled: postsPending === 0,
 								},
 								{
-									title: __('Regenerate All Vectors', 'gregius-data'),
-									onClick: handleRegenerateClick,
-								},
-								{
 									title: __('Delete Vectors', 'gregius-data'),
 									onClick: handleDeleteVectors,
 									disabled: deletableVectors === 0,
@@ -431,13 +402,9 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 			</Card>
 
 			{/* Modal for batch processing */}
-			{modalState && (
+			{showGenerateModal && (
 				<Modal
-					title={
-						modalState.type === 'generate'
-							? __('Generate Vectors', 'gregius-data')
-							: __('Regenerate All Vectors', 'gregius-data')
-					}
+					title={__('Generate Vectors', 'gregius-data')}
 					onRequestClose={handleCloseModal}
 					className="gg-data-vector-modal"
 					shouldCloseOnClickOutside={operationState.status !== 'processing'}
@@ -446,17 +413,11 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 					{operationState.status === 'idle' && (
 						<>
 							<p>
-								{modalState.type === 'generate'
-									? sprintf(
-										__('Generate vectors for %d posts using %s?', 'gregius-data'),
-										postsPending,
-										model.provider_model_id
-									)
-									: sprintf(
-										__('Regenerate vectors for all %d posts using %s?', 'gregius-data'),
-										totalPosts,
-										model.provider_model_id
-									)}
+								{sprintf(
+									__('Generate vectors for %d posts using %s?', 'gregius-data'),
+									postsPending,
+									model.provider_model_id
+								)}
 							</p>
 							<div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
 								<Button onClick={handleCloseModal}>
@@ -464,15 +425,9 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 								</Button>
 								<Button
 									isPrimary
-									onClick={() =>
-										startBatchProcessing(
-											modalState.type === 'regenerate' ? new Date().toISOString() : null
-										)
-									}
+									onClick={() => startBatchProcessing()}
 								>
-									{modalState.type === 'generate'
-										? __('Generate', 'gregius-data')
-										: __('Regenerate All', 'gregius-data')}
+									{__('Generate', 'gregius-data')}
 								</Button>
 							</div>
 						</>
