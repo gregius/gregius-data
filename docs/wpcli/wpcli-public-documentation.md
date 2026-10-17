@@ -100,7 +100,6 @@ Vector commands generate and rebuild semantic embeddings from your synced conten
 | `--embedding-model` | `hashingtf-murmur3-1024` | Embedding model ID to use |
 | `--post-type` | `all` | Specific post type to process |
 | `--batch-size` | `50` | Items per batch (max `200`) |
-| `--force` | off | Force regeneration even when vectors exist |
 | `--format` | `table` | `table`, `json`, or `csv` |
 
 ### Examples
@@ -133,10 +132,11 @@ wp gg-data answer <query>
 | `--embedding-model` | `hashingtf-murmur3-1024` | Embedding model for search |
 | `--agentic-model` | (none) | Model for agentic routing |
 | `--rerank-model` | (none) | Model for result reranking |
+| `--evaluator-model` | (none) | Model for grading retrieved context |
+| `--evaluation-prompt` | (none) | Prompt post ID for evaluation criteria |
 | `--answer-model` | `gpt-4o-mini` | Model for answer generation |
 | `--prompt-id` | (none) | Specific prompt ID (numeric) |
 | `--prompt` | (none) | Prompt by slug or exact title |
-| `--no-track` | off | Suppress interaction recording |
 | `--format` | `table` | `table` or `json` |
 
 ### Examples
@@ -211,7 +211,7 @@ Listing commands discover the configured data connections and registered AI mode
 | `--with-embedding-models` | off | Include embedding model context (connections) |
 | `--with-model-details` | off | Include full model details (connections; implies `--with-embedding-models`) |
 | `--connection` | `gregius-data` | Connection scope (models) |
-| `--type` | (all) | Filter by model type: `embeddings`, `llm`, or `rerank` (models) |
+| `--type` | (all) | Filter by model type: `embeddings`, `llm`, `rerank`, or `evaluator` (models) |
 
 ### Examples
 

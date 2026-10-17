@@ -66,6 +66,7 @@ The CLI layer is an operator-facing interface that delegates business logic to e
 - `docs/wpcli/architecture.md`
 - `docs/wpcli/developer-documentation.md`
 - `includes/cli/class-gg-data-cli.php`
+- `includes/cli/class-gg-data-cli-namespace.php`
 - `includes/cli/class-gg-data-cli-sync.php`
 - `includes/cli/class-gg-data-cli-vectors.php`
 - `includes/cli/class-gg-data-cli-answer.php`
@@ -102,9 +103,9 @@ Requirement notation:
 | CLI-DR-02 | Vectors commands MUST accept `--embedding-model`, `--post-type`, `--batch-size`, and output summary metrics including processed, failed, and duration values. | Must |
 | CLI-DR-03 | Answer command MUST support optional model overrides (`--embedding-model`, `--agentic-model`, `--rerank-model`, `--answer-model`) and optional prompt overrides (`--prompt-id` or `--prompt`). | Must |
 | CLI-DR-04 | List commands MUST return connection and model inventories using abilities-manager response payloads. | Must |
-| CLI-DR-07 | `list-connections` SHOULD support optional embedding-context expansion flags (`--with-embedding-models`, `--with-model-details`) while preserving default output contracts when omitted. | Should |
 | CLI-DR-05 | Logs list and export commands MUST validate level/component values against logger-provided enumerations before execution. | Must |
 | CLI-DR-06 | Logs purge command MUST enforce `days >= 1` and support interactive confirmation bypass with `--yes`. | Must |
+| CLI-DR-07 | `list-connections` SHOULD support optional embedding-context expansion flags (`--with-embedding-models`, `--with-model-details`) while preserving default output contracts when omitted. | Should |
 
 ### 3.3 Software Operations and Control Requirements
 
@@ -114,8 +115,7 @@ Requirement notation:
 | CLI-OR-02 | Sync and vectors commands MUST validate `--batch-size` and clamp invalid values to safe defaults or bounded maxima. | Must |
 | CLI-OR-03 | Sync and vectors commands SHOULD perform memory cleanup between batches. | Should |
 | CLI-OR-04 | Batch-oriented commands SHOULD report progress using WP-CLI progress bars or equivalent progress output. | Should |
-| CLI-OR-05 | `answer --no-track` MUST suppress interaction tracking through the tracking filter. | Must |
-| CLI-OR-06 | Commands MUST terminate with explicit CLI errors on invalid critical inputs (for example invalid connection, invalid prompt flags, invalid log filters). | Must |
+| CLI-OR-05 | Commands MUST terminate with explicit CLI errors on invalid critical inputs (for example invalid connection, invalid prompt flags, invalid log filters). | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -149,9 +149,10 @@ Acceptance baseline:
 | CLI-FR-01, CLI-QR-05 | `includes/cli/class-gg-data-cli.php` | Namespace and command registration contracts |
 | CLI-FR-02, CLI-DR-01, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
 | CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
-| CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-OR-06, CLI-QR-04 | `includes/cli/class-gg-data-cli-answer.php` | Query contract, prompt override handling, tracking control, errors |
+| CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-QR-04 | `includes/cli/class-gg-data-cli-answer.php` | Query contract, prompt override handling, errors |
+| CLI-FR-01, CLI-QR-02 | `includes/cli/class-gg-data-cli-evaluation.php` | Evaluation command family (run, list_prompts, validate_config, adapters) delegation |
 | CLI-FR-05, CLI-DR-04, CLI-DR-07 | `includes/cli/class-gg-data-cli-list-connections.php`, `includes/cli/class-gg-data-cli-list-models.php` | Connections/models inventory command contracts and optional list-connections enrichment flags |
-| CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-06 | `includes/cli/class-gg-data-cli-logs.php` | Logs management command contracts and validation |
+| CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-05 | `includes/cli/class-gg-data-cli-logs.php` | Logs management command contracts and validation |
 | CLI-FR-07, CLI-FR-08, CLI-QR-01, CLI-QR-02 | `includes/cli/class-gg-data-cli-*.php` | Shared defaults, output formats, and delegation pattern |
 
 ## 6. Appendices

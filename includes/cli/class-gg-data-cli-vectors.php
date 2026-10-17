@@ -161,9 +161,6 @@ class GG_Data_CLI_Vectors {
 	 * default: 50
 	 * ---
 	 *
-	 * [--force]
-	 * : Force regeneration (same as rebuild).
-	 *
 	 * [--format=<format>]
 	 * : Output format.
 	 * ---

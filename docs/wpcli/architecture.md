@@ -50,13 +50,13 @@ Operator / Automation Script
             v
    GG_Data_CLI bootstrap + command classes
             |
-   +--------+----------+----------+----------+
-   |        |          |          |          |
-   v        v          v          v          v
- Sync    Vectors     Answer      List       Logs
- handlers handlers   handler     handlers   handlers
-   |        |          |          |          |
-   +--------+----------+----------+----------+
+   +--------+---------+---------+------------+--------+---------+
+   |        |         |         |            |        |         |
+   v        v         v         v            v        v         v
+ Sync    Vectors   Answer   Evaluation     List    Logs
+handlers handlers  handler   handlers    handlers handlers
+   |        |         |         |            |        |         |
+   +--------+---------+---------+------------+--------+---------+
             |
             v
    Delegated service managers and contracts
@@ -97,12 +97,17 @@ CLI acts as an orchestration shell that validates inputs, invokes manager APIs, 
 - Resolves prompt overrides and conflict errors
 - Delegates answer execution to abilities manager
 
-5. **List Commands (`GG_Data_CLI_List_Connections`, `GG_Data_CLI_List_Models`)**
+5. **Evaluation Commands (`GG_Data_CLI_Evaluation`)**
+- Routes `run`, `list_prompts`, `validate_config`, `adapters`
+- Delegates evaluation execution to the evaluation service
+- Resolves uploads-based config and artifact paths
+
+6. **List Commands (`GG_Data_CLI_List_Connections`, `GG_Data_CLI_List_Models`)**
 - Delegates inventory retrieval to abilities manager
 - Applies output formatting and optional model-type filtering
 - Supports optional list-connections enrichment flags for per-connection embedding model context
 
-6. **Logs Commands (`GG_Data_CLI_Logs`)**
+7. **Logs Commands (`GG_Data_CLI_Logs`)**
 - Routes `list`, `export`, `purge`, `stats`
 - Validates level/component filters
 - Delegates to logger APIs for management operations
@@ -114,9 +119,10 @@ CLI acts as an orchestration shell that validates inputs, invokes manager APIs, 
 | CLI Bootstrap | Register command surface and runtime guard | CLI-FR-01, CLI-QR-05 |
 | Sync Commands | Sync command contracts, validation, batch orchestration | CLI-FR-02, CLI-DR-01, CLI-OR-01..04 |
 | Vectors Commands | Vector command contracts and generation orchestration | CLI-FR-03, CLI-DR-02, CLI-OR-01..04 |
-| Answer Command | Query contract, prompt resolution, tracking control | CLI-FR-04, CLI-DR-03, CLI-OR-05, CLI-QR-04 |
+| Answer Command | Query contract, prompt resolution | CLI-FR-04, CLI-DR-03, CLI-OR-05, CLI-QR-04 |
+| Evaluation Commands | Evaluation command contracts and delegation | CLI-FR-01, CLI-QR-02 |
 | List Commands | Connections/models inventory contracts | CLI-FR-05, CLI-DR-04 |
-| Logs Commands | Logs operation contracts and validation | CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-06 |
+| Logs Commands | Logs operation contracts and validation | CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-05 |
 
 ---
 
@@ -151,12 +157,20 @@ answer <query>
    -> validate required query
    -> resolve optional prompt override (--prompt-id or --prompt)
    -> validate connection
-   -> optional no-track filter override
    -> execute_rag_answer() via abilities manager
    -> emit answer/sources/metadata output
 ```
 
-### 4.4 List and Logs Execution Flow
+### 4.4 Evaluation Execution Flow
+
+```
+evaluation run/list_prompts/validate_config/adapters
+   -> resolve uploads-based config path
+   -> delegate to evaluation service
+   -> emit artifacts or formatted output
+```
+
+### 4.5 List and Logs Execution Flow
 
 ```
 list-connections/list-models
@@ -171,7 +185,7 @@ logs list/export/purge/stats
 
 **Mapping to Requirements:**
 - AV-03 -> CLI-DR-01..06
-- AV-03 -> CLI-OR-01..06
+- AV-03 -> CLI-OR-01..05
 - AV-03 -> CLI-QR-01, CLI-QR-03, CLI-QR-04
 
 ---
@@ -246,7 +260,7 @@ logs list/export/purge/stats
 - Environment hardening and shell-access policy remain external controls.
 - Documentation must clearly indicate operational trust boundaries.
 
-**Requirement Links:** CLI-OR-06, CLI-QR-05
+**Requirement Links:** CLI-OR-05, CLI-QR-05
 
 ### AD-05: Explicit Error Surfaces for Contract Violations
 
@@ -263,7 +277,7 @@ logs list/export/purge/stats
 **Consequences:**
 - Invalid inputs terminate current command invocation.
 
-**Requirement Links:** CLI-OR-01, CLI-OR-02, CLI-OR-06, CLI-QR-04
+**Requirement Links:** CLI-OR-01, CLI-OR-02, CLI-OR-05, CLI-QR-04
 
 ---
 
@@ -292,13 +306,13 @@ logs list/export/purge/stats
 | Architecture Item | Requirement IDs Covered |
 |---|---|
 | AV-01 | CLI-FR-01..08, CLI-QR-01..03 |
-| AV-02 | CLI-FR-01..06, CLI-DR-01..06, CLI-OR-01..06 |
-| AV-03 | CLI-DR-01..06, CLI-OR-01..06, CLI-QR-01, CLI-QR-03, CLI-QR-04 |
+| AV-02 | CLI-FR-01..06, CLI-DR-01..06, CLI-OR-01..05 |
+| AV-03 | CLI-DR-01..06, CLI-OR-01..05, CLI-QR-01, CLI-QR-03, CLI-QR-04 |
 | AD-01 | CLI-QR-02, CLI-FR-02..06 |
 | AD-02 | CLI-OR-02, CLI-OR-03, CLI-OR-04, CLI-QR-03 |
 | AD-03 | CLI-FR-08, CLI-QR-01 |
-| AD-04 | CLI-OR-06, CLI-QR-05 |
-| AD-05 | CLI-OR-01, CLI-OR-02, CLI-OR-06, CLI-QR-04 |
+| AD-04 | CLI-OR-05, CLI-QR-05 |
+| AD-05 | CLI-OR-01, CLI-OR-02, CLI-OR-05, CLI-QR-04 |
 
 ---
 

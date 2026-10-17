@@ -130,7 +130,6 @@ Options:
 - `--embedding-model=<model>` (default `hashingtf-murmur3-1024`)
 - `--post-type=<type>` (default `all`)
 - `--batch-size=<number>` (default `50`)
-- `--force` (documented alias intent for rebuild workflows)
 - `--format=table|json|csv` (default `table`)
 
 Implementation notes:
@@ -153,10 +152,11 @@ Options:
 - `--embedding-model=<model>` (default `hashingtf-murmur3-1024`)
 - `--agentic-model=<model>` (optional)
 - `--rerank-model=<model>` (optional)
+- `--evaluator-model=<model>` (optional)
+- `--evaluation-prompt=<id>` (optional)
 - `--answer-model=<model>` (default `gpt-4o-mini`)
 - `--prompt-id=<id>` (optional)
 - `--prompt=<identifier>` (optional, post ID/slug/exact title)
-- `--no-track`
 - `--format=table|json` (default `table`)
 
 Implementation notes:
@@ -165,11 +165,10 @@ Implementation notes:
   - conflict error when both `--prompt-id` and `--prompt` are provided
   - numeric ID validation
   - slug lookup and exact-title disambiguation
-- `--no-track` applies `add_filter( 'gg_data_track_interaction', '__return_false' )`.
 - Delegation to `GG_Data_Abilities_Manager::execute_rag_answer()`.
 - Output handled by `output_result()` with answer/sources/metadata sections or JSON envelope.
 
-[SRS: CLI-FR-04, CLI-DR-03, CLI-OR-05, CLI-OR-06, CLI-QR-04]
+[SRS: CLI-FR-04, CLI-DR-03, CLI-OR-05, CLI-QR-04]
 
 ### 5.4 List Commands (`GG_Data_CLI_List_Connections`, `GG_Data_CLI_List_Models`)
 
@@ -188,7 +187,7 @@ Options:
   - `--with-model-details` (optional; implies `--with-embedding-models`)
 - `list-models`:
   - `--connection=<name>` (default `gregius-data`)
-  - `--type=embeddings|llm|rerank` (optional)
+  - `--type=embeddings|llm|rerank|evaluator` (optional)
   - `--format=table|json|csv` (default `table`)
 
 Implementation notes:
@@ -271,7 +270,7 @@ Implementation notes:
   - `get_stats()`
 - `list` table output truncates message text via `truncate_message()`.
 
-[SRS: CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-06]
+[SRS: CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-05]
 
 ## 6. Delegation Boundaries
 
@@ -292,7 +291,6 @@ Delegated managers/services:
 Filter hooks used by CLI handlers:
 - `gg_data_cli_max_batch_size` (sync max batch bound, default `1000`)
 - `gg_data_cli_vectors_max_batch_size` (vectors max batch bound, default `200`)
-- `gg_data_track_interaction` (runtime tracking suppression for `answer --no-track`)
 
 Extension guidance:
 - Prefer extending manager behavior behind existing delegation boundaries.
@@ -358,6 +356,6 @@ Documented and code-backed:
 - Sync, vectors, answer, list, and logs option/default contracts
 - Evaluation option/default contracts, including uploads-based config and artifact paths
 - Batch validation, progress, and memory cleanup patterns
-- Prompt resolution and no-track behavior for answer command
+- Prompt resolution behavior for answer command
 - Logs validation and maintenance command behavior
-- Filter hooks governing CLI batch controls and tracking suppression
+- Filter hooks governing CLI batch controls
