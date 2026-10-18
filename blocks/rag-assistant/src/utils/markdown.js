@@ -127,7 +127,7 @@ export const parseMarkdown = (markdown, sources = []) => {
 		}
 
 		const safeLabel = Number.isFinite(sourceIndex + 1) ? sourceIndex + 1 : indexText;
-		return `<sup class="gg-rag-citation"><a href="${source.url}" target="_blank" rel="noopener noreferrer" title="${source.title || `Source ${safeLabel}`}">[${safeLabel}]</a></sup>`;
+		return `<sup class="gregius-rag-citation"><a href="${source.url}" target="_blank" rel="noopener noreferrer" title="${source.title || `Source ${safeLabel}`}">[${safeLabel}]</a></sup>`;
 	});
 
 	try {
@@ -143,14 +143,14 @@ export const parseMarkdown = (markdown, sources = []) => {
 
 			container.querySelectorAll('p, li').forEach((node) => {
 				const seenUrls = new Set();
-				node.querySelectorAll('sup.gg-rag-citation a').forEach((anchor) => {
+				node.querySelectorAll('sup.gregius-rag-citation a').forEach((anchor) => {
 					const href = anchor.getAttribute('href') || '';
 					if (!href) {
 						return;
 					}
 
 					if (seenUrls.has(href)) {
-						const sup = anchor.closest('sup.gg-rag-citation');
+						const sup = anchor.closest('sup.gregius-rag-citation');
 						if (sup) {
 							sup.remove();
 						}

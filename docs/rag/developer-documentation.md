@@ -645,7 +645,7 @@ When `requireLogin` is `true`, `render.php` checks `is_user_logged_in()` before 
 ```php
 if ( $require_login && ! is_user_logged_in() ) {
     $login_url = wp_login_url( get_permalink() );
-    echo '<div class="gg-rag-login-required">...<a href="...">Sign in</a>...</div>';
+    echo '<div class="gregius-rag-login-required">...<a href="...">Sign in</a>...</div>';
     return;
 }
 ```

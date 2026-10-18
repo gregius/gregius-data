@@ -10,7 +10,7 @@
   flex-direction: column;
 
   // Conversation container component
-  .gg-rag-conversation {
+  .gregius-rag-conversation {
     max-height: 400px;
     overflow-y: auto;
     scrollbar-gutter: stable;
@@ -24,7 +24,7 @@
   }
 
   // Message component
-  .gg-rag-message {
+  .gregius-rag-message {
     display: flex;
 
     // Role state modifiers
@@ -32,7 +32,7 @@
       justify-content: flex-end;
 
       // Message content element
-      .gg-rag-message__content {
+      .gregius-rag-message__content {
         max-width: 75%;
         background: rgba(0, 0, 0, 0.1);
         margin-left: auto;
@@ -50,7 +50,7 @@
     }
 
     // Message content element
-    .gg-rag-message__content {
+    .gregius-rag-message__content {
       border-radius: 1em;
       line-height: 1.6;
       overflow-wrap: break-word;
@@ -62,7 +62,7 @@
   }
 
   // Message sources element
-  .gg-rag-message__citations-inline {
+  .gregius-rag-message__citations-inline {
     margin-top: 0.75em;
     display: flex;
     gap: 0.5em;
@@ -79,7 +79,7 @@
     }
   }
 
-  .gg-rag-citation {
+  .gregius-rag-citation {
     font-weight: 600;
     text-decoration: none;
 
@@ -88,7 +88,7 @@
     }
   }
 
-  .gg-rag-message__sources {
+  .gregius-rag-message__sources {
     margin-top: 1em;
 
     &-title {
@@ -112,7 +112,7 @@
   }
 
   // Input component
-  .gg-rag-input {
+  .gregius-rag-input {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -148,7 +148,7 @@
   }
 
   // Input actions element
-  .gg-rag-input__actions {
+  .gregius-rag-input__actions {
     display: flex;
     gap: 0.5em;
     position: absolute;
@@ -156,25 +156,13 @@
     bottom: 1em;
   }
 
-  // Thinking indicator component (legacy - keep for backward compatibility)
-  .gg-rag-thinking {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 1em;
-
-    .components-spinner {
-      margin: 0;
-    }
-  }
-
   // Progress indicator component (SSE streaming)
-  .gg-rag-progress {
+  .gregius-rag-progress {
     display: flex;
     align-items: center;
     gap: 0.75em;
     border-radius: 1em;
-    animation: gg-rag-fade-in 0.2s ease-out;
+    animation: gregius-rag-fade-in 0.2s ease-out;
 
     // Push to bottom of conversation container while streaming
     margin-top: auto;
@@ -191,7 +179,7 @@
   }
 
   // Thinking/Reasoning display component
-  .gg-rag-thinking-display {
+  .gregius-rag-thinking-display {
     margin-bottom: 1em;
     border: 1px solid currentColor;
     border-radius: 1em;
@@ -236,7 +224,7 @@
   }
 
   // Animations
-  @keyframes gg-rag-fade-in {
+  @keyframes gregius-rag-fade-in {
     from {
       opacity: 0;
       transform: translateY(-0.25em);
@@ -249,7 +237,7 @@
   }
 
   // Streaming cursor animation
-  @keyframes gg-rag-blink {
+  @keyframes gregius-rag-blink {
     0%,
     50% {
       opacity: 1;
@@ -262,7 +250,7 @@
   }
 
   // Streaming indicator pulse
-  @keyframes gg-rag-pulse {
+  @keyframes gregius-rag-pulse {
     0%,
     100% {
       opacity: 0.4;
@@ -274,36 +262,36 @@
   }
 
   // Streaming cursor (blinking cursor at end of streamed text)
-  .gg-rag-streaming-cursor {
+  .gregius-rag-streaming-cursor {
     display: inline-block;
     width: 2px;
     height: 1.2em;
     background: currentColor;
     margin-left: 2px;
     vertical-align: text-bottom;
-    animation: gg-rag-blink 1s step-end infinite;
+    animation: gregius-rag-blink 1s step-end infinite;
   }
 
   // Streaming indicator (shows in reasoning summary)
-  .gg-rag-streaming-indicator {
+  .gregius-rag-streaming-indicator {
     display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: currentColor;
     margin-left: 0.5em;
-    animation: gg-rag-pulse 1.5s ease-in-out infinite;
+    animation: gregius-rag-pulse 1.5s ease-in-out infinite;
   }
 
   // Streaming message styles
-  .gg-rag-message.is-streaming {
-    .gg-rag-message__content {
+  .gregius-rag-message.is-streaming {
+    .gregius-rag-message__content {
       min-height: 2em;
     }
   }
 
   // Empty state
-  .gg-rag-empty {
+  .gregius-rag-empty {
     padding: 2em;
     text-align: center;
     color: currentColor;
@@ -394,8 +382,8 @@
   // General Paragraphs & Lists
   :is(.wp-block-gregius-data-rag-assistant) p,
   :is(.wp-block-gregius-data-rag-assistant) li,
-  .gg-rag-progress,
-  .gg-rag-thinking-display {
+  .gregius-rag-progress,
+  .gregius-rag-thinking-display {
     font-size: clamp(0.875rem, 0.81rem + 0.3cqi, 1rem);
     line-height: 1.5;
     font-weight: 400;

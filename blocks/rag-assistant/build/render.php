@@ -38,7 +38,7 @@ $guest_allowed = ( 'capability' !== $access_level )
 
 if ( ! is_user_logged_in() && ! $guest_allowed ) {
 	$login_url = wp_login_url( get_permalink() );
-	echo '<div class="gg-rag-login-required"><p>' . esc_html__( 'Please sign in to use this feature.', 'gregius-data' ) . ' <a href="' . esc_url( $login_url ) . '">' . esc_html__( 'Sign in', 'gregius-data' ) . '</a></p></div>';
+	echo '<div class="gregius-rag-login-required"><p>' . esc_html__( 'Please sign in to use this feature.', 'gregius-data' ) . ' <a href="' . esc_url( $login_url ) . '">' . esc_html__( 'Sign in', 'gregius-data' ) . '</a></p></div>';
 	return;
 }
 

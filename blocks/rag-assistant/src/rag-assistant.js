@@ -900,7 +900,7 @@ export default function ChatInterface({
 
     if (!connectionId) {
         return (
-            <div className="gg-rag-empty">
+            <div className="gregius-rag-empty">
                 {__('Select a connection in the sidebar to enable this block.', 'gregius-data')}
             </div>
         );
@@ -908,7 +908,7 @@ export default function ChatInterface({
 
     if (!embeddingModelKey) {
         return (
-            <div className="gg-rag-empty">
+            <div className="gregius-rag-empty">
                 {__('Select an embedding model in the sidebar to enable this block.', 'gregius-data')}
             </div>
         );
@@ -916,7 +916,7 @@ export default function ChatInterface({
 
     if (!llmModelId) {
         return (
-            <div className="gg-rag-empty">
+            <div className="gregius-rag-empty">
                 {__('Select an LLM model in the sidebar to enable this block.', 'gregius-data')}
             </div>
         );
@@ -940,28 +940,28 @@ export default function ChatInterface({
             { /* Conversation History */}
             <div
                 ref={conversationContainerRef}
-                className="gg-rag-conversation"
+                className="gregius-rag-conversation"
                 role="log"
                 aria-label={__('Chat conversation', 'gregius-data')}
                 aria-live="polite"
                 aria-busy={isProcessing}
             >
                 {conversationHistory.map((message, index) => (
-                    <div key={index} className={`gg-rag-message is-${message.role}`}>
+                    <div key={index} className={`gregius-rag-message is-${message.role}`}>
                         {message.role === 'user' && (
-                            <div className="gg-rag-message__content">
+                            <div className="gregius-rag-message__content">
                                 <p>{message.content}</p>
                             </div>
                         )}
                         {message.role === 'assistant' && (
-                            <div className="gg-rag-message__content">
+                            <div className="gregius-rag-message__content">
                                 { /* Thinking/Reasoning Display */}
                                 {message.thinking && (
-                                    <details className="gg-rag-thinking-display" open>
+                                    <details className="gregius-rag-thinking-display" open>
                                         <summary>
                                             {__('Reasoning', 'gregius-data')}
                                         </summary>
-                                        <div className="gg-rag-thinking-display__content">
+                                        <div className="gregius-rag-thinking-display__content">
                                             {message.thinking}
                                         </div>
                                     </details>
@@ -974,18 +974,18 @@ export default function ChatInterface({
                                 />
 
                                 {getReferenceEntries(message).length > 0 && !hasInlineCitationMarkers(message.content) && (
-                                    <div className="gg-rag-message__citations-inline">
-                                        <span className="gg-rag-message__citations-inline-label">
+                                    <div className="gregius-rag-message__citations-inline">
+                                        <span className="gregius-rag-message__citations-inline-label">
                                             {__('Citations:', 'gregius-data')}
                                         </span>
-                                        <span className="gg-rag-message__citations-inline-list">
+                                        <span className="gregius-rag-message__citations-inline-list">
                                             {getReferenceEntries(message).map((reference) => (
                                                 <a
                                                     key={reference.citationIndex}
                                                     href={reference.url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="gg-rag-citation"
+                                                    className="gregius-rag-citation"
                                                     title={reference.title}
                                                 >
                                                     [{reference.citationIndex}]
@@ -996,8 +996,8 @@ export default function ChatInterface({
                                 )}
 
                                 {getReferenceEntries(message).length > 0 && (
-                                    <div className="gg-rag-message__sources">
-                                        <div className="gg-rag-message__sources-title">
+                                    <div className="gregius-rag-message__sources">
+                                        <div className="gregius-rag-message__sources-title">
                                             {__('References:', 'gregius-data')}
                                         </div>
                                         <ul>
@@ -1019,7 +1019,7 @@ export default function ChatInterface({
                         )}
 
                         {message.role === 'error' && (
-                            <div className="gg-rag-message__content" role="alert">
+                            <div className="gregius-rag-message__content" role="alert">
                                 <strong>{__('Error', 'gregius-data')}</strong>
                                 <p>{message.content}</p>
                             </div>
@@ -1029,23 +1029,23 @@ export default function ChatInterface({
 
                 {isProcessing && (
                     <div
-                        className="gg-rag-progress"
+                        className="gregius-rag-progress"
                         role="status"
                         aria-label={__('Processing your question', 'gregius-data')}
                         ref={progressContainerRef}
                     >
                         {/* Show streaming content if available */}
                         {(streamingContent || streamingReasoning) ? (
-                            <div className="gg-rag-message is-assistant is-streaming" ref={streamingMessageRef}>
-                                <div className="gg-rag-message__content">
+                            <div className="gregius-rag-message is-assistant is-streaming" ref={streamingMessageRef}>
+                                <div className="gregius-rag-message__content">
                                     {/* Streaming Reasoning Display */}
                                     {streamingReasoning && (
-                                        <details className="gg-rag-thinking-display" open>
+                                        <details className="gregius-rag-thinking-display" open>
                                             <summary>
                                                 {__('Reasoning', 'gregius-data')}
                                             </summary>
                                             <div
-                                                className="gg-rag-thinking-display__content"
+                                                className="gregius-rag-thinking-display__content"
                                                 ref={streamingThinkingContainerRef}
                                             >
                                                 {streamingReasoning}
@@ -1063,14 +1063,14 @@ export default function ChatInterface({
                                     )}
                                     
                                     {/* Streaming cursor indicator */}
-                                    <span className="gg-rag-streaming-cursor" />
+                                    <span className="gregius-rag-streaming-cursor" />
                                 </div>
                             </div>
                         ) : (
                             /* Show spinner only when not streaming yet */
                             <>
                                 <Spinner />
-                                <span className="gg-rag-progress__label">
+                                <span className="gregius-rag-progress__label">
                                     {progressDisplay.label}
                                 </span>
                             </>
@@ -1080,19 +1080,19 @@ export default function ChatInterface({
             </div>
 
             { /* Input at Bottom */}
-            <div ref={inputContainerRef} className="gg-rag-input">
-                <label htmlFor="gg-rag-chat-input" className="screen-reader-text">
+            <div ref={inputContainerRef} className="gregius-rag-input">
+                <label htmlFor="gregius-rag-chat-input" className="screen-reader-text">
                     {__('Ask a question', 'gregius-data')}
                 </label>
                 <textarea
-                    id="gg-rag-chat-input"
-                    name="gg-rag-chat-query"
+                    id="gregius-rag-chat-input"
+                    name="gregius-rag-chat-query"
                     placeholder={placeholder}
                     rows="3"
                     value={testQuery}
                     onChange={(e) => setTestQuery(e.target.value)}
                     onClick={scrollBlockToFocus}
-                    aria-describedby={isProcessing ? 'gg-rag-status' : undefined}
+                    aria-describedby={isProcessing ? 'gregius-rag-status' : undefined}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -1102,7 +1102,7 @@ export default function ChatInterface({
                         }
                     }}
                 />
-                <div className="gg-rag-input__actions">
+                <div className="gregius-rag-input__actions">
                     {conversationHistory.length > 0 && (
                         <Button
                             variant="secondary"

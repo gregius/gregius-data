@@ -33,9 +33,6 @@ domReady(() => {
     const dashboardContainer = document.getElementById('gregius-data-react-dashboard');
     
     if (dashboardContainer) {
-        // Set flag to indicate React dashboard is active
-        window.ggPgReactActive = true;
-        
         try {
             // Render the React app
             render(

@@ -50,7 +50,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     const [error, setError] = useState('');
 
     const blockProps = useBlockProps({
-        className: 'gg-rag-chat-block-editor',
+        className: 'gregius-rag-chat-block-editor',
     });
 
     const systemPrompts = prompts.filter((prompt) => (prompt.prompt_type || 'system') === 'system');
@@ -60,7 +60,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     // Store clientId as blockId attribute on mount.
     useEffect(() => {
         if (clientId && !blockId) {
-            setAttributes({ blockId: `gg-rag-chat-${clientId}` });
+            setAttributes({ blockId: `gregius-rag-chat-${clientId}` });
         }
     }, [clientId, blockId, setAttributes]);
 
