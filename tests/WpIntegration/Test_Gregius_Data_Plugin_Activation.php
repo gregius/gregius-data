@@ -32,7 +32,7 @@ class Test_Gregius_Data_Plugin_Activation extends WP_UnitTestCase {
 
 	public function test_deactivation_clears_cron() {
 		wp_schedule_event( time(), 'daily', 'gregius_data_retry_failed' );
-		Gregius_Data::deactivate();
+		Gregius_Data_Deactivator::deactivate();
 		$this->assertFalse( wp_next_scheduled( 'gregius_data_retry_failed' ) );
 	}
 
