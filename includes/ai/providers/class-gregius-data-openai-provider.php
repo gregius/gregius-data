@@ -620,9 +620,9 @@ class Gregius_Data_OpenAI_Provider implements Gregius_Data_AI_Provider_Interface
 	}
 
 	/**
-	 * Execute streaming HTTP request with cURL.
+	 * Execute streaming HTTP request via the WordPress HTTP API.
 	 *
-	 * WordPress HTTP API doesn't support streaming, so we use cURL directly.
+	 * Streams SSE chunks through an http_api_curl write callback.
 	 * This handles SSE format from OpenAI-compatible APIs.
 	 *
 	 * @since 1.0.0
@@ -743,52 +743,44 @@ class Gregius_Data_OpenAI_Provider implements Gregius_Data_AI_Provider_Interface
 			return strlen( $data );
 		};
 
-		// Initialize cURL.
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init -- Required for streaming.
-		$ch = curl_init();
+		// Stream via the WordPress HTTP API. The HTTP API does not natively
+		// expose incremental response bodies, so attach our SSE write callback
+		// to the underlying cURL handle through the http_api_curl hook.
+		$stream_filter = static function ( $handle ) use ( $write_callback ) {
+			// phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_setopt -- Streaming via the http_api_curl hook.
+			curl_setopt( $handle, CURLOPT_WRITEFUNCTION, $write_callback );
+			curl_setopt( $handle, CURLOPT_CONNECTTIMEOUT, 10 );
+			// phpcs:enable WordPress.WP.AlternativeFunctions.curl_curl_setopt
+		};
+		add_filter( 'http_api_curl', $stream_filter, 10, 1 );
 
-		// phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_setopt -- Required for streaming.
-		curl_setopt( $ch, CURLOPT_URL, $endpoint );
-		curl_setopt( $ch, CURLOPT_POST, true );
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, wp_json_encode( $request_data ) );
-		curl_setopt(
-			$ch,
-			CURLOPT_HTTPHEADER,
+		$response = wp_remote_request(
+			$endpoint,
 			array(
-				'Authorization: Bearer ' . $api_key,
-				'Content-Type: application/json',
-				'Accept: text/event-stream',
+				'method'  => 'POST',
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $api_key,
+					'Content-Type'  => 'application/json',
+					'Accept'        => 'text/event-stream',
+				),
+				'body'    => wp_json_encode( $request_data ),
+				'timeout' => 60, // 60s to work with most hosting limits.
 			)
 		);
-		curl_setopt( $ch, CURLOPT_WRITEFUNCTION, $write_callback );
-		curl_setopt( $ch, CURLOPT_TIMEOUT, 60 ); // 60s to work with most hosting limits.
-		curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 10 );
-		// phpcs:enable WordPress.WP.AlternativeFunctions.curl_curl_setopt
 
-		// Execute request.
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_exec -- Required for streaming.
-		$result = curl_exec( $ch );
+		remove_filter( 'http_api_curl', $stream_filter, 10 );
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_errno -- Required for error handling.
-		$curl_errno = curl_errno( $ch );
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_error -- Required for error handling.
-		$curl_error = curl_error( $ch );
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_getinfo -- Required for status check.
-		$http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_close -- Required for cleanup.
-		curl_close( $ch );
-
-		// Handle cURL errors.
-		if ( $curl_errno ) {
+		// Handle connection errors.
+		if ( is_wp_error( $response ) ) {
 			return new WP_Error(
 				'gregius_data_stream_curl_error',
-				// Translators: %s is the cURL error message.
-				sprintf( __( 'Streaming connection failed: %s', 'gregius-data' ), $curl_error )
+				// Translators: %s is the error message.
+				sprintf( __( 'Streaming connection failed: %s', 'gregius-data' ), $response->get_error_message() )
 			);
 		}
 
 		// Handle HTTP errors.
+		$http_code = wp_remote_retrieve_response_code( $response );
 		if ( $http_code >= 400 ) {
 			return new WP_Error(
 				'gregius_data_stream_http_error',
