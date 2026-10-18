@@ -147,7 +147,7 @@ class Gregius_Data_REST_Sync_Controller extends WP_REST_Controller {
 						),
 						'document_model'     => array(
 							'description' => __( 'Document model for attachment extraction (empty string = auto)', 'gregius-data' ),
-							'type'        => 'string',
+							'type'        => array( 'string', 'null' ),
 							'required'    => false,
 						),
 					),

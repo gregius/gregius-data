@@ -22,9 +22,6 @@ const RealTimeSyncCard = ({ selectedConnectionId, onConfigurationChange }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
-    
-    // We need to store other config parts to avoid overwriting them
-    const [fullConfig, setFullConfig] = useState({});
 
     useEffect(() => {
         if (selectedConnectionId) {
@@ -39,7 +36,6 @@ const RealTimeSyncCard = ({ selectedConnectionId, onConfigurationChange }) => {
                 path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
             });
             
-            setFullConfig(response.configuration || {});
             setSyncEnabled(response.configuration?.real_time_sync || false);
         } catch (err) {
             setError(__('Failed to load configuration: ', 'gregius-data') + err.message);
@@ -54,18 +50,22 @@ const RealTimeSyncCard = ({ selectedConnectionId, onConfigurationChange }) => {
             setSyncEnabled(checked); // Optimistic update
             setError(null);
 
+            // Fetch the latest config to avoid overwriting other cards' changes.
+            const latestConfigRes = await apiFetch({
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`
+            });
+
             const response = await apiFetch({
                 path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`,
                 method: 'POST',
                 data: {
-                    ...fullConfig,
+                    ...latestConfigRes.configuration,
                     real_time_sync: checked
                 }
             });
 
             if (response.success) {
                 // Use the returned configuration to ensure state matches what was actually saved
-                setFullConfig(response.configuration || {});
                 setSyncEnabled(response.configuration?.real_time_sync ?? checked);
                 if (onConfigurationChange) onConfigurationChange();
             }

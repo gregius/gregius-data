@@ -193,6 +193,14 @@ if ( ! class_exists( 'Gregius_Data_DB' ) ) {
 					}
 				}
 
+				// PostgREST connections use the HTTP API, not PDO. Return false here
+				// (after validation) so callers don't run a slow connect/health-check
+				// on every call during per-entity sync metadata tracking.
+				if ( 'postgrest' === $provider_type ) {
+					$this->current_connection = $connection_name;
+					return false;
+				}
+
 				// Create provider instance using factory.
 				$this->provider = Gregius_Data_Provider_Factory::create_provider( $provider_type, $connection, $connection_name );
 				if ( ! $this->provider ) {
@@ -207,13 +215,6 @@ if ( ! class_exists( 'Gregius_Data_DB' ) ) {
 				if ( ! $result['success'] ) {
 					$this->last_error = $result['message'];
 					$this->logger->log( "Provider connection failed: {$result['message']}", 'error', 'connection', $connection_name, array( 'project_url' => $connection['project_url'] ?? '' ) );
-					return false;
-				}
-
-				// For PostgREST providers, they don't use PDO - they use HTTP API.
-				// Return false since callers expect a PDO object for query().
-				if ( 'postgrest' === $provider_type ) {
-					$this->current_connection = $connection_name;
 					return false;
 				}
 

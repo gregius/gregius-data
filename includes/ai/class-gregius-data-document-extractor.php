@@ -103,7 +103,7 @@ class Gregius_Data_Document_Extractor {
 		// on long PDFs; raise it best-effort so it completes instead of fataling.
 		$time_limit = (int) apply_filters( 'gregius_data_document_extraction_time_limit', 120 );
 		if ( $time_limit > 0 ) {
-			@set_time_limit( $time_limit ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Best-effort; unavailable on some hosts.
+			@set_time_limit( $time_limit ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort time-limit raise for long-PDF rasterization; no-op where the host disallows it.
 		}
 
 		$provider = isset( $model_config['provider'] ) ? (string) $model_config['provider'] : '';
