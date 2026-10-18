@@ -10,12 +10,12 @@ Upstream Architecture: [architecture.md](architecture.md)
 
 ## 1. Component Overview
 
-### Error Handler (`GG_Data_Error_Handler`)
+### Error Handler (`Gregius_Data_Error_Handler`)
 
 Stateless classifier. Call `classify_error()` with a raw error string to get a structured result:
 
 ```php
-$handler = new GG_Data_Error_Handler();
+$handler = new Gregius_Data_Error_Handler();
 $result  = $handler->classify_error($error_message);
 // $result = [
 //   'type'       => 'transient' | 'permanent' | 'unknown',
@@ -33,12 +33,12 @@ $delay = $handler->calculate_retry_delay($attempt_number);
 // Attempt 3 → 300 seconds
 ```
 
-### Retry Queue Manager (`GG_Data_Retry_Queue`)
+### Retry Queue Manager (`Gregius_Data_Retry_Queue`)
 
 Core queue manager. Instantiate once per operation context:
 
 ```php
-$queue = new GG_Data_Retry_Queue();
+$queue = new Gregius_Data_Retry_Queue();
 
 // Queue a failed operation for retry
 $queued = $queue->queue_for_retry(
@@ -72,9 +72,9 @@ $cleared = $queue->clear_dead_letter_queue(); // Returns int (count cleared)
 
 | Constant | Value | Description |
 |---|---|---|
-| `GG_Data_Retry_Queue::MAX_RETRY_ATTEMPTS` | 3 | Max retries before dead letter promotion |
-| `GG_Data_Retry_Queue::OPTION_KEY` | `gg_data_retry_queue` | wp_options key for pending queue |
-| `GG_Data_Retry_Queue::DEAD_LETTER_KEY` | `gg_data_dead_letter_queue` | wp_options key for dead letter queue |
+| `Gregius_Data_Retry_Queue::MAX_RETRY_ATTEMPTS` | 3 | Max retries before dead letter promotion |
+| `Gregius_Data_Retry_Queue::OPTION_KEY` | `gregius_data_retry_queue` | wp_options key for pending queue |
+| `Gregius_Data_Retry_Queue::DEAD_LETTER_KEY` | `gregius_data_dead_letter_queue` | wp_options key for dead letter queue |
 
 ---
 
@@ -82,7 +82,7 @@ $cleared = $queue->clear_dead_letter_queue(); // Returns int (count cleared)
 
 All routes require `manage_options` capability. Use `X-WP-Nonce` header with a valid nonce.
 
-### GET `/wp-json/gg-data/v1/sync/retry-queue`
+### GET `/wp-json/gregius-data/v1/sync/retry-queue`
 
 Retrieve current queue status.
 
@@ -116,14 +116,14 @@ Response:
 }
 ```
 
-### POST `/wp-json/gg-data/v1/sync/retry-queue/retry/{index}`
+### POST `/wp-json/gregius-data/v1/sync/retry-queue/retry/{index}`
 
 Move a dead letter item back to the pending queue. `{index}` is the array index of the dead letter item.
 
 ```bash
 curl -X POST \
   -H "X-WP-Nonce: [nonce]" \
-  "https://example.com/wp-json/gg-data/v1/sync/retry-queue/retry/0"
+  "https://example.com/wp-json/gregius-data/v1/sync/retry-queue/retry/0"
 ```
 
 Response:
@@ -134,14 +134,14 @@ Response:
 }
 ```
 
-### DELETE `/wp-json/gg-data/v1/sync/retry-queue/clear`
+### DELETE `/wp-json/gregius-data/v1/sync/retry-queue/clear`
 
 Clear all items from the dead letter queue.
 
 ```bash
 curl -X DELETE \
   -H "X-WP-Nonce: [nonce]" \
-  "https://example.com/wp-json/gg-data/v1/sync/retry-queue/clear"
+  "https://example.com/wp-json/gregius-data/v1/sync/retry-queue/clear"
 ```
 
 Response:
@@ -214,7 +214,7 @@ Unclassified errors (no pattern match) default to `retry_safe = true` to prevent
 
 ## 5. DB Integration Points
 
-The following call sites in `GG_Data_DB` invoke `queue_for_retry()` on failure:
+The following call sites in `Gregius_Data_DB` invoke `queue_for_retry()` on failure:
 
 | Method | Trigger | Operation Type |
 |---|---|---|
@@ -232,12 +232,12 @@ Operation data passed includes the full payload array used by the originating DB
 
 | Property | Value |
 |---|---|
-| Hook name | `gg_data_process_retry_queue` |
-| Schedule key | `gg_data_every_minute` |
+| Hook name | `gregius_data_process_retry_queue` |
+| Schedule key | `gregius_data_every_minute` |
 | Interval | 60 seconds |
-| Callback | `GG_Data_Retry_Queue::process_queue()` |
-| Registered in | `GG_Data_Retry_Queue` constructor |
-| Unscheduled on | Plugin deactivation (`GG_Data_Deactivator::deactivate()`) |
+| Callback | `Gregius_Data_Retry_Queue::process_queue()` |
+| Registered in | `Gregius_Data_Retry_Queue` constructor |
+| Unscheduled on | Plugin deactivation (`Gregius_Data_Deactivator::deactivate()`) |
 | Cleaned up on | Plugin uninstall (`uninstall.php`) |
 
 ---
@@ -248,15 +248,15 @@ Operation data passed includes the full payload array used by the originating DB
 
 ```php
 // Pending retry queue
-$pending = get_option('gg_data_retry_queue', []);
+$pending = get_option('gregius_data_retry_queue', []);
 print_r($pending);
 
 // Dead letter queue
-$dead = get_option('gg_data_dead_letter_queue', []);
+$dead = get_option('gregius_data_dead_letter_queue', []);
 print_r($dead);
 
 // Force a processing cycle regardless of WP-Cron timing
-$queue = new GG_Data_Retry_Queue();
+$queue = new Gregius_Data_Retry_Queue();
 $queue->process_queue();
 ```
 
@@ -264,7 +264,7 @@ $queue->process_queue();
 
 ```bash
 # Trigger WP-Cron processing manually on sites with external cron
-wp cron event run gg_data_process_retry_queue
+wp cron event run gregius_data_process_retry_queue
 ```
 
 ---
@@ -276,7 +276,7 @@ wp cron event run gg_data_process_retry_queue
 **Root cause:** Sustained PostgreSQL connection instability or network disruption.
 
 **Diagnosis:**
-1. `GET /wp-json/gg-data/v1/sync/retry-queue` → review last_error patterns
+1. `GET /wp-json/gregius-data/v1/sync/retry-queue` → review last_error patterns
 2. Review error logs: `grep "Queued sync" <logfile>`
 3. Check PostgreSQL connection health via Settings dashboard
 
@@ -311,7 +311,7 @@ wp cron event run gg_data_process_retry_queue
    ```
    * * * * * curl -s https://example.com/wp-cron.php?doing_wp_cron >/dev/null
    ```
-2. Alternatively: `wp cron event run gg_data_process_retry_queue` for on-demand triggering.
+2. Alternatively: `wp cron event run gregius_data_process_retry_queue` for on-demand triggering.
 
 ### Symptom: Same entity failing repeatedly
 
@@ -335,8 +335,8 @@ wp cron event run gg_data_process_retry_queue
 Poll the status endpoint for alerting:
 
 ```javascript
-const res = await fetch('/wp-json/gg-data/v1/sync/retry-queue', {
-  headers: { 'X-WP-Nonce': ggDataSettings.nonce }
+const res = await fetch('/wp-json/gregius-data/v1/sync/retry-queue', {
+  headers: { 'X-WP-Nonce': gregiusDataSettings.nonce }
 });
 const { data } = await res.json();
 
@@ -352,9 +352,9 @@ After resolving the underlying issue, clear dead letter and re-run batch sync:
 ```bash
 # Clear dead letter
 curl -X DELETE -H "X-WP-Nonce: [nonce]" \
-  "https://example.com/wp-json/gg-data/v1/sync/retry-queue/clear"
+  "https://example.com/wp-json/gregius-data/v1/sync/retry-queue/clear"
 
 # Re-run batch sync for affected post type
 curl -X POST -H "X-WP-Nonce: [nonce]" \
-  "https://example.com/wp-json/gg-data/v1/sync/post-type/post?batch_size=100&offset=0"
+  "https://example.com/wp-json/gregius-data/v1/sync/post-type/post?batch_size=100&offset=0"
 ```

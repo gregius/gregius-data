@@ -78,9 +78,9 @@ The lifecycle subsystem sits at the plugin boundary. It is responsible for estab
 
 - docs/lifecycle/architecture.md
 - gregius-data.php
-- includes/class-gg-data-activator.php
-- includes/class-gg-data-deactivator.php
-- includes/class-gg-data-cron-manager.php
+- includes/class-gregius-data-activator.php
+- includes/class-gregius-data-deactivator.php
+- includes/class-gregius-data-cron-manager.php
 - assets/assets.php
 - uninstall.php
 
@@ -109,22 +109,22 @@ Requirement notation:
 | LIFE-FR-12 | Uninstall MUST unschedule plugin-owned background jobs using Action Scheduler when available and WordPress cron fallback otherwise. | Must |
 | LIFE-FR-13 | Uninstall MUST preserve plugin-owned data by default and delete plugin-owned options, transients, and custom tables only when the retention flag is enabled. | Must |
 | LIFE-FR-14 | Uninstall MUST clean up multisite blog data for each site and remove network-level plugin metadata when the retention flag is enabled. | Must |
-| LIFE-FR-15 | Deactivation MUST surface a keep/remove data-retention choice and persist it to `gg_data_remove_data_on_uninstall`. | Must |
+| LIFE-FR-15 | Deactivation MUST surface a keep/remove data-retention choice and persist it to `gregius_data_remove_data_on_uninstall`. | Must |
 | LIFE-FR-16 | The retention flag MUST be stored as a site option on multisite and a blog option on single-site. | Must |
-| LIFE-FR-17 | Uninstall removal MUST also drop the logs table and delete plugin-owned prompt data (`gg_prompt` posts, `_gg_prompt_*` meta, and `gg_prompt_type` terms). | Must |
-| LIFE-FR-18 | The retention preference MUST be writable through the REST endpoint `POST /gg-data/v1/data-retention`. | Must |
+| LIFE-FR-17 | Uninstall removal MUST also drop the logs table and delete plugin-owned prompt data (`gregius_prompt` posts, `_gregius_prompt_*` meta, and `gregius_prompt_type` terms). | Must |
+| LIFE-FR-18 | The retention preference MUST be writable through the REST endpoint `POST /gregius-data/v1/data-retention`. | Must |
 
 ### 3.2 Data and Contract Requirements
 
 | ID | Requirement | Priority |
 |---|---|---|
-| LIFE-DR-01 | The lifecycle version contract MUST use the option key `gg_data_db_version` to track installed lifecycle version state. | Must |
-| LIFE-DR-02 | Default sync settings contracts MUST use option keys prefixed with `gg_data_sync_`. | Must |
-| LIFE-DR-03 | The deferred localStorage cleanup contract MUST use the transient key `gg_data_clear_localstorage`. | Must |
-| LIFE-DR-04 | Uninstall cleanup contracts MUST remove option keys matching both `gg_data_*` and `gregius_data_*`. | Must |
-| LIFE-DR-05 | Cron schedule contracts MUST define `gg_data_every_minute` as 60 seconds and `gg_data_every_five_minutes` as 300 seconds. | Must |
+| LIFE-DR-01 | The lifecycle version contract MUST use the option key `gregius_data_db_version` to track installed lifecycle version state. | Must |
+| LIFE-DR-02 | Default sync settings contracts MUST use option keys prefixed with `gregius_data_sync_`. | Must |
+| LIFE-DR-03 | The deferred localStorage cleanup contract MUST use the transient key `gregius_data_clear_localstorage`. | Must |
+| LIFE-DR-04 | Uninstall cleanup contracts MUST remove option keys matching both `gregius_data_*` and `gregius_data_*`. | Must |
+| LIFE-DR-05 | Cron schedule contracts MUST define `gregius_data_every_minute` as 60 seconds and `gregius_data_every_five_minutes` as 300 seconds. | Must |
 | LIFE-DR-06 | The lifecycle subsystem MUST preserve clear ownership boundaries for plugin-managed settings, sync metadata, and logs tables. | Must |
-| LIFE-DR-07 | The data-retention contract MUST use the option/site-option key `gg_data_remove_data_on_uninstall`. | Must |
+| LIFE-DR-07 | The data-retention contract MUST use the option/site-option key `gregius_data_remove_data_on_uninstall`. | Must |
 
 ### 3.3 Operations and Security Requirements
 
@@ -166,13 +166,13 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| LIFE-FR-01 to LIFE-FR-03 | gregius-data.php, includes/class-gg-data-activator.php | Bootstrap hook registration and admin-init version check |
-| LIFE-FR-04 to LIFE-FR-09, LIFE-DR-01 to LIFE-DR-02, LIFE-OR-03, LIFE-QR-01 | includes/class-gg-data-activator.php | Activation setup, defaults, versioning, prompt seeding, idempotent guards |
-| LIFE-FR-10 to LIFE-FR-11, LIFE-DR-03, LIFE-OR-01, LIFE-QR-02, LIFE-QR-04 | includes/class-gg-data-deactivator.php, assets/assets.php | Deactivation preservation and deferred localStorage cleanup |
-| LIFE-FR-12 to LIFE-FR-14, LIFE-FR-16 to LIFE-FR-17, LIFE-DR-04, LIFE-DR-07, LIFE-OR-02, LIFE-OR-04, LIFE-OR-05, LIFE-OR-06, LIFE-OR-07, LIFE-QR-03, LIFE-QR-05 | uninstall.php, includes/class-gg-data-uninstaller.php | Uninstall cleanup, retention flag gate, Action Scheduler fallback, multisite cleanup, cache flush |
-| LIFE-FR-15, LIFE-FR-18 | includes/api/class-gg-data-rest-data-retention-controller.php, assets/src/scripts/deactivation-modal.js, assets/assets.php | Retention preference surface and REST endpoint |
-| LIFE-DR-05 | includes/class-gg-data-cron-manager.php | Custom schedule intervals and cron ownership |
-| LIFE-DR-06 | includes/class-gg-data-activator.php, uninstall.php | Table ownership boundaries |
+| LIFE-FR-01 to LIFE-FR-03 | gregius-data.php, includes/class-gregius-data-activator.php | Bootstrap hook registration and admin-init version check |
+| LIFE-FR-04 to LIFE-FR-09, LIFE-DR-01 to LIFE-DR-02, LIFE-OR-03, LIFE-QR-01 | includes/class-gregius-data-activator.php | Activation setup, defaults, versioning, prompt seeding, idempotent guards |
+| LIFE-FR-10 to LIFE-FR-11, LIFE-DR-03, LIFE-OR-01, LIFE-QR-02, LIFE-QR-04 | includes/class-gregius-data-deactivator.php, assets/assets.php | Deactivation preservation and deferred localStorage cleanup |
+| LIFE-FR-12 to LIFE-FR-14, LIFE-FR-16 to LIFE-FR-17, LIFE-DR-04, LIFE-DR-07, LIFE-OR-02, LIFE-OR-04, LIFE-OR-05, LIFE-OR-06, LIFE-OR-07, LIFE-QR-03, LIFE-QR-05 | uninstall.php, includes/class-gregius-data-uninstaller.php | Uninstall cleanup, retention flag gate, Action Scheduler fallback, multisite cleanup, cache flush |
+| LIFE-FR-15, LIFE-FR-18 | includes/api/class-gregius-data-rest-data-retention-controller.php, assets/src/scripts/deactivation-modal.js, assets/assets.php | Retention preference surface and REST endpoint |
+| LIFE-DR-05 | includes/class-gregius-data-cron-manager.php | Custom schedule intervals and cron ownership |
+| LIFE-DR-06 | includes/class-gregius-data-activator.php, uninstall.php | Table ownership boundaries |
 
 ## 6. Appendices
 

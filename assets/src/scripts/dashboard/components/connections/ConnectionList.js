@@ -52,7 +52,7 @@ const ConnectionList = ({
             Object.keys(connections).forEach(async (name) => {
                 try {
                     const response = await apiFetch({
-                        path: `/gg-data/v1/schema/status?connection=${name}`
+                        path: `/gregius-data/v1/schema/status?connection=${name}`
                     });
                     setSchemaStatuses(prev => ({ ...prev, [name]: response }));
                 } catch (err) {
@@ -60,7 +60,7 @@ const ConnectionList = ({
 
                 try {
                     const searchResponse = await apiFetch({
-                        path: `/gg-data/v1/search/status?connection=${name}`
+                        path: `/gregius-data/v1/search/status?connection=${name}`
                     });
                     setSearchSchemaStatuses(prev => ({ ...prev, [name]: searchResponse }));
                     // If search schema exists, check settings health
@@ -74,7 +74,7 @@ const ConnectionList = ({
                 // Fetch health status
                 try {
                     const healthResponse = await apiFetch({
-                        path: `/gg-data/v1/sync/connection-health?connection=${name}`
+                        path: `/gregius-data/v1/sync/connection-health?connection=${name}`
                     });
                     if (healthResponse.success) {
                         setHealthStatuses(prev => ({ ...prev, [name]: healthResponse.data }));
@@ -100,14 +100,14 @@ const ConnectionList = ({
         try {
             setCreatingSchema(prev => ({ ...prev, [connectionName]: true }));
             const response = await apiFetch({
-                path: `/gg-data/v1/schema/create?connection=${connectionName}`,
+                path: `/gregius-data/v1/schema/create?connection=${connectionName}`,
                 method: 'POST'
             });
 
             if (response.success) {
                 // Refresh schema status
                 const schemaResponse = await apiFetch({
-                    path: `/gg-data/v1/schema/status?connection=${connectionName}`
+                    path: `/gregius-data/v1/schema/status?connection=${connectionName}`
                 });
                 setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
             }
@@ -122,7 +122,7 @@ const ConnectionList = ({
         try {
             setCreatingSearchSchema(prev => ({ ...prev, [connectionName]: true }));
             const response = await apiFetch({
-                path: `/gg-data/v1/search/schema/create`,
+                path: `/gregius-data/v1/search/schema/create`,
                 method: 'POST',
                 data: {
                     connection: connectionName
@@ -132,7 +132,7 @@ const ConnectionList = ({
             if (response.success) {
                 // Refresh search schema status
                 const searchResponse = await apiFetch({
-                    path: `/gg-data/v1/search/status?connection=${connectionName}`
+                    path: `/gregius-data/v1/search/status?connection=${connectionName}`
                 });
                 setSearchSchemaStatuses(prev => ({ ...prev, [connectionName]: searchResponse }));
                 // Check settings health for this connection
@@ -151,7 +151,7 @@ const ConnectionList = ({
 
         try {
             const response = await apiFetch({
-                path: `/gg-data/v1/search/language-status?connection=${connectionName}`
+                path: `/gregius-data/v1/search/language-status?connection=${connectionName}`
             });
             // Show Update button if: language setting missing OR language mismatches current locale
             setSettingsNeedFix(prev => ({
@@ -167,13 +167,13 @@ const ConnectionList = ({
         try {
             setFixingSettings(prev => ({ ...prev, [connectionName]: true }));
             const response = await apiFetch({
-                path: `/gg-data/v1/search/fix-settings?connection=${connectionName}`,
+                path: `/gregius-data/v1/search/fix-settings?connection=${connectionName}`,
                 method: 'POST'
             });
 
             if (response.success) {
                 const searchResponse = await apiFetch({
-                    path: `/gg-data/v1/search/status?connection=${connectionName}`
+                    path: `/gregius-data/v1/search/status?connection=${connectionName}`
                 });
                 setSearchSchemaStatuses(prev => ({ ...prev, [connectionName]: searchResponse }));
                 setSettingsNeedFix(prev => ({ ...prev, [connectionName]: false }));
@@ -190,7 +190,7 @@ const ConnectionList = ({
         try {
             setCheckingHealth(prev => ({ ...prev, [connectionName]: true }));
             const response = await apiFetch({
-                path: '/gg-data/v1/sync/connection-health/check',
+                path: '/gregius-data/v1/sync/connection-health/check',
                 method: 'POST'
             });
 
@@ -208,14 +208,14 @@ const ConnectionList = ({
         try {
             setUpgradingSchema(prev => ({ ...prev, [connectionName]: true }));
             const response = await apiFetch({
-                path: `/gg-data/v1/schema/upgrade?connection=${connectionName}`,
+                path: `/gregius-data/v1/schema/upgrade?connection=${connectionName}`,
                 method: 'POST'
             });
 
             if (response.success) {
                 // Refresh schema status to remove update banner
                 const schemaResponse = await apiFetch({
-                    path: `/gg-data/v1/schema/status?connection=${connectionName}`
+                    path: `/gregius-data/v1/schema/status?connection=${connectionName}`
                 });
                 setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
             }
@@ -236,7 +236,7 @@ const ConnectionList = ({
             if (connectionName) {
                 // Refresh schema status
                 const schemaResponse = await apiFetch({
-                    path: `/gg-data/v1/schema/status?connection=${connectionName}`
+                    path: `/gregius-data/v1/schema/status?connection=${connectionName}`
                 });
                 setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
             }

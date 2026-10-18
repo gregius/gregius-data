@@ -16,7 +16,7 @@ Gregius Data offers **site developers and plugin integrators** a controlled orch
 
 ## Understanding Hook Tiers
 
-Every Gregius Data hook is classified into a stability tier that tells you how safe it is to build on. All hooks use the `gg_data_` prefix for consistent discovery.
+Every Gregius Data hook is classified into a stability tier that tells you how safe it is to build on. All hooks use the `gregius_data_` prefix for consistent discovery.
 
 ### Tier 1 public hooks
 
@@ -55,18 +55,18 @@ Gregius Data hooks are organized by the subsystem they extend:
 
 | Category | What you can control | Example hooks |
 |---|---|---|
-| Configuration and batch | Tune throughput for sync, embeddings, vector deletion | `gg_data_post_sync_batch_size`, `gg_data_vector_delete_batch_size` |
-| Sync control | Filter which posts and meta keys are synced, enrich metadata | `gg_data_should_sync_post`, `gg_data_metadata_manifest` |
-| Chunking | Register custom chunk strategies, shape chunk output | `gg_data_chunking_strategies`, `gg_data_embedding_chunks` |
-| Search | Adjust relevance weights and rate limits | `gg_data_search_title_weight`, `gg_data_search_rate_limit` |
-| Interaction | Add custom analytics metadata, react to recorded interactions | `gg_data_interaction_meta_fields`, `gg_data_interaction_feedback_received` |
-| RAG tools | Register tools, intercept tool execution, react to completion | `gg_data_rag_tools`, `gg_data_rag_complete` |
-| RAG lifecycle | Filter retrieval queries, pre-retrieval criteria, LLM responses, source relevance | `gg_data_rag_search_query`, `gg_data_rag_llm_response` |
-| RAG governance | Set retrieval policy, rerank policy, threshold profiles, rate limits | `gg_data_rag_retrieval_policy`, `gg_data_rag_rate_limit` |
-| Provider | Intercept API requests and responses per provider | `gg_data_openai_request`, `gg_data_anthropic_call` |
-| Log retention | Override retention period, observe purge events | `gg_data_log_retention_days`, `gg_data_after_purge_logs` |
-| Document ingestion | Control PDF/document extraction limits and attachment eligibility | `gg_data_document_max_pages`, `gg_data_asset_process_post` |
-| Access control | Set RAG access policy, required capability, and guest routes | `gg_data_rag_access_level`, `gg_data_rag_guest_allowed_routes` |
+| Configuration and batch | Tune throughput for sync, embeddings, vector deletion | `gregius_data_post_sync_batch_size`, `gregius_data_vector_delete_batch_size` |
+| Sync control | Filter which posts and meta keys are synced, enrich metadata | `gregius_data_should_sync_post`, `gregius_data_metadata_manifest` |
+| Chunking | Register custom chunk strategies, shape chunk output | `gregius_data_chunking_strategies`, `gregius_data_embedding_chunks` |
+| Search | Adjust relevance weights and rate limits | `gregius_data_search_title_weight`, `gregius_data_search_rate_limit` |
+| Interaction | Add custom analytics metadata, react to recorded interactions | `gregius_interaction_meta_fields`, `gregius_interaction_feedback_received` |
+| RAG tools | Register tools, intercept tool execution, react to completion | `gregius_data_rag_tools`, `gregius_data_rag_complete` |
+| RAG lifecycle | Filter retrieval queries, pre-retrieval criteria, LLM responses, source relevance | `gregius_data_rag_search_query`, `gregius_data_rag_llm_response` |
+| RAG governance | Set retrieval policy, rerank policy, threshold profiles, rate limits | `gregius_data_rag_retrieval_policy`, `gregius_data_rag_rate_limit` |
+| Provider | Intercept API requests and responses per provider | `gregius_data_openai_request`, `gregius_data_anthropic_call` |
+| Log retention | Override retention period, observe purge events | `gregius_data_log_retention_days`, `gregius_data_after_purge_logs` |
+| Document ingestion | Control PDF/document extraction limits and attachment eligibility | `gregius_data_document_max_pages`, `gregius_data_asset_process_post` |
+| Access control | Set RAG access policy, required capability, and guest routes | `gregius_data_rag_access_level`, `gregius_data_rag_guest_allowed_routes` |
 
 ---
 

@@ -18,60 +18,60 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return void
  */
-function gg_data_frontend_scripts_support() {
+function gregius_data_frontend_scripts_support() {
 	// Enqueue the main stylesheet.
 	$css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/frontend.min.*.css' );
 	if ( ! empty( $css_file_path ) && file_exists( $css_file_path[0] ) ) {
 		$css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $css_file_path[0] );
-		wp_enqueue_style( 'gg-data-frontend-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
+		wp_enqueue_style( 'gregius-data-frontend-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
 	}
 
 	// Enqueue the main JavaScript file.
 	$js_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/frontend.min.*.js' );
 	if ( ! empty( $js_file_path ) && file_exists( $js_file_path[0] ) ) {
 		$js_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $js_file_path[0] );
-		wp_enqueue_script( 'gg-data-frontend-script', $js_file_uri, array(), filemtime( $js_file_path[0] ), true );
+		wp_enqueue_script( 'gregius-data-frontend-script', $js_file_uri, array(), filemtime( $js_file_path[0] ), true );
 	}
 }
-add_action( 'wp_enqueue_scripts', 'gg_data_frontend_scripts_support', 999 );
+add_action( 'wp_enqueue_scripts', 'gregius_data_frontend_scripts_support', 999 );
 
 /**
  * Enqueue editor styles.
  *
  * @return void
  */
-function gg_data_editor_styles_support() {
+function gregius_data_editor_styles_support() {
 	// Check if editor CSS file exists (may not be built).
 	$css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/editor.*.css' );
 	if ( ! empty( $css_file_path ) && file_exists( $css_file_path[0] ) ) {
 		add_editor_style( plugin_dir_url( __FILE__ ) . 'build/' . basename( $css_file_path[0] ) );
 	}
 }
-add_action( 'after_setup_theme', 'gg_data_editor_styles_support' );
+add_action( 'after_setup_theme', 'gregius_data_editor_styles_support' );
 
 /**
  * Enqueue editor scripts.
  *
  * @return void
  */
-function gg_data_editor_scripts_support() {
+function gregius_data_editor_scripts_support() {
 	// Enqueue the editor scripts.
 	wp_enqueue_script(
-		'gg-data-site-editor-script',
+		'gregius-data-site-editor-script',
 		plugin_dir_url( __FILE__ ) . 'build/editor.js',
 		array( 'wp-blocks', 'wp-dom-ready', 'wp-edit-post' ),
 		'1.0',
 		true
 	);
 }
-add_action( 'enqueue_block_editor_assets', 'gg_data_editor_scripts_support' );
+add_action( 'enqueue_block_editor_assets', 'gregius_data_editor_scripts_support' );
 
 /**
  * Enqueue dashboard styles and scripts.
  *
  * @return void
  */
-function gg_data_dashboard_scripts_support() {
+function gregius_data_dashboard_scripts_support() {
 	// Only load on our plugin's admin pages.
 	$screen = get_current_screen();
 	if ( ! $screen || strpos( $screen->id, 'gregius-data' ) === false ) {
@@ -85,14 +85,14 @@ function gg_data_dashboard_scripts_support() {
 	$css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/dashboard.min.*.css' );
 	if ( ! empty( $css_file_path ) && file_exists( $css_file_path[0] ) ) {
 		$css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $css_file_path[0] );
-		wp_enqueue_style( 'gg-data-dashboard-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
+		wp_enqueue_style( 'gregius-data-dashboard-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
 	}
 
 	// Enqueue WordPress Components styles.
 	$style_css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/style-dashboard.min.*.css' );
 	if ( ! empty( $style_css_file_path ) && file_exists( $style_css_file_path[0] ) ) {
 		$style_css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $style_css_file_path[0] );
-		wp_enqueue_style( 'gg-data-dashboard-components', $style_css_file_uri, array(), filemtime( $style_css_file_path[0] ), 'all' );
+		wp_enqueue_style( 'gregius-data-dashboard-components', $style_css_file_uri, array(), filemtime( $style_css_file_path[0] ), 'all' );
 	}
 
 	// Get the asset file for dependencies.
@@ -115,52 +115,32 @@ function gg_data_dashboard_scripts_support() {
 	$js_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/dashboard.min.*.js' );
 	if ( ! empty( $js_file_path ) && file_exists( $js_file_path[0] ) ) {
 		$js_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $js_file_path[0] );
-		wp_enqueue_script( 'gg-data-dashboard-script', $js_file_uri, $dependencies, $version ?? filemtime( $js_file_path[0] ), true );
+		wp_enqueue_script( 'gregius-data-dashboard-script', $js_file_uri, $dependencies, $version ?? filemtime( $js_file_path[0] ), true );
 
-		// Ensure WordPress REST API settings are available.
-		wp_localize_script(
-			'gg-data-dashboard-script',
-			'ggDataSettings',
-			array(
-				'root'          => esc_url_raw( rest_url() ),
-				'nonce'         => wp_create_nonce( 'wp_rest' ),
-				'versionString' => 'wp/v2/',
-			)
-		);
-
-		// Add inline script to set up API configuration.
+		// Add inline script to set up the REST API config the dashboard consumes.
 		wp_add_inline_script(
-			'gg-data-dashboard-script',
+			'gregius-data-dashboard-script',
 			'
-            window.ggPgDashboard = {
-                apiUrl: "' . esc_js( rest_url( 'gg-data/v1/' ) ) . '",
+            window.gregiusPgDashboard = {
                 restUrl: "' . esc_js( rest_url() ) . '",
-                nonce: "' . esc_js( wp_create_nonce( 'wp_rest' ) ) . '",
-                currentUser: ' . wp_json_encode(
-					array(
-						'id'           => get_current_user_id(),
-						'display_name' => wp_get_current_user()->display_name,
-						'email'        => wp_get_current_user()->user_email,
-					)
-				) . ',
-                pluginUrl: "' . esc_js( plugin_dir_url( __DIR__ ) ) . '"
+                nonce: "' . esc_js( wp_create_nonce( 'wp_rest' ) ) . '"
             };
         ',
 			'before'
 		);
 	}
 }
-add_action( 'admin_enqueue_scripts', 'gg_data_dashboard_scripts_support' );
+add_action( 'admin_enqueue_scripts', 'gregius_data_dashboard_scripts_support' );
 
 /**
  * Clear localStorage when plugin is deactivated
  */
-function gg_data_clear_localstorage_script() {
-	if ( ! get_transient( 'gg_data_clear_localstorage' ) ) {
+function gregius_data_clear_localstorage_script() {
+	if ( ! get_transient( 'gregius_data_clear_localstorage' ) ) {
 		return;
 	}
 
-	delete_transient( 'gg_data_clear_localstorage' );
+	delete_transient( 'gregius_data_clear_localstorage' );
 
 	$script = <<<'JS'
 // Clear Gregius Data localStorage on deactivation.
@@ -168,7 +148,7 @@ if (typeof localStorage !== 'undefined') {
 	const keysToRemove = [];
 	for (let i = 0; i < localStorage.length; i++) {
 		const key = localStorage.key(i);
-		if (key && key.startsWith('gg_data_')) {
+		if (key && key.startsWith('gregius_data_')) {
 			keysToRemove.push(key);
 		}
 	}
@@ -177,11 +157,11 @@ if (typeof localStorage !== 'undefined') {
 }
 JS;
 
-	wp_register_script( 'gg-data-clear-localstorage', '', array(), GG_DATA_VERSION, true );
-	wp_add_inline_script( 'gg-data-clear-localstorage', $script );
-	wp_enqueue_script( 'gg-data-clear-localstorage' );
+	wp_register_script( 'gregius-data-clear-localstorage', '', array(), GREGIUS_DATA_VERSION, true );
+	wp_add_inline_script( 'gregius-data-clear-localstorage', $script );
+	wp_enqueue_script( 'gregius-data-clear-localstorage' );
 }
-add_action( 'admin_enqueue_scripts', 'gg_data_clear_localstorage_script' );
+add_action( 'admin_enqueue_scripts', 'gregius_data_clear_localstorage_script' );
 
 /**
  * Enqueue the deactivation modal on the plugins screen.
@@ -192,7 +172,7 @@ add_action( 'admin_enqueue_scripts', 'gg_data_clear_localstorage_script' );
  * @param string $hook_suffix Current admin page hook.
  * @return void
  */
-function gg_data_deactivation_modal_scripts_support( $hook_suffix ) {
+function gregius_data_deactivation_modal_scripts_support( $hook_suffix ) {
 	if ( 'plugins.php' !== $hook_suffix ) {
 		return;
 	}
@@ -213,7 +193,7 @@ function gg_data_deactivation_modal_scripts_support( $hook_suffix ) {
 	wp_enqueue_script( 'wp-api' );
 
 	wp_enqueue_script(
-		'gg-data-deactivation-modal',
+		'gregius-data-deactivation-modal',
 		plugin_dir_url( __FILE__ ) . 'build/deactivation-modal.js',
 		isset( $asset_file['dependencies'] ) ? $asset_file['dependencies'] : array( 'wp-element', 'wp-i18n', 'wp-components', 'wp-api-fetch', 'wp-dom-ready' ),
 		isset( $asset_file['version'] ) ? $asset_file['version'] : null,
@@ -223,12 +203,12 @@ function gg_data_deactivation_modal_scripts_support( $hook_suffix ) {
 	wp_enqueue_style( 'wp-components' );
 
 	wp_localize_script(
-		'gg-data-deactivation-modal',
-		'ggDataDeactivation',
+		'gregius-data-deactivation-modal',
+		'gregiusDataDeactivation',
 		array(
 			'deactivateId' => 'deactivate-gregius-data/gregius-data.php',
-			'removeData'   => GG_Data_Uninstaller::get_retention_flag(),
+			'removeData'   => Gregius_Data_Uninstaller::get_retention_flag(),
 		)
 	);
 }
-add_action( 'admin_enqueue_scripts', 'gg_data_deactivation_modal_scripts_support' );
+add_action( 'admin_enqueue_scripts', 'gregius_data_deactivation_modal_scripts_support' );

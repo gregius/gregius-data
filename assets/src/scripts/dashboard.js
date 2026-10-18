@@ -24,13 +24,13 @@ domReady(() => {
     if (window.wpApiSettings) {
         apiFetch.use(apiFetch.createNonceMiddleware(window.wpApiSettings.nonce));
         apiFetch.use(apiFetch.createRootURLMiddleware(window.wpApiSettings.root));
-    } else if (window.ggPgDashboard && window.ggPgDashboard.nonce) {
+    } else if (window.gregiusPgDashboard && window.gregiusPgDashboard.nonce) {
         // Fallback to our own configuration
-        apiFetch.use(apiFetch.createNonceMiddleware(window.ggPgDashboard.nonce));
-        apiFetch.use(apiFetch.createRootURLMiddleware(window.ggPgDashboard.restUrl));
+        apiFetch.use(apiFetch.createNonceMiddleware(window.gregiusPgDashboard.nonce));
+        apiFetch.use(apiFetch.createRootURLMiddleware(window.gregiusPgDashboard.restUrl));
     }
     
-    const dashboardContainer = document.getElementById('gg-data-react-dashboard');
+    const dashboardContainer = document.getElementById('gregius-data-react-dashboard');
     
     if (dashboardContainer) {
         // Set flag to indicate React dashboard is active
@@ -48,15 +48,15 @@ domReady(() => {
             
             // Signal React load failure
             if (window.jQuery) {
-                window.jQuery(document).trigger('gg-data-react-failed');
+                window.jQuery(document).trigger('gregius-data-react-failed');
             }
         }
     } else {
         // Fallback: Create container if it doesn't exist
-        const adminPage = document.querySelector('.wrap.gg-data-admin');
+        const adminPage = document.querySelector('.wrap.gregius-data-admin');
         if (adminPage) {
             const reactContainer = document.createElement('div');
-            reactContainer.id = 'gg-data-react-dashboard';
+            reactContainer.id = 'gregius-data-react-dashboard';
             adminPage.appendChild(reactContainer);
             
             try {
@@ -70,7 +70,7 @@ domReady(() => {
                 
                 // Signal React load failure
                 if (window.jQuery) {
-                    window.jQuery(document).trigger('gg-data-react-failed');
+                    window.jQuery(document).trigger('gregius-data-react-failed');
                 }
             }
         } else {
@@ -81,8 +81,8 @@ domReady(() => {
 });
 
 // Make REST API configuration globally available
-window.ggPgDashboard = {
-    apiUrl: wpApiSettings?.root + 'gg-data/v1/',
+window.gregiusPgDashboard = {
+    apiUrl: wpApiSettings?.root + 'gregius-data/v1/',
     nonce: wpApiSettings?.nonce,
     currentUser: wpApiSettings?.currentUser || null,
     adminUrl: window.location.href,

@@ -76,15 +76,15 @@ The Search subsystem bridges WordPress query execution and database retrieval se
 ## 2. References
 
 - docs/search/architecture.md
-- includes/search/class-gg-data-search-integration.php
-- includes/search/class-gg-data-search-schema.php
-- includes/search/class-gg-data-search-fallback.php
-- includes/search/class-gg-data-search-language.php
+- includes/search/class-gregius-data-search-integration.php
+- includes/search/class-gregius-data-search-schema.php
+- includes/search/class-gregius-data-search-fallback.php
+- includes/search/class-gregius-data-search-language.php
 - includes/search/search-settings.php
 - includes/sql/postgrest-schema.sql
-- includes/api/class-gg-data-rest-search-controller.php
-- includes/providers/class-gg-postgresql-provider.php
-- includes/rag/class-gg-data-rag-service.php
+- includes/api/class-gregius-data-rest-search-controller.php
+- includes/providers/class-gregius-data-postgresql-provider.php
+- includes/rag/class-gregius-data-rag-service.php
 
 ## 3. Software Requirements
 
@@ -172,10 +172,10 @@ Acceptance baseline for migration phase:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| SEARCH-FR-01 to SEARCH-FR-07, SEARCH-FR-13 to SEARCH-FR-15 | includes/search/class-gg-data-search-integration.php, includes/sql/postgrest-schema.sql | WordPress interception, SQL execution, retrieval-mode behavior, ranking behavior, and metadata-filter parity |
-| SEARCH-FR-08 to SEARCH-FR-11 | includes/search/class-gg-data-search-schema.php, includes/api/class-gg-data-rest-search-controller.php, includes/search/class-gg-data-search-language.php | Schema provisioning and search-management endpoint behavior |
-| SEARCH-FR-12, SEARCH-DR-01 to SEARCH-DR-11 | includes/search/class-gg-data-search-integration.php, includes/search/class-gg-data-search-fallback.php, includes/providers/class-gg-postgresql-provider.php, includes/class-gg-data-schema-manager.php, includes/class-gg-data-content-cleaner.php | Event emission, response contracts, contextual source metadata, health telemetry, provider path parity, and metadata-manifest contracts |
-| SEARCH-OR-01 to SEARCH-OR-07 | includes/api/class-gg-data-rest-search-controller.php, includes/search/class-gg-data-search-fallback.php, includes/search/class-gg-data-search-integration.php | Permissions, fallback operations, and runtime controls |
+| SEARCH-FR-01 to SEARCH-FR-07, SEARCH-FR-13 to SEARCH-FR-15 | includes/search/class-gregius-data-search-integration.php, includes/sql/postgrest-schema.sql | WordPress interception, SQL execution, retrieval-mode behavior, ranking behavior, and metadata-filter parity |
+| SEARCH-FR-08 to SEARCH-FR-11 | includes/search/class-gregius-data-search-schema.php, includes/api/class-gregius-data-rest-search-controller.php, includes/search/class-gregius-data-search-language.php | Schema provisioning and search-management endpoint behavior |
+| SEARCH-FR-12, SEARCH-DR-01 to SEARCH-DR-11 | includes/search/class-gregius-data-search-integration.php, includes/search/class-gregius-data-search-fallback.php, includes/providers/class-gregius-data-postgresql-provider.php, includes/class-gregius-data-schema-manager.php, includes/class-gregius-data-content-cleaner.php | Event emission, response contracts, contextual source metadata, health telemetry, provider path parity, and metadata-manifest contracts |
+| SEARCH-OR-01 to SEARCH-OR-07 | includes/api/class-gregius-data-rest-search-controller.php, includes/search/class-gregius-data-search-fallback.php, includes/search/class-gregius-data-search-integration.php | Permissions, fallback operations, and runtime controls |
 | SEARCH-QR-01 to SEARCH-QR-09 | docs/search/architecture.md, includes/sql/postgrest-schema.sql, implementation files listed in References | Performance, compatibility, observability, and parity expectations |
 
 ## 6. Appendices

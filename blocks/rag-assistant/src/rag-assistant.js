@@ -539,7 +539,7 @@ export default function ChatInterface({
 
             try {
                 const response = await apiFetch({
-                    path: `/gg-data/v1/rag/chat`,
+                    path: `/gregius-data/v1/rag/chat`,
                     method: 'POST',
                     signal: abortController.signal,
                     data: {
@@ -611,10 +611,10 @@ export default function ChatInterface({
             });
 
             // Fire AJAX request to log on server (non-blocking, fire-and-forget).
-            const sseConfig = window.ggDataRagSSE;
+            const sseConfig = window.gregiusDataRagSSE;
             if (sseConfig?.ajaxUrl) {
                 const formData = new FormData();
-                formData.append('action', 'gg_data_log_streaming_failure');
+                formData.append('action', 'gregius_data_log_streaming_failure');
                 formData.append('nonce', sseConfig.nonce);
                 formData.append('error_type', errorType);
                 formData.append('elapsed_ms', elapsedMs.toString());
@@ -644,7 +644,7 @@ export default function ChatInterface({
     const sendWithSSE = useCallback(
         (currentQuery) => {
             // Check if SSE config is available (localized from PHP)
-            const sseConfig = window.ggDataRagSSE;
+            const sseConfig = window.gregiusDataRagSSE;
             if (!sseConfig?.ajaxUrl || !sseConfig?.nonce) {
                 // Fall back to REST API if SSE not configured
                 sendWithREST(currentQuery);
@@ -671,7 +671,7 @@ export default function ChatInterface({
 
             // Build form data for POST request
             const formData = new FormData();
-            formData.append('action', 'gg_data_rag_stream');
+            formData.append('action', 'gregius_data_rag_stream');
             formData.append('nonce', sseConfig.nonce);
             formData.append('query', currentQuery);
             formData.append('connection_name', connectionId);
@@ -858,7 +858,7 @@ export default function ChatInterface({
         stopRequestedRef.current = false;
 
         // Use SSE if available and enabled, otherwise fall back to REST
-        if (useSSE && window.ggDataRagSSE) {
+        if (useSSE && window.gregiusDataRagSSE) {
             sendWithSSE(currentQuery);
         } else {
             sendWithREST(currentQuery);

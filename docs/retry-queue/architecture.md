@@ -43,21 +43,21 @@ Explicitly excluded:
 WordPress Content Editing
         │
         ▼
-Sync Operation (GG_Data_DB)
+Sync Operation (Gregius_Data_DB)
         │
         ├─ Success → Update sync metadata
         │
         └─ Failure:
                │
                ▼
-       GG_Data_Error_Handler
+       Gregius_Data_Error_Handler
          classify_error()
                │
                ├─ Permanent → Log error, return false (no queue)
                │
                ├─ Transient/Unknown →
                │         ▼
-               │   GG_Data_Retry_Queue
+               │   Gregius_Data_Retry_Queue
                │    queue_for_retry()
                │     Save to wp_options
                │         ▼
@@ -86,26 +86,26 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. **Error Handler Component** (`GG_Data_Error_Handler`)
+1. **Error Handler Component** (`Gregius_Data_Error_Handler`)
    - Stateless classifier; receives error message string, returns structured classification result
    - Maintains two internal pattern lists: 18 transient patterns, 16 permanent patterns
    - Unknown errors (no match) default to retry-safe to prevent silent data loss
 
-2. **Retry Queue Manager Component** (`GG_Data_Retry_Queue`)
+2. **Retry Queue Manager Component** (`Gregius_Data_Retry_Queue`)
    - Manages queue item serialization into wp_options
-   - Registers and processes WP-Cron event `gg_data_process_retry_queue`
+   - Registers and processes WP-Cron event `gregius_data_process_retry_queue`
    - Implements retry dispatch router: switches on operation_type to reconstruct and re-execute operation
    - Implements dead letter promotion and rolling-window eviction (max 100 items)
    - Exposes `manual_retry($index)` and `clear_dead_letter_queue()` for REST controller delegation
 
-3. **DB Integration Layer** (`GG_Data_DB`)
+3. **DB Integration Layer** (`Gregius_Data_DB`)
    - 5 instrumented call sites that invoke `queue_for_retry()` on failure
    - Call sites span: `delete_post` (×1), `upsert_post_meta` (×3), `delete_post_meta` (×1)
    - Provides `operation_data` payload carrying context needed for retry reconstruction
 
-4. **REST Controller Component** (`GG_Data_REST_Retry_Queue_Controller`)
-   - Registers 3 REST routes under `gg-data/v1/sync/retry-queue`
-   - Delegates all queue state management to `GG_Data_Retry_Queue`
+4. **REST Controller Component** (`Gregius_Data_REST_Retry_Queue_Controller`)
+   - Registers 3 REST routes under `gregius-data/v1/sync/retry-queue`
+   - Delegates all queue state management to `Gregius_Data_Retry_Queue`
    - Enforces `manage_options` on all routes
 
 5. **React Dashboard Component** (`RetryQueueCard.js`)
@@ -114,14 +114,14 @@ Mapping:
    - Auto-refreshes every 30 seconds
    - Scope boundary: UI consumer; no architectural decisions depend on its internal implementation
 
-6. **Deactivation/Uninstall Handlers** (`GG_Data_Deactivator`, `uninstall.php`)
-   - Deactivation: unschedules `gg_data_process_retry_queue` WP-Cron event; preserves queue data
-   - Uninstall: deletes `gg_data_retry_queue` and `gg_data_dead_letter_queue` from wp_options
+6. **Deactivation/Uninstall Handlers** (`Gregius_Data_Deactivator`, `uninstall.php`)
+   - Deactivation: unschedules `gregius_data_process_retry_queue` WP-Cron event; preserves queue data
+   - Uninstall: deletes `gregius_data_retry_queue` and `gregius_data_dead_letter_queue` from wp_options
 
 ### 3.2 Contract Boundaries
 
-- Upstream: `GG_Data_DB` failure paths provide operation_type, entity_id, error_message, and operation_data
-- Downstream: Successful retry calls back into `GG_Data_DB` upsert/delete methods using stored operation_data
+- Upstream: `Gregius_Data_DB` failure paths provide operation_type, entity_id, error_message, and operation_data
+- Downstream: Successful retry calls back into `Gregius_Data_DB` upsert/delete methods using stored operation_data
 - Sync metadata: Updated only on retry success (never on queue entry or on failure)
 
 Mapping:
@@ -135,10 +135,10 @@ Mapping:
 ### 4.1 Queueing Flow (DB Failure Path)
 
 ```
-GG_Data_DB method (e.g., upsert_post_meta) fails
+Gregius_Data_DB method (e.g., upsert_post_meta) fails
     │
     ├─ Extract error string from PDO errorInfo or Exception message
-    ├─ Instantiate GG_Data_Error_Handler
+    ├─ Instantiate Gregius_Data_Error_Handler
     ├─ $handler->classify_error($error_string)
     │   ├─ Returns: ['type' => 'transient', 'retry_safe' => true, 'message' => '...']
     │   └─ Returns: ['type' => 'permanent', 'retry_safe' => false, 'message' => '...']
@@ -146,7 +146,7 @@ GG_Data_DB method (e.g., upsert_post_meta) fails
     ├─ retry_safe = false → log [error], return false (caller gets false)
     │
     └─ retry_safe = true:
-        ├─ Instantiate GG_Data_Retry_Queue
+        ├─ Instantiate Gregius_Data_Retry_Queue
         ├─ $queue->queue_for_retry(
         │       'sync_meta',         // operation_type
         │       $post_id,            // entity_id
@@ -154,7 +154,7 @@ GG_Data_DB method (e.g., upsert_post_meta) fails
         │       $meta_data           // operation_data (full context)
         │   )
         ├─ Build queue item: attempt_count=1, next_retry=now+5s, first_attempt=now
-        ├─ Serialize + store in wp_options['gg_data_retry_queue']
+        ├─ Serialize + store in wp_options['gregius_data_retry_queue']
         ├─ Log [warning]: "Queued sync_meta #{id} for retry - next retry in 5s"
         └─ Return true (queued); DB method returns false to original caller
 ```
@@ -162,12 +162,12 @@ GG_Data_DB method (e.g., upsert_post_meta) fails
 ### 4.2 WP-Cron Processing Flow
 
 ```
-WP-Cron fires: gg_data_process_retry_queue (every 60s)
+WP-Cron fires: gregius_data_process_retry_queue (every 60s)
     │
     ▼
 process_queue()
     │
-    ├─ Load gg_data_retry_queue from wp_options
+    ├─ Load gregius_data_retry_queue from wp_options
     │
     └─ For each queue item:
         │
@@ -177,9 +177,9 @@ process_queue()
         └─ YES → retry_operation($item)
                   │
                   ├─ Switch on operation_type:
-                  │   ├─ sync_meta:    GG_Data_DB->upsert_post_meta()
-                  │   ├─ delete_post:  GG_Data_DB->delete_post()
-                  │   └─ delete_meta:  GG_Data_DB->delete_post_meta()
+                  │   ├─ sync_meta:    Gregius_Data_DB->upsert_post_meta()
+                  │   ├─ delete_post:  Gregius_Data_DB->delete_post()
+                  │   └─ delete_meta:  Gregius_Data_DB->delete_post_meta()
                   │
                   ├─ SUCCESS:
                   │   ├─ Remove from queue
@@ -191,7 +191,7 @@ process_queue()
                       │
                       └─ attempt_count >= MAX_RETRY_ATTEMPTS (3)?
                           ├─ YES → Add moved_to_dead_letter timestamp
-                          │        Append to gg_data_dead_letter_queue
+                          │        Append to gregius_data_dead_letter_queue
                           │        Enforce 100-item rolling window (drop oldest)
                           │        Remove from pending queue
                           │        Log [error]: "Moved to dead letter queue"
@@ -207,7 +207,7 @@ process_queue()
 ### 4.3 Manual Retry Flow
 
 ```
-POST /gg-data/v1/sync/retry-queue/retry/{index}
+POST /gregius-data/v1/sync/retry-queue/retry/{index}
     │
     ├─ Permission: manage_options
     ├─ Load dead_letter_queue[index]
@@ -265,7 +265,7 @@ Linked requirements:
 ### AD-03: Error-Classification-First Routing
 
 Decision:
-- Error message classification via `GG_Data_Error_Handler` happens before any queue decision; permanent errors are never queued.
+- Error message classification via `Gregius_Data_Error_Handler` happens before any queue decision; permanent errors are never queued.
 
 Rationale:
 - Prevents infinite retry cycles on non-recoverable errors (schema mismatch, permission denied).

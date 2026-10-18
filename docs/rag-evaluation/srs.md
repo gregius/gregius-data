@@ -77,7 +77,7 @@ The evaluation runner is a plugin-adjacent data preparation component that inges
 ## 2. References
 
 - docs/rag-evaluation/architecture.md
-- wp gg-data evaluation
+- wp gregius-data evaluation
 - includes/cli/resources/evaluation/rag-evaluation-config.example.json
 
 ## 3. Software Requirements

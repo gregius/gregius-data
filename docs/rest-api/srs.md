@@ -23,7 +23,7 @@ This SRS defines what the Gregius Data REST API subsystem must do to expose admi
 
 ### 1.2 System Scope
 
-The subsystem includes route registration, request validation, permission enforcement, endpoint execution, and response contracts under the `gg-data/v1` namespace.
+The subsystem includes route registration, request validation, permission enforcement, endpoint execution, and response contracts under the `gregius-data/v1` namespace.
 
 Software identifier: gregius-data-rest-api
 
@@ -77,25 +77,25 @@ The REST API is the primary integration boundary between plugin internals and ex
 - docs/rest-api/architecture.md
 - docs/rag/architecture.md
 - docs/rag/srs.md
-- includes/api/class-gg-data-rest-api.php
-- includes/api/class-gg-data-rest-settings-controller.php
-- includes/api/class-gg-data-rest-connections-controller.php
-- includes/api/class-gg-data-rest-connection-health-controller.php
-- includes/api/class-gg-data-rest-connection-models-controller.php
-- includes/api/class-gg-data-rest-schema-controller.php
-- includes/api/class-gg-data-rest-sync-controller.php
-- includes/api/class-gg-data-rest-sync-validator-controller.php
-- includes/api/class-gg-data-rest-search-controller.php
-- includes/api/class-gg-data-rest-vector-queue-controller.php
-- includes/api/class-gg-data-rest-retry-queue-controller.php
-- includes/api/class-gg-data-rest-rag-controller.php
-- includes/api/class-gg-data-rest-rag-journey-controller.php
-- includes/api/class-gg-data-rest-prompts-controller.php
-- includes/api/class-gg-data-rest-models-controller.php
-- includes/api/class-gg-data-rest-logs-controller.php
-- includes/api/class-gg-data-rest-interactions-controller.php
-- includes/api/class-gg-data-rest-data-retention-controller.php
-- includes/api/class-gg-data-sse-handler.php
+- includes/api/class-gregius-data-rest-api.php
+- includes/api/class-gregius-data-rest-settings-controller.php
+- includes/api/class-gregius-data-rest-connections-controller.php
+- includes/api/class-gregius-data-rest-connection-health-controller.php
+- includes/api/class-gregius-data-rest-connection-models-controller.php
+- includes/api/class-gregius-data-rest-schema-controller.php
+- includes/api/class-gregius-data-rest-sync-controller.php
+- includes/api/class-gregius-data-rest-sync-validator-controller.php
+- includes/api/class-gregius-data-rest-search-controller.php
+- includes/api/class-gregius-data-rest-vector-queue-controller.php
+- includes/api/class-gregius-data-rest-retry-queue-controller.php
+- includes/api/class-gregius-data-rest-rag-controller.php
+- includes/api/class-gregius-data-rest-rag-journey-controller.php
+- includes/api/class-gregius-data-rest-prompts-controller.php
+- includes/api/class-gregius-data-rest-models-controller.php
+- includes/api/class-gregius-data-rest-logs-controller.php
+- includes/api/class-gregius-data-rest-interactions-controller.php
+- includes/api/class-gregius-data-rest-data-retention-controller.php
+- includes/api/class-gregius-data-sse-handler.php
 
 ## 3. Software Requirements
 
@@ -108,7 +108,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| REST-FR-01 | The software MUST register all Gregius REST routes under namespace `gg-data/v1`. | Must |
+| REST-FR-01 | The software MUST register all Gregius REST routes under namespace `gregius-data/v1`. | Must |
 | REST-FR-02 | The software MUST expose endpoint groups for settings, connections, connection health, connection models, schema, sync, sync validation, search, vectors, retry queue, RAG, RAG journey, prompts, models, logs, interactions, and data retention. | Must |
 | REST-FR-03 | The software MUST provide route contracts for listing, retrieval, creation, update, and deletion where supported by each endpoint group. | Must |
 | REST-FR-04 | The software MUST enforce a permission callback for each registered route before endpoint execution. | Must |
@@ -124,7 +124,7 @@ Requirement notation:
 | REST-FR-14 | The software MUST expose prompt-management endpoints for prompt CRUD and activation workflows. | Must |
 | REST-FR-15 | The software MUST expose logs endpoints for listing, stats, export, purge, and settings. | Must |
 | REST-FR-16 | The software MUST expose RAG endpoints for chat generation, action execution, and action discovery. | Must |
-| REST-FR-17 | The software SHOULD preserve versioned route compatibility within `gg-data/v1` and avoid breaking route semantics without explicit migration handling. | Should |
+| REST-FR-17 | The software SHOULD preserve versioned route compatibility within `gregius-data/v1` and avoid breaking route semantics without explicit migration handling. | Should |
 | REST-FR-18 | The software MUST preserve parity for manifest-aware and deterministic-tool RAG request fields (`manifest`, `forced_tool`) across REST and SSE entry paths where RAG chat is supported. | Must |
 | REST-FR-19 | The software MUST expose `POST /vectors/batch-delete` for timeout-safe iterative vector deletion and support both PDO and PostgREST/Supabase provider paths. | Must |
 
@@ -142,7 +142,7 @@ Requirement notation:
 | REST-DR-08 | Model and settings endpoints MUST support key-based and category-based addressing where declared in route contracts. | Must |
 | REST-DR-09 | Search and health endpoints MUST return enough status information for operational diagnosis and dashboard consumption. | Must |
 | REST-DR-10 | Sync and vector operation endpoints MUST return status and progress structures suitable for operational monitoring and retry workflows. | Must |
-| REST-DR-11 | Logs purge endpoints MUST operate on logs data only and MUST NOT imply deletion of `gg_interaction` records. | Must |
+| REST-DR-11 | Logs purge endpoints MUST operate on logs data only and MUST NOT imply deletion of `gregius_interaction` records. | Must |
 | REST-DR-12 | RAG request contracts MUST accept optional structured metadata fields (`metadata_filter`, `metadata_manifest`) and preserve deterministic no-filter behavior when those fields are omitted. | Must |
 | REST-DR-13 | RAG request contracts MUST accept optional `manifest` (object) and `forced_tool` (string) fields and forward sanitized values to RAG orchestration without breaking existing request semantics. | Must |
 | REST-DR-14 | Vector batch delete responses MUST expose progress metadata suitable for polling clients: deleted, total_deleted, has_more, next_offset, duration_ms, and errors. | Must |
@@ -184,7 +184,7 @@ Requirement notation:
 | Quality requirements | Parity and consistency checks | Docs-vs-code comparison |
 
 Acceptance baseline for migration phase:
-- All `gg-data/v1` endpoint groups are represented in the new REST API package.
+- All `gregius-data/v1` endpoint groups are represented in the new REST API package.
 - No unverified claim of built-in CORS or endpoint-wide global rate limiting remains in canonical REST package docs.
 - RAG route throttling behavior and extension hooks are documented as route-scoped runtime behavior.
 - RAG and interaction permission exceptions are explicitly documented as intentional architectural behavior.
@@ -193,12 +193,12 @@ Acceptance baseline for migration phase:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| REST-FR-01 to REST-FR-03 | includes/api/class-gg-data-rest-api.php, includes/api/class-gg-data-rest-*-controller.php | Namespace and endpoint-group coverage |
-| REST-FR-04 to REST-FR-08 | includes/api/class-gg-data-rest-*-controller.php, includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-rest-interactions-controller.php | Permission and contract behavior |
-| REST-FR-09 to REST-FR-19 | includes/api/class-gg-data-rest-sync-controller.php, includes/api/class-gg-data-rest-vector-queue-controller.php, includes/api/class-gg-data-rest-search-controller.php, includes/api/class-gg-data-rest-schema-controller.php, includes/api/class-gg-data-rest-models-controller.php, includes/api/class-gg-data-rest-prompts-controller.php, includes/api/class-gg-data-rest-logs-controller.php, includes/api/class-gg-data-rest-rag-controller.php | Domain-specific endpoint behavior |
-| REST-FR-18 | includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php | Manifest and deterministic-tool parity across transport surfaces |
-| REST-DR-01 to REST-DR-14 | includes/api/class-gg-data-rest-connections-controller.php, includes/api/class-gg-data-rest-settings-controller.php, includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php, includes/api/class-gg-data-rest-search-controller.php, includes/api/class-gg-data-rest-sync-controller.php, includes/api/class-gg-data-rest-logs-controller.php, includes/api/class-gg-data-rest-vector-queue-controller.php | Request/response/error contracts |
-| REST-OR-01 to REST-OR-08 | includes/api/class-gg-data-rest-*-controller.php, includes/hooks/class-gg-data-rag-security-hooks.php, includes/api/class-gg-data-sse-handler.php, docs/rest-api/architecture.md | Access and operational constraints |
+| REST-FR-01 to REST-FR-03 | includes/api/class-gregius-data-rest-api.php, includes/api/class-gregius-data-rest-*-controller.php | Namespace and endpoint-group coverage |
+| REST-FR-04 to REST-FR-08 | includes/api/class-gregius-data-rest-*-controller.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-rest-interactions-controller.php | Permission and contract behavior |
+| REST-FR-09 to REST-FR-19 | includes/api/class-gregius-data-rest-sync-controller.php, includes/api/class-gregius-data-rest-vector-queue-controller.php, includes/api/class-gregius-data-rest-search-controller.php, includes/api/class-gregius-data-rest-schema-controller.php, includes/api/class-gregius-data-rest-models-controller.php, includes/api/class-gregius-data-rest-prompts-controller.php, includes/api/class-gregius-data-rest-logs-controller.php, includes/api/class-gregius-data-rest-rag-controller.php | Domain-specific endpoint behavior |
+| REST-FR-18 | includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php | Manifest and deterministic-tool parity across transport surfaces |
+| REST-DR-01 to REST-DR-14 | includes/api/class-gregius-data-rest-connections-controller.php, includes/api/class-gregius-data-rest-settings-controller.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/api/class-gregius-data-rest-search-controller.php, includes/api/class-gregius-data-rest-sync-controller.php, includes/api/class-gregius-data-rest-logs-controller.php, includes/api/class-gregius-data-rest-vector-queue-controller.php | Request/response/error contracts |
+| REST-OR-01 to REST-OR-08 | includes/api/class-gregius-data-rest-*-controller.php, includes/hooks/class-gregius-data-rag-security-hooks.php, includes/api/class-gregius-data-sse-handler.php, docs/rest-api/architecture.md | Access and operational constraints |
 | REST-QR-01 to REST-QR-09 | docs/rest-api/architecture.md, controller implementations listed in References | Parity and quality alignment |
 
 ## 6. Appendices
@@ -207,8 +207,8 @@ Acceptance baseline for migration phase:
 
 - This SRS is produced in SRS-first mode without separate BRS, StRS, OpsCon, or SyRS artifacts.
 - Controller code is treated as canonical when legacy docs and code diverge.
-- Rate limiting in this subsystem is route-scoped for RAG (`POST /rag/chat`, `POST /rag/action`) and configurable via `gg_data_rag_rate_limit_anonymous`, `gg_data_rag_rate_limit_authenticated`, and `gg_data_rag_rate_limit_window_seconds`.
-- SSE throttling remains hook-driven via `gg_data_rag_rate_limit`.
+- Rate limiting in this subsystem is route-scoped for RAG (`POST /rag/chat`, `POST /rag/action`) and configurable via `gregius_data_rag_rate_limit_anonymous`, `gregius_data_rag_rate_limit_authenticated`, and `gregius_data_rag_rate_limit_window_seconds`.
+- SSE throttling remains hook-driven via `gregius_data_rag_rate_limit`.
 - CORS response-header behavior is treated as deployment-level unless explicit runtime implementation is confirmed.
 - Canonical REST architecture documentation is maintained in `docs/rest-api/architecture.md`.
 

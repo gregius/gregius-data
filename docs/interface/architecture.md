@@ -45,7 +45,7 @@ Explicitly excluded:
 Admin User
    |
    v
-WordPress Admin Page (gg-data menu)
+WordPress Admin Page (gregius-data menu)
    |
    v
 React Dashboard Bootstrap (dashboard.js)
@@ -53,7 +53,7 @@ React Dashboard Bootstrap (dashboard.js)
    v
 App Shell (tabs/pages + stores + utilities)
    |
-   +--> apiFetch client calls (gg-data/v1)
+   +--> apiFetch client calls (gregius-data/v1)
    |
    v
 Backend REST Controllers (canonical rest-api package)
@@ -72,9 +72,9 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. **Admin Container Layer (`GG_Data_Admin`)**
+1. **Admin Container Layer (`Gregius_Data_Admin`)**
 - Registers admin menu pages.
-- Renders `#gg-data-react-dashboard` container within plugin admin page.
+- Renders `#gregius-data-react-dashboard` container within plugin admin page.
 
 2. **Dashboard Bootstrap Layer (`dashboard.js`)**
 - Waits for DOM readiness.
@@ -118,7 +118,7 @@ Mapping:
 Admin page load
    -> domReady()
    -> configure apiFetch middleware (nonce/root)
-   -> locate #gg-data-react-dashboard
+   -> locate #gregius-data-react-dashboard
    -> render <App />
    -> on render failure: log error + trigger failure signal
 ```
@@ -148,7 +148,7 @@ Page requests state/data
 
 ```
 Missing primary container
-   -> create fallback container under .wrap.gg-data-admin
+   -> create fallback container under .wrap.gregius-data-admin
    -> attempt render
    -> if still failing: emit failure signal and diagnostics
 ```
@@ -257,7 +257,7 @@ Linked requirements:
 
 | ID | Constraint | Rationale |
 |---|---|---|
-| C-01 | Dashboard render depends on admin container output by `GG_Data_Admin`. | Missing container requires fallback path. |
+| C-01 | Dashboard render depends on admin container output by `Gregius_Data_Admin`. | Missing container requires fallback path. |
 | C-02 | Interface API workflows depend on initialized middleware and REST route availability. | Initialization order affects usability. |
 | C-03 | Current tab surface includes implemented pages only; some backend features have no dedicated UI page yet. | Prevents false assumption of complete UI parity. |
 

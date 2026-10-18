@@ -9,19 +9,19 @@
 @import '@wordpress/components/build-style/style.css';
 
 /* Hide PHP loading placeholder when React loads */
-#gg-data-react-dashboard .gg-data-loading-placeholder {
+#gregius-data-react-dashboard .gregius-data-loading-placeholder {
   display: none;
 }
 
-.gg-data-admin {
+.gregius-data-admin {
   margin: 1.25rem 1.25rem 1.25rem 0;
 }
 
-.gg-data-react-dashboard {
+.gregius-data-react-dashboard {
   margin-right: auto;
   margin-left: auto;
 
-  .gg-data-page {
+  .gregius-data-page {
     display: flex;
     flex-direction: column;
     gap: 2rem;
@@ -38,7 +38,7 @@
         text-align: left;
         font-weight: 600;
         font-size: 14px;
-        color: var(--gg-data-text);
+        color: var(--gregius-data-text);
         border-bottom: 1px solid rgba(0, 0, 0, 0.1);
       }
     }
@@ -163,11 +163,11 @@
 }
 
 /* Dashboard logo */
-.gg-data-logo-svg {
+.gregius-data-logo-svg {
   display: none;
 }
 
-.gg-data-logo-clean {
+.gregius-data-logo-clean {
   display: block;
   flex: 0 0 auto;
   width: 28px;
@@ -175,7 +175,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gg-data-logo-clean animate {
+  .gregius-data-logo-clean animate {
     display: none;
   }
 }

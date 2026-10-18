@@ -53,7 +53,7 @@ const actions = {
     *updateSetting(key, value) {
         try {
             const response = yield apiFetch({
-                path: `/gg-data/v1/settings/${key}`,
+                path: `/gregius-data/v1/settings/${key}`,
                 method: 'PUT',
                 data: { setting_value: value },
             });
@@ -73,7 +73,7 @@ const actions = {
     *deleteSetting(key) {
         try {
             const response = yield apiFetch({
-                path: `/gg-data/v1/settings/${key}`,
+                path: `/gregius-data/v1/settings/${key}`,
                 method: 'DELETE',
             });
             
@@ -92,7 +92,7 @@ const actions = {
     *addSetting(category, key, value) {
         try {
             const response = yield apiFetch({
-                path: '/gg-data/v1/settings',
+                path: '/gregius-data/v1/settings',
                 method: 'POST',
                 data: {
                     category,
@@ -155,7 +155,7 @@ const resolvers = {
         
         try {
             const response = yield apiFetch({
-                path: '/gg-data/v1/settings',
+                path: '/gregius-data/v1/settings',
                 method: 'GET',
             });
             
@@ -237,7 +237,7 @@ const controls = {
 };
 
 // Register the store
-registerStore('gg-data/settings', {
+registerStore('gregius-data/settings', {
     reducer,
     actions,
     selectors,
@@ -245,4 +245,4 @@ registerStore('gg-data/settings', {
     controls,
 });
 
-export default 'gg-data/settings';
+export default 'gregius-data/settings';

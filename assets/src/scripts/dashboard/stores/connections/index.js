@@ -81,7 +81,7 @@ const controls = {
 };
 
 // Register the store
-registerStore('gg-data/connections', {
+registerStore('gregius-data/connections', {
     reducer,
     actions,
     selectors,
@@ -89,4 +89,4 @@ registerStore('gg-data/connections', {
     controls,
 });
 
-export default 'gg-data/connections';
+export default 'gregius-data/connections';

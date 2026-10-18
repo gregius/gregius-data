@@ -31,9 +31,9 @@ Not covered:
 
 ## 3. Key Components
 
-### 3.1 Search Integration (`GG_Data_Search_Integration`)
+### 3.1 Search Integration (`Gregius_Data_Search_Integration`)
 
-Source: [../../includes/search/class-gg-data-search-integration.php](../../includes/search/class-gg-data-search-integration.php)
+Source: [../../includes/search/class-gregius-data-search-integration.php](../../includes/search/class-gregius-data-search-integration.php)
 
 Core responsibilities:
 - Intercept WordPress search via `posts_search`.
@@ -47,30 +47,30 @@ Notable behavior:
 - Connection is resolved from search settings.
 - Runtime calls `search_native_orchestrate` directly. No compatibility wrapper toggle exists.
 
-### 3.2 Search Schema (`GG_Data_Search_Schema`)
+### 3.2 Search Schema (`Gregius_Data_Search_Schema`)
 
-Source: [../../includes/search/class-gg-data-search-schema.php](../../includes/search/class-gg-data-search-schema.php)
+Source: [../../includes/search/class-gregius-data-search-schema.php](../../includes/search/class-gregius-data-search-schema.php)
 
 Core responsibilities:
 - Provision whitelisted search functions from `includes/sql/postgrest-schema.sql`.
 - Validate function existence.
 - Report readiness status per connection.
 
-### 3.3 Search Fallback (`GG_Data_Search_Fallback`)
+### 3.3 Search Fallback (`Gregius_Data_Search_Fallback`)
 
-Source: [../../includes/search/class-gg-data-search-fallback.php](../../includes/search/class-gg-data-search-fallback.php)
+Source: [../../includes/search/class-gregius-data-search-fallback.php](../../includes/search/class-gregius-data-search-fallback.php)
 
 Core responsibilities:
 - Wrap PostgreSQL search execution with fallback-safe behavior.
 - Track success/failure/latency telemetry.
 - Expose degradation state for operational use.
 
-### 3.4 Search REST Controller (`GG_Data_REST_Search_Controller`)
+### 3.4 Search REST Controller (`Gregius_Data_REST_Search_Controller`)
 
-Source: [../../includes/api/class-gg-data-rest-search-controller.php](../../includes/api/class-gg-data-rest-search-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-search-controller.php](../../includes/api/class-gregius-data-rest-search-controller.php)
 
 Core responsibilities:
-- Expose search status and controls under `gg-data/v1/search/*`.
+- Expose search status and controls under `gregius-data/v1/search/*`.
 - Support schema creation, language checks/updates, and trigram status checks.
 - Enforce administrative permission callbacks for management operations.
 
@@ -98,10 +98,10 @@ signature or return-type change must drop the affected functions once, or be
 recreated from scratch.
 
 > **Schema/registry lockstep:** when you add or change an embedding model, update
-> both the model registry (`GG_Data_Model_Registry`) and this `postgrest-schema.sql`
+> both the model registry (`Gregius_Data_Model_Registry`) and this `postgrest-schema.sql`
 > file in the same change. Each embedding model has a dedicated vector table here
 > whose DDL must stay byte-for-byte identical to what the PHP schema manager emits
-> (`GG_Data_Schema_Manager::create_openai_embedding_tables()` and
+> (`Gregius_Data_Schema_Manager::create_openai_embedding_tables()` and
 > `create_hashingtf_embedding_table()`).
 
 ### `search_native_orchestrate`
@@ -149,9 +149,9 @@ Supporting helpers:
 - `search_core_fuse_rrf(integer, integer)` — reciprocal rank fusion scoring
 - `search_core_bestmatch_tsquery(regconfig, text)` — builds a best-match (OR) full-text query from the parsed lexemes; see below
 - `search_core_vector_candidates(...)` — retrieves vector candidates from the configured embedding table
-- `gg_generate_search_vector(text, text, text, text)` — generates the query vector for semantic search by averaging matching document embeddings
+- `gregius_data_generate_search_vector(text, text, text, text)` — generates the query vector for semantic search by averaging matching document embeddings
 
-**Best-match full-text query:** the lexical leg builds its query via `search_core_bestmatch_tsquery`, which ORs the parsed lexemes instead of the strict-AND `plainto_tsquery` default. A query term absent from the corpus therefore no longer zeroes out the entire lexical leg — any matching lexeme keeps the row eligible, and `ts_rank_cd` ranks by term coverage. An empty or all-stopword query yields an empty `tsquery`, which matches nothing. The helper is declared `STABLE` (not `IMMUTABLE`) because `array_to_string` is STABLE. A `minimum_should_match` bound (or a BM25 ranker) is a deferred enhancement. Because the same best-match query feeds `gg_generate_search_vector`, its document-averaging set is likewise broadened to rows matching any term (still capped at 10).
+**Best-match full-text query:** the lexical leg builds its query via `search_core_bestmatch_tsquery`, which ORs the parsed lexemes instead of the strict-AND `plainto_tsquery` default. A query term absent from the corpus therefore no longer zeroes out the entire lexical leg — any matching lexeme keeps the row eligible, and `ts_rank_cd` ranks by term coverage. An empty or all-stopword query yields an empty `tsquery`, which matches nothing. The helper is declared `STABLE` (not `IMMUTABLE`) because `array_to_string` is STABLE. A `minimum_should_match` bound (or a BM25 ranker) is a deferred enhancement. Because the same best-match query feeds `gregius_data_generate_search_vector`, its document-averaging set is likewise broadened to rows matching any term (still capped at 10).
 
 **PostgREST-only functions** (in `includes/sql/postgrest-schema.sql`, not auto-deployed):
 - `get_schema_status()` — returns extension availability and schema table presence for `pg_trgm`, `vector`, and vector table. Used by the integration class to populate per-connection capability state without auto-deploy.
@@ -170,7 +170,7 @@ Expected output shape from all orchestrators:
 
 ## 5. REST Route Catalog (Search)
 
-Base namespace: `/wp-json/gg-data/v1/search`
+Base namespace: `/wp-json/gregius-data/v1/search`
 
 Health and status:
 - `GET /health`
@@ -257,8 +257,8 @@ When metadata filtering is used from RAG-oriented retrieval, preserve these inva
 Implementation surfaces:
 - SQL signatures in [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
 - Supabase/PostgREST schema in [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
-- Content-cleaner manifest population in [../../includes/class-gg-data-content-cleaner.php](../../includes/class-gg-data-content-cleaner.php)
-- Schema manager column/index provisioning in [../../includes/class-gg-data-schema-manager.php](../../includes/class-gg-data-schema-manager.php)
+- Content-cleaner manifest population in [../../includes/class-gregius-data-content-cleaner.php](../../includes/class-gregius-data-content-cleaner.php)
+- Schema manager column/index provisioning in [../../includes/class-gregius-data-schema-manager.php](../../includes/class-gregius-data-schema-manager.php)
 
 ### 7.1 filter_operator: AND / OR Mode
 
@@ -337,7 +337,7 @@ Legacy pills using `pill.anchor` (single `taxonomy:slug:id` string) are handled 
 
 ### 8.1 Filters
 
-- `gg_data_search_rate_limit`
+- `gregius_data_search_rate_limit`
   - Adjust search rate limiting. Receives `['limit' => int, 'window' => int]`.
   - Default: `['limit' => 30, 'window' => 60]` (30 requests per 60-second window).
   - Applied as a per-IP transient in `filter_posts_search()` before PostgreSQL execution.
@@ -345,18 +345,18 @@ Legacy pills using `pill.anchor` (single `taxonomy:slug:id` string) are handled 
   - When exceeded, the hook causes a soft fallback to default MySQL `WP_Query` search (no error response).
   - Admin users (`manage_options` capability) bypass rate limiting automatically.
 
-- `gg_data_search_title_weight` / `gg_data_search_content_weight`
+- `gregius_data_search_title_weight` / `gregius_data_search_content_weight`
   - Applied in the schema manager when creating tsvector indexes.
   - Defaults: `'A'` (title weight) and `'B'` (content weight).
   - Override to adjust ranking contribution of title vs body text in FTS scoring.
 
-- `gg_data_rag_pre_retrieval_filter`
+- `gregius_data_rag_pre_retrieval_filter`
   - Applied in RAG service `generate_answer()` before chunk retrieval.
   - Receives empty array, original query, and options; returns filter criteria array.
   - Returned array is merged into RAG options as `$options['retrieval_filters']`, which flows through to `search_rag_orchestrate`'s `metadata_filter` parameter.
   - Use to inject date ranges, taxonomy filters, or document-class constraints into RAG-oriented retrieval.
 
-- `gg_data_rag_chunks`
+- `gregius_data_rag_chunks`
   - Applied in RAG service `retrieve_chunks_pdo()` and `retrieve_chunks()`.
   - Receives the resolved chunk array, query, and RAG options.
   - Use to re-rank, filter, or annotate retrieved chunks before context assembly.
@@ -366,7 +366,7 @@ Note:
 
 ### 8.2 Actions
 
-- `gg_data_search_completed`
+- `gregius_data_search_completed`
     - Emitted after search composition with post IDs, count, and context metadata.
     - Includes `source_type` (for example `frontend`, `admin`, `rest`) and `retrieval_mode`.
         - Includes strategy attribution fields:
@@ -422,7 +422,7 @@ Search logging is intentionally split into two layers:
 
 Slow threshold behavior:
 - default threshold: `1000` milliseconds
-- override via filter: `gg_data_search_slow_log_ms` — see the canonical hook catalog (docs/hooks/developer-documentation.md) for the signature.
+- override via filter: `gregius_data_search_slow_log_ms` — see the canonical hook catalog (docs/hooks/developer-documentation.md) for the signature.
 
 ## 10. Integration Notes
 
@@ -446,9 +446,9 @@ Search SQL functions are shared across native (frontend search) and RAG-oriented
 
 **Search-adjacent RAG hooks:**
 
-- `gg_data_rag_pre_retrieval_filter` — applied in `generate_answer()`. Receives the original query and options; returns an array of filter criteria (`metadata_filter`) that flows into `search_rag_orchestrate`. Use this hook to inject date ranges, taxonomy filters, or document-class constraints into RAG retrieval.
+- `gregius_data_rag_pre_retrieval_filter` — applied in `generate_answer()`. Receives the original query and options; returns an array of filter criteria (`metadata_filter`) that flows into `search_rag_orchestrate`. Use this hook to inject date ranges, taxonomy filters, or document-class constraints into RAG retrieval.
 
-- `gg_data_rag_chunks` — applied in `retrieve_chunks_pdo()`, and twice in `retrieve_chunks()`. Receives the resolved chunk array, query, and options. Use this hook to re-rank, filter, or annotate retrieved chunks before context assembly.
+- `gregius_data_rag_chunks` — applied in `retrieve_chunks_pdo()`, and twice in `retrieve_chunks()`. Receives the resolved chunk array, query, and options. Use this hook to re-rank, filter, or annotate retrieved chunks before context assembly.
 
 **Search settings governing RAG retrieval:**
 
@@ -508,7 +508,7 @@ Checklist:
 
 ### 11.7 Missing Search Functions Auto-Repair
 
-The integration class (`GG_Data_Search_Integration`) includes automatic detection and repair of missing SQL functions:
+The integration class (`Gregius_Data_Search_Integration`) includes automatic detection and repair of missing SQL functions:
 - `is_missing_function_error()` — checks if a PDO exception indicates a missing `search_native_orchestrate` function.
 - `repair_missing_search_functions()` — recreates the missing function by re-running the SQL definition from `postgrest-schema.sql`; called automatically when a missing-function error is detected during a search request.
 

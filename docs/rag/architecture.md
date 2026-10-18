@@ -63,7 +63,7 @@ Canonical contract reference:
 │                            ▼                                     │
 │                 ┌──────────────────────────┐                     │
 │                 │      RAG Subsystem       │                     │
-│                 │ GG_Data_RAG_Service      │                     │
+│                 │ Gregius_Data_RAG_Service      │                     │
 │                 │ REST RAG Controller      │                     │
 │                 │ Coverage Gate            │                     │
 │                 └──────────┬───────────────┘                     │
@@ -183,7 +183,7 @@ Security Gatekeeper Check
     ▼
 Deterministic Forced Tool Check
     │
-    ├─ forced_tool (any tool registered via gg_data_rag_tools) -> execute selected tool directly
+    ├─ forced_tool (any tool registered via gregius_data_rag_tools) -> execute selected tool directly
     │
     ▼
 Optional Agentic Tool Selection
@@ -358,13 +358,13 @@ The RAG subsystem exposes multiple surface entry points (REST chat/action/action
 | `POST /rag/journey/issue` | Journey Controller | POST | Caller (logged-in or guest) | Fail-Closed (False) | Throttled by default | Issues a one-time continuation token bound to the caller's user account or guest session |
 | `POST /rag/journey/consume` | Journey Controller | POST | Caller (token owner) | Fail-Closed (False) | Per-scope default | Redeems a one-time continuation token; validates the caller's user or guest session; returns the hydration payload |
 | `POST /rag/journey/history` | Journey Controller | POST | Caller (logged-in or guest) | Fail-Closed (False) | Per-scope default | Returns the hydration payload by conversation id; enforces read permission (author or guest session ownership, first-claim for legacy) |
-| `admin-ajax.php?action=gg_data_rag_stream` (SSE) | SSE Handler | POST (`wp_ajax`) | Caller (logged-in or guest) | Fail-Closed (False) | Guest rate-limit filter | SSE streaming is served over admin-ajax, not a REST route; guest session hashed for continuity when applicable |
+| `admin-ajax.php?action=gregius_data_rag_stream` (SSE) | SSE Handler | POST (`wp_ajax`) | Caller (logged-in or guest) | Fail-Closed (False) | Guest rate-limit filter | SSE streaming is served over admin-ajax, not a REST route; guest session hashed for continuity when applicable |
 
 **Permission Seed Semantics:**
-- **Fail-Closed (False)**: Default deny. Endpoint returns 403 Forbidden unless the `gg_data_rag_endpoint_permission` filter explicitly grants access (e.g., for public chat or capability-gated actions).
+- **Fail-Closed (False)**: Default deny. Endpoint returns 403 Forbidden unless the `gregius_data_rag_endpoint_permission` filter explicitly grants access (e.g., for public chat or capability-gated actions).
 
 **Guest Session Ownership:**
-- Guest callers are identified by a hashed session credential computed from the WordPress authentication salts (`GG_Data_Interaction::get_guest_session_hash()`), stored in a browser cookie.
+- Guest callers are identified by a hashed session credential computed from the WordPress authentication salts (`Gregius_Data_Interaction::get_guest_session_hash()`), stored in a browser cookie.
 - Journey reads validate this hash (constant-time `hash_equals`) to enforce session-bound visibility (RAG-DR-14, RAG-OR-09).
 - First-claim binding for legacy records allows a guest without a stored session hash to claim ownership on first read (RAG-DR-15).
 

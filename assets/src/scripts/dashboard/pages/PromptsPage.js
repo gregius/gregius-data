@@ -57,7 +57,7 @@ const PromptsPage = () => {
         setError(null);
 
         try {
-            const response = await apiFetch({ path: '/gg-data/v1/prompts' });
+            const response = await apiFetch({ path: '/gregius-data/v1/prompts' });
             setPrompts(response?.data || []);
         } catch (requestError) {
             setError(requestError.message || __('Failed to load prompts.', 'gregius-data'));
@@ -120,7 +120,7 @@ const PromptsPage = () => {
 
         try {
             const request = {
-                path: editingPrompt ? `/gg-data/v1/prompts/${editingPrompt.id}` : '/gg-data/v1/prompts',
+                path: editingPrompt ? `/gregius-data/v1/prompts/${editingPrompt.id}` : '/gregius-data/v1/prompts',
                 method: editingPrompt ? 'PUT' : 'POST',
                 data: {
                     title: form.title,
@@ -155,7 +155,7 @@ const PromptsPage = () => {
 
         try {
             await apiFetch({
-                path: `/gg-data/v1/prompts/${promptId}/activate`,
+                path: `/gregius-data/v1/prompts/${promptId}/activate`,
                 method: 'POST',
             });
 
@@ -179,7 +179,7 @@ const PromptsPage = () => {
 
         try {
             await apiFetch({
-                path: `/gg-data/v1/prompts/${promptId}`,
+                path: `/gregius-data/v1/prompts/${promptId}`,
                 method: 'DELETE',
             });
 
@@ -193,7 +193,7 @@ const PromptsPage = () => {
     };
 
     return (
-        <div className="gg-data-page gg-data-prompts-page">
+        <div className="gregius-data-page gregius-data-prompts-page">
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -329,7 +329,7 @@ const PromptsPage = () => {
                 <Modal
                     title={editingPrompt ? __('Edit Prompt', 'gregius-data') : __('Add New Prompt', 'gregius-data')}
                     onRequestClose={closeModal}
-                    className="gg-data-prompt-modal"
+                    className="gregius-data-prompt-modal"
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <TextControl

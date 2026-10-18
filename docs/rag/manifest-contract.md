@@ -37,7 +37,7 @@ Out of scope:
   - Normalized before downstream tool handlers consume it.
 - `forced_tool` (string, optional)
   - Deterministic tool override.
-  - Valid values are any tool registered via the `gg_data_rag_tools` filter (for example `search_content`, `compare_content`, `search_entity_content`).
+  - Valid values are any tool registered via the `gregius_data_rag_tools` filter (for example `search_content`, `compare_content`, `search_entity_content`).
 
 ### 3.2 Deterministic Override Behavior
 
@@ -84,7 +84,7 @@ Notes:
 - Keep unknown keys non-breaking unless explicitly promoted into the canonical schema.
 
 Canonical validator implementation reference:
-- `includes/rag/class-gg-data-manifest-validator.php`
+- `includes/rag/class-gregius-data-manifest-validator.php`
 
 ## 6. Execution Precedence
 

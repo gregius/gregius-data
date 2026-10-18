@@ -16,7 +16,7 @@ This architecture defines how Gregius Data records search and RAG runtime intera
 
 **Scope:**
 - Interaction event capture from RAG and Search subsystems
-- Interaction persistence model (`gg_interaction` CPT + structured meta/json payloads)
+- Interaction persistence model (`gregius_interaction` CPT + structured meta/json payloads)
 - Author-aware REST access model for interaction records
 - Runtime recording flow (create vs append by conversation UUID)
 - Interaction-related extension surface (filters/actions)
@@ -44,18 +44,18 @@ This architecture defines how Gregius Data records search and RAG runtime intera
 ### 2.1 Context
 
 ```
-RAG Service (gg_data_rag_complete) ─┐
+RAG Service (gregius_data_rag_complete) ─┐
                                     │
-Search Integration (gg_data_search_completed) ─┐
+Search Integration (gregius_data_search_completed) ─┐
                                                 ▼
                                   Interaction Subsystem
-                       (GG_Data_Interaction + REST Controller)
+                       (Gregius_Data_Interaction + REST Controller)
                                       │          │
-                                      │          ├─ REST API: /wp-json/gg-data/v1/interactions
+                                      │          ├─ REST API: /wp-json/gregius-data/v1/interactions
                                       │          │
                                       ▼          ▼
                          WordPress CPT Storage   Operational Logs
-                           (gg_interaction)      (context snapshots)
+                           (gregius_interaction)      (context snapshots)
                                       │
                                       ▼
                           Sync Control Filter Boundary
@@ -76,31 +76,31 @@ The subsystem is event-driven at ingress and REST-driven at egress. This separat
 
 ### 3.1 Major Components
 
-1. **Interaction Orchestrator (`GG_Data_Interaction`)**
+1. **Interaction Orchestrator (`Gregius_Data_Interaction`)**
 - Registers post type and meta fields.
 - Subscribes to RAG/search lifecycle hooks.
 - Persists interaction records and emits extension hooks.
 - Applies sync exclusion behavior.
 
-2. **REST Access Layer (`GG_Data_REST_Interactions_Controller`)**
-- Provides `gg-data/v1/interactions` endpoint family.
+2. **REST Access Layer (`Gregius_Data_REST_Interactions_Controller`)**
+- Provides `gregius-data/v1/interactions` endpoint family.
 - Enforces authentication and ownership-based access.
 - Restricts non-admin direct create; interaction creation is chat-lifecycle driven.
 - Applies admin override for full visibility and explicit multisite governance context for super admins.
 
-3. **Persistence Model (`gg_interaction` + `_gg_interaction_*`)**
+3. **Persistence Model (`gregius_interaction` + `_gregius_interaction_*`)**
 - Stores normalized typed meta fields.
 - Stores rich per-record JSON payload for turn-level and context-level data.
 - Maintains markdown content for human-readable conversation progression.
 
 4. **Extension Surface**
-- `gg_data_interaction_meta_fields`
-- `gg_data_interaction_log_context`
-- `gg_data_interaction_recorded`
-- `gg_data_interaction_feedback_schema`
-- `gg_data_interaction_turn_feedback_recorded`
-- `gg_data_interaction_feedback_received`
-- `gg_data_should_sync_post` integration boundary
+- `gregius_interaction_meta_fields`
+- `gregius_interaction_log_context`
+- `gregius_interaction_recorded`
+- `gregius_interaction_feedback_schema`
+- `gregius_interaction_turn_feedback_recorded`
+- `gregius_interaction_feedback_received`
+- `gregius_data_should_sync_post` integration boundary
 
 ### 3.2 Responsibilities Mapping
 
@@ -118,7 +118,7 @@ The subsystem is event-driven at ingress and REST-driven at egress. This separat
 ### 4.1 RAG Recording Flow
 
 ```
-RAG completes -> gg_data_rag_complete
+RAG completes -> gregius_data_rag_complete
       |
       v
 on_rag_complete()
@@ -139,13 +139,13 @@ record_rag(conversation_id, args)
 persist meta + JSON + markdown content
       |
       v
-emit log + do_action(gg_data_interaction_recorded)
+emit log + do_action(gregius_interaction_recorded)
 ```
 
 ### 4.2 Search Recording Flow
 
 ```
-Search completes -> gg_data_search_completed
+Search completes -> gregius_data_search_completed
       |
       v
 on_search_completed()
@@ -157,7 +157,7 @@ record_search(args)
   - store typed meta + JSON payload
       |
       v
-emit log + do_action(gg_data_interaction_recorded)
+emit log + do_action(gregius_interaction_recorded)
 ```
 
 ### 4.3 REST Access Flow
@@ -264,7 +264,7 @@ REST request -> permission check
 
 ### AD-05: Exclude Interaction Records from Real-Time Sync
 
-**Decision:** Force `gg_interaction` records out of real-time sync flow by default through `gg_data_should_sync_post`.
+**Decision:** Force `gregius_interaction` records out of real-time sync flow by default through `gregius_data_should_sync_post`.
 
 **Alternatives Considered:**
 - Sync interaction records on each save

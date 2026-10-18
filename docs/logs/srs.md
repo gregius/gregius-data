@@ -58,15 +58,15 @@ The subsystem is a shared operational service used by RAG, Search, Sync, Vectors
 |---|---|---|
 | Site Administrator | Technical/Operational | Dashboard logs UI, REST logs routes, WP-CLI logs commands |
 | DevOps / Automation | Technical | WP-CLI logs workflows and REST integration |
-| Plugin Developer | Technical | `GG_Data_Logger` API and component logging calls |
+| Plugin Developer | Technical | `Gregius_Data_Logger` API and component logging calls |
 
 ## 2. References
 
 - `docs/logs/architecture.md`
 - `docs/logs/developer-documentation.md`
-- `includes/class-gg-data-logger.php`
-- `includes/api/class-gg-data-rest-logs-controller.php`
-- `includes/cli/class-gg-data-cli-logs.php`
+- `includes/class-gregius-data-logger.php`
+- `includes/api/class-gregius-data-rest-logs-controller.php`
+- `includes/cli/class-gregius-data-cli-logs.php`
 - `assets/src/scripts/dashboard/pages/LogsPage.js`
 - `assets/src/scripts/dashboard/stores/logs/actions.js`
 - `assets/src/scripts/dashboard/stores/logs/selectors.js`
@@ -82,16 +82,16 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| LOG-FR-01 | The software MUST store logs in a WordPress database table named `{$wpdb->prefix}gg_data_logs` for each site context. | Must |
+| LOG-FR-01 | The software MUST store logs in a WordPress database table named `{$wpdb->prefix}gregius_data_logs` for each site context. | Must |
 | LOG-FR-02 | The software MUST support the log levels `debug`, `info`, `warning`, `error`, and `critical`. | Must |
 | LOG-FR-03 | The software MUST support component classification values `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, and `system`. | Must |
-| LOG-FR-04 | The software MUST expose logs REST routes for list, stats, export, purge, and settings operations under `gg-data/v1/logs`. | Must |
+| LOG-FR-04 | The software MUST expose logs REST routes for list, stats, export, purge, and settings operations under `gregius-data/v1/logs`. | Must |
 | LOG-FR-05 | The software MUST expose WP-CLI logs commands for list, export, purge, and stats operations. | Must |
 | LOG-FR-06 | The software MUST support retrieving logs with pagination and filter criteria (level, component, connection, date range, search, sort). | Must |
 | LOG-FR-07 | The software MUST support exporting logs as CSV and JSON with applied filter criteria. | Must |
 | LOG-FR-08 | The software MUST support deleting old logs by day-threshold input. | Must |
 | LOG-FR-09 | The software MUST expose runtime logging settings for logging enablement, minimum level, and retention-day value through REST settings routes. | Must |
-| LOG-FR-10 | The software MUST execute a daily scheduled retention purge using cron event `gg_data_daily_log_retention_purge` in the current site context only. | Must |
+| LOG-FR-10 | The software MUST execute a daily scheduled retention purge using cron event `gregius_data_daily_log_retention_purge` in the current site context only. | Must |
 
 ### 3.2 Data and Contract Requirements
 
@@ -116,7 +116,7 @@ Requirement notation:
 | LOG-OR-04 | Logs REST operations MUST require `manage_options` capability. | Must |
 | LOG-OR-05 | The subsystem MUST support multisite table creation through site-context iteration at activation time. | Must |
 | LOG-OR-06 | The subsystem SHOULD fail safely when insert operations fail (no fatal runtime disruption). | Should |
-| LOG-OR-07 | The subsystem MUST guarantee retention purges are constrained to `gg_data_logs` and do not auto-delete `gg_interaction` records or meta. | Must |
+| LOG-OR-07 | The subsystem MUST guarantee retention purges are constrained to `gregius_data_logs` and do not auto-delete `gregius_interaction` records or meta. | Must |
 | LOG-OR-08 | The subsystem MUST schedule and clear retention cron events per site context in multisite environments. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
@@ -148,13 +148,13 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| LOG-FR-01, LOG-FR-02, LOG-FR-03, LOG-DR-01, LOG-DR-02, LOG-QR-04 | `includes/class-gg-data-logger.php` | Table schema, levels/components, base log data model |
-| LOG-FR-04, LOG-FR-06, LOG-FR-07, LOG-FR-08, LOG-FR-09, LOG-DR-05..07, LOG-OR-04 | `includes/api/class-gg-data-rest-logs-controller.php` | Route registration, params, responses, permissions |
-| LOG-FR-05, LOG-QR-05 | `includes/cli/class-gg-data-cli-logs.php` | CLI list/export/purge/stats automation contracts |
-| LOG-DR-03, LOG-DR-04, LOG-DR-08, LOG-QR-03 | `includes/class-gg-data-logger.php` | Sensitive-key masking, usage-key allowlist, retention hook contract |
-| LOG-OR-01, LOG-OR-02, LOG-OR-03, LOG-OR-06, LOG-OR-07 | `includes/class-gg-data-logger.php` | Logging enablement, debug gating, level threshold, safe-fail behavior, retention boundary |
-| LOG-FR-10, LOG-OR-08 | `includes/class-gg-data-log-retention.php`, `includes/class-gg-data-activator.php`, `includes/class-gg-data-deactivator.php`, `gregius-data.php` | Scheduled retention runtime and per-site lifecycle management |
-| LOG-OR-05 | `includes/class-gg-data-logger.php`, `includes/class-gg-data-activator.php` | Multisite table creation during activation |
+| LOG-FR-01, LOG-FR-02, LOG-FR-03, LOG-DR-01, LOG-DR-02, LOG-QR-04 | `includes/class-gregius-data-logger.php` | Table schema, levels/components, base log data model |
+| LOG-FR-04, LOG-FR-06, LOG-FR-07, LOG-FR-08, LOG-FR-09, LOG-DR-05..07, LOG-OR-04 | `includes/api/class-gregius-data-rest-logs-controller.php` | Route registration, params, responses, permissions |
+| LOG-FR-05, LOG-QR-05 | `includes/cli/class-gregius-data-cli-logs.php` | CLI list/export/purge/stats automation contracts |
+| LOG-DR-03, LOG-DR-04, LOG-DR-08, LOG-QR-03 | `includes/class-gregius-data-logger.php` | Sensitive-key masking, usage-key allowlist, retention hook contract |
+| LOG-OR-01, LOG-OR-02, LOG-OR-03, LOG-OR-06, LOG-OR-07 | `includes/class-gregius-data-logger.php` | Logging enablement, debug gating, level threshold, safe-fail behavior, retention boundary |
+| LOG-FR-10, LOG-OR-08 | `includes/class-gregius-data-log-retention.php`, `includes/class-gregius-data-activator.php`, `includes/class-gregius-data-deactivator.php`, `gregius-data.php` | Scheduled retention runtime and per-site lifecycle management |
+| LOG-OR-05 | `includes/class-gregius-data-logger.php`, `includes/class-gregius-data-activator.php` | Multisite table creation during activation |
 
 ## 6. Appendices
 

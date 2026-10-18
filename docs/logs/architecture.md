@@ -45,16 +45,16 @@ This architecture describes how Gregius Data centralizes operational logging wit
 Subsystem Emitters (RAG/Search/Sync/Vectors/Connection/Model/Cron/System)
                                   |
                                   v
-                         GG_Data_Logger (write pipeline)
+                         Gregius_Data_Logger (write pipeline)
                                   |
                                   v
-                     WordPress DB table: {prefix}gg_data_logs
+                     WordPress DB table: {prefix}gregius_data_logs
                                   |
               +-------------------+-------------------+
               |                   |                   |
               v                   v                   v
   REST Logs Controller    WP-CLI Logs Commands    Dashboard Logs Store/UI
-  (/gg-data/v1/logs/*)      (wp gg-data logs *)     (LogsPage + store)
+  (/gregius-data/v1/logs/*)      (wp gregius-data logs *)     (LogsPage + store)
 ```
 
 ### 2.2 Context Rationale
@@ -71,19 +71,19 @@ A shared logger service prevents subsystem-specific divergence in log structure 
 
 ### 3.1 Major Components
 
-1. **Logger Core (`GG_Data_Logger`)**
+1. **Logger Core (`Gregius_Data_Logger`)**
 - Validates level/component values
 - Applies write guardrails (enabled/debug/threshold)
 - Masks sensitive context recursively
 - Persists records and supports filtered reads, stats, export, purge
 - Manages schema creation for single-site and multisite contexts
 
-2. **REST Logs Controller (`GG_Data_REST_Logs_Controller`)**
+2. **REST Logs Controller (`Gregius_Data_REST_Logs_Controller`)**
 - Registers logs routes and request arguments
 - Enforces capability checks (`manage_options`)
 - Returns standardized success/error envelopes
 
-3. **CLI Logs Commands (`GG_Data_CLI_Logs`)**
+3. **CLI Logs Commands (`Gregius_Data_CLI_Logs`)**
 - Exposes list/export/purge/stats operations
 - Validates level/component values and formats output for automation
 
@@ -114,7 +114,7 @@ Emitter calls logger->log(message, level, component, connection, context)
     +--> validate level/component
     +--> debug-mode and threshold gating
     +--> mask sensitive context recursively
-    +--> insert into {prefix}gg_data_logs
+    +--> insert into {prefix}gregius_data_logs
     +--> return insert id (or false on safe-fail)
 ```
 
@@ -143,15 +143,15 @@ Export request -> query filtered logs -> format CSV or JSON output
 ```
 Activation (single-site or per-site multisite context)
   |
-  +--> schedule gg_data_daily_log_retention_purge (once per site)
+  +--> schedule gregius_data_daily_log_retention_purge (once per site)
 
 Cron event callback
   |
-  +--> read gg_data_log_retention_days (site option)
-  +--> apply gg_data_log_retention_days filter
-  +--> emit gg_data_before_purge_logs
-  +--> purge rows from current site's {prefix}gg_data_logs only
-  +--> emit gg_data_after_purge_logs
+  +--> read gregius_data_log_retention_days (site option)
+  +--> apply gregius_data_log_retention_days filter
+  +--> emit gregius_data_before_purge_logs
+  +--> purge rows from current site's {prefix}gregius_data_logs only
+  +--> emit gregius_data_after_purge_logs
   +--> write observability log context
 ```
 ```
@@ -167,7 +167,7 @@ Cron event callback
 
 ### AD-01: Database-Backed Logs with Site-Scoped Prefix Tables
 
-**Decision:** Persist logs in WordPress database tables (`{prefix}gg_data_logs`) rather than files.
+**Decision:** Persist logs in WordPress database tables (`{prefix}gregius_data_logs`) rather than files.
 
 **Alternatives Considered:**
 - File-based logs per environment
@@ -256,7 +256,7 @@ Cron event callback
 
 ### AD-06: Retention Governance Boundary and Site-Scoped Scheduling
 
-**Decision:** Run retention as a dedicated daily cron event (`gg_data_daily_log_retention_purge`) per site context, constrained to `{prefix}gg_data_logs` only.
+**Decision:** Run retention as a dedicated daily cron event (`gregius_data_daily_log_retention_purge`) per site context, constrained to `{prefix}gregius_data_logs` only.
 
 **Alternatives Considered:**
 - Network-wide fanout in one callback
@@ -265,7 +265,7 @@ Cron event callback
 **Rationale:**
 - Preserves multisite tenant boundaries and local retention policy.
 - Prevents accidental cross-domain deletion behavior.
-- Keeps `gg_interaction` as immutable system-of-record for per-turn history.
+- Keeps `gregius_interaction` as immutable system-of-record for per-turn history.
 
 **Consequences:**
 - Activation and deactivation must manage retention schedule per site in multisite.

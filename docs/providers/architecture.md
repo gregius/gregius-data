@@ -58,17 +58,17 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
 │  │  PROVIDER ABSTRACTION LAYER                             │ │
 │  │  ┌────────────────────────────────────────────────────┐ │ │
 │  │  │ Database Provider Subsystem                         │ │ │
-│  │  │ ├─ Interface: GG_Data_DB_Provider                       │ │ │
-│  │  │ ├─ Factory: GG_Data_Provider_Factory                    │ │ │
-│  │  │ ├─ PostgreSQL (PDO): GG_Data_PostgreSQL_Provider       │ │ │
-│  │  │ └─ PostgREST (HTTP): GG_Data_PostgREST_Provider        │ │ │
+│  │  │ ├─ Interface: Gregius_Data_DB_Provider                       │ │ │
+│  │  │ ├─ Factory: Gregius_Data_Provider_Factory                    │ │ │
+│  │  │ ├─ PostgreSQL (PDO): Gregius_Data_PostgreSQL_Provider       │ │ │
+│  │  │ └─ PostgREST (HTTP): Gregius_Data_PostgREST_Provider        │ │ │
 │  │  └────────────────────────────────────────────────────┘ │ │
 │  │                                                          │ │
 │  │  ┌────────────────────────────────────────────────────┐ │ │
 │  │  │ AI Provider Subsystem                               │ │ │
-│  │  │ ├─ Interface: GG_Data_AI_Provider_Interface        │ │ │
-│  │  │ ├─ Registry: GG_Data_LLM_Registry                  │ │ │
-│  │  │ ├─ Client Facade: GG_Data_Ai_Client               │ │ │
+│  │  │ ├─ Interface: Gregius_Data_AI_Provider_Interface        │ │ │
+│  │  │ ├─ Registry: Gregius_Data_LLM_Registry                  │ │ │
+│  │  │ ├─ Client Facade: Gregius_Data_Ai_Client               │ │ │
 │  │  │ ├─ OpenAI, Anthropic, Gemini, DeepSeek providers   │ │ │
 │  │  │ ├─ Cohere, Internal, TypeSafe providers             │ │ │
 │  │  │ └─ Tool Strategy Layer                              │ │ │
@@ -127,16 +127,16 @@ Connection Manager
          │                  │                  │
          ▼                  ▼                  ▼
     Interface          Factory              Concrete Providers
- GG_Data_DB_Provider    (Instantiation)
+ Gregius_Data_DB_Provider    (Instantiation)
      (10 methods)         │              PostgreSQL (PDO)
-                         │              GG_Data_PostgreSQL_Provider
+                         │              Gregius_Data_PostgreSQL_Provider
                     register()              - connect()
                     create()                - sync_post()
                     is_supported()
                                             - schema version
                              
                               PostgREST (HTTP)
-                              GG_Data_PostgREST_Provider
+                              Gregius_Data_PostgREST_Provider
                               - same 10-method interface
                               - HTTP via wp_remote_post()
                               - RPC calls for complex ops
@@ -144,26 +144,26 @@ Connection Manager
 
 **Key Components:**
 
-1. **Interface** (`GG_Data_DB_Provider`) — defines contract (10 methods):
+1. **Interface** (`Gregius_Data_DB_Provider`) — defines contract (10 methods):
    - Connection: `connect()`, `disconnect()`, `test_connection()`
    - Data: `sync_post()`, `delete_post()`
    - Mirror maintenance: `get_ids()`, `delete_ids()`, `delete_term_relationship()`
    - Schema: `get_schema_version()`, `create_schema()`
 
-2. **Factory** (`GG_Data_Provider_Factory`) — handles instantiation:
+2. **Factory** (`Gregius_Data_Provider_Factory`) — handles instantiation:
    - `create_provider($type, $config)` → provider instance
    - `register_provider($type, $class)` → third-party registration
    - `get_supported_types()` → active provider list
    - Error handling for unsupported types
 
-3. **PostgreSQL Provider** (`GG_Data_PostgreSQL_Provider`):
+3. **PostgreSQL Provider** (`Gregius_Data_PostgreSQL_Provider`):
    - Direct PDO connection to PostgreSQL
    - Requires `pdo_pgsql` PHP extension
    - Best performance; VPS/cloud hosting required
    - Native pgvector support
    - Uses canonical mirror table names with the shared `wp_` prefix contract
 
-4. **PostgREST Provider** (`GG_Data_PostgREST_Provider`):
+4. **PostgREST Provider** (`Gregius_Data_PostgREST_Provider`):
    - HTTP REST API to Supabase
    - No PHP extensions required
    - Works on any WordPress hosting
@@ -180,7 +180,7 @@ Connection Manager
 ```
 Upstream Plugin Code
          │
-    GG_Data_Ai_Client::prompt('...')
+    Gregius_Data_Ai_Client::prompt('...')
          │
          ▼
 AI Client Facade
@@ -195,7 +195,7 @@ AI Request Handler
          ▼
 AI Registry
   - Lookup by provider ID
-  - Filter: gg_data_llm_providers
+  - Filter: gregius_data_llm_providers
          │
     ┌────┴────┬────────────┬─────────────┬────────────┬────────────┐
     │          │            │             │            │            │
@@ -216,7 +216,7 @@ AI Registry
 
 **Key Components:**
 
-1. **Interface** (`GG_Data_AI_Provider_Interface`) — defines contract:
+1. **Interface** (`Gregius_Data_AI_Provider_Interface`) — defines contract:
    - `get_id()` → unique provider identifier
    - `get_name()` → display name
    - `generate_text($prompt, $options)` → LLM generation
@@ -228,13 +228,13 @@ AI Registry
    - `rerank($query, $results)` → reranking
    - `generate_embedding($text)` → embeddings
 
-2. **Registry** (`GG_Data_LLM_Registry`):
+2. **Registry** (`Gregius_Data_LLM_Registry`):
    - Manages provider instances
    - `register_provider($id, $instance)` → add provider
    - `get_provider($id)` → retrieve provider by ID
-   - Extensible via `gg_data_llm_providers` filter
+   - Extensible via `gregius_data_llm_providers` filter
 
-3. **Client Facade** (`GG_Data_Ai_Client`):
+3. **Client Facade** (`Gregius_Data_Ai_Client`):
    - Single entry point for plugin/third-party use
    - Fluent builder: `prompt()->setSystemMessage()->usingProvider()->usingModel()->generateText()`
    - Handles request orchestration
@@ -265,7 +265,7 @@ Sequence: Create and test a new database provider
 
 Admin UI (Dashboard)
     │
-    ├─ POST /wp-json/gg-data/v1/connections
+    ├─ POST /wp-json/gregius-data/v1/connections
     │                      │
     │                      ▼
     │         REST API Controller
@@ -288,7 +288,7 @@ Admin UI (Dashboard)
     │  'postgresql'    Factory              Error
     │    │             checks               │
     │    ▼             registry             └─ return error
-    │  new GG_Data_PostgreSQL_Provider()        response
+    │  new Gregius_Data_PostgreSQL_Provider()        response
     │    │                                  
     │    ├─ $provider->construct()         
     │    │                                  
@@ -327,7 +327,7 @@ Sequence: Generate text via AI provider
 
 Plugin Code:
     │
-    ├─ $client = GG_Data_Ai_Client::prompt('What about WordPress?')
+    ├─ $client = Gregius_Data_Ai_Client::prompt('What about WordPress?')
     │                      │
     │                      ▼
     │         Ai_Client (fluent builder)
@@ -356,7 +356,7 @@ Plugin Code:
     │                      │
     │    ┌─────────────────┴──────────────┐
     │    │ check registered instances     │
-    │    │ return GG_Data_OpenAI_Provider │
+    │    │ return Gregius_Data_OpenAI_Provider │
     │    └─────────────────┬──────────────┘
     │                      │
     │                      ▼
@@ -435,7 +435,7 @@ Plugin Code:
 **Linked Requirements:** PA-FR-06, PA-FR-07, PA-FR-08
 
 **Alternatives Considered:**
-1. **Direct instantiation** — upstream code calls `new GG_Data_PostgreSQL_Provider()`
+1. **Direct instantiation** — upstream code calls `new Gregius_Data_PostgreSQL_Provider()`
    - Rejected: Tight coupling; upstream must know all provider class names
 2. **Service container/DI** — use a service locator
    - Rejected: Adds framework dependency; overkill for this scope
@@ -467,7 +467,7 @@ Plugin Code:
    - Rejected: Prevents ecosystem growth; reduces plugin value
 2. **Factory pattern (like DB)** — static factory method calls
    - Rejected: Less aligned with WordPress conventions
-3. **Filter-based registration** ✅ — `gg_data_llm_providers` filter hook
+3. **Filter-based registration** ✅ — `gregius_data_llm_providers` filter hook
    - Chosen: Follows WordPress practice; easy third-party integration
 
 **Rationale:**
@@ -532,7 +532,7 @@ Plugin Code:
 **Rationale:**
 - Chunks are semantic units; provider implementation must not change boundaries
 - Vector embeddings are model-specific but chunk structure must be stable
-- `GG_Data_Chunker` produces canonical chunks → `wp_posts_chunks` table
+- `Gregius_Data_Chunker` produces canonical chunks → `wp_posts_chunks` table
 - Both PDO and PostgREST providers read the same chunk rows
 
 **Consequences:**
@@ -593,7 +593,7 @@ Plugin Code:
 - Admin users experience degraded UX
 
 **Mitigation:**
-- RPC function `gg_get_validation_summary` reduces HTTP round trips from 7-10 calls to 1
+- RPC function `gregius_data_get_validation_summary` reduces HTTP round trips from 7-10 calls to 1
 - Batch operations via RPC combined with bulk upserts
 - Load testing with realistic workloads
 - Database indexes on vector fields and search query results
@@ -761,20 +761,20 @@ Plugin Code:
 This architecture document is now ready for implementation using the `wp-plugin-development` skill:
 
 1. **Implement DB Provider Subsystem** (PA-FR-01 through PA-FR-10)
-   - Interface: `includes/providers/interface-gg-db-provider.php`
-   - Factory: `includes/providers/class-gg-provider-factory.php`
-   - PostgreSQL: `includes/providers/class-gg-postgresql-provider.php`
-   - PostgREST: `includes/providers/class-gg-postgrest-provider.php`
+   - Interface: `includes/providers/interface-gregius-data-db-provider.php`
+   - Factory: `includes/providers/class-gregius-data-provider-factory.php`
+   - PostgreSQL: `includes/providers/class-gregius-data-postgresql-provider.php`
+   - PostgREST: `includes/providers/class-gregius-data-postgrest-provider.php`
 
 2. **Implement AI Provider Subsystem** (PA-FR-11 through PA-FR-20)
-   - Interface: `includes/interfaces/interface-gg-data-ai-provider.php`
-   - Registry: `includes/ai/class-gg-data-llm-registry.php`
-   - Client: `includes/ai/class-gg-data-ai-client.php` + `GG_Data_Ai_Request`
+   - Interface: `includes/interfaces/interface-gregius-data-ai-provider.php`
+   - Registry: `includes/ai/class-gregius-data-llm-registry.php`
+   - Client: `includes/ai/class-gregius-data-ai-client.php` + `Gregius_Data_Ai_Request`
    - Concrete providers (7 implementations)
 
 3. **Implement Tool Calling Strategy Layer**
-   - Interface: `includes/ai/strategies/interface-gg-data-tool-calling-strategy.php`
-   - Factory: `includes/ai/strategies/class-gg-data-tool-strategy-factory.php`
+   - Interface: `includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php`
+   - Factory: `includes/ai/strategies/class-gregius-data-tool-strategy-factory.php`
    - Per-provider strategies (OpenAI, Anthropic, Gemini, Prompt-based)
 
 4. **Implement Admin UI** (REST endpoints for provider configuration)

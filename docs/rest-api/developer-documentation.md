@@ -17,7 +17,7 @@ Companion documents:
 ## 2. Scope
 
 Covered:
-- Route groups under `gg-data/v1`
+- Route groups under `gregius-data/v1`
 - Permission models and endpoint access expectations
 - Request and response conventions
 - Extension hooks relevant to REST behavior
@@ -31,7 +31,7 @@ Not covered:
 
 ### 3.1 Namespace and Route Style
 
-- Base namespace: `/wp-json/gg-data/v1`
+- Base namespace: `/wp-json/gregius-data/v1`
 - Routes are grouped by controller domain.
 - Most endpoints are JSON request/response contracts.
 
@@ -42,7 +42,7 @@ The subsystem uses three permission patterns:
 1. **Admin-gated controllers**
    - Most operational controllers require privileged capability checks.
 2. **Filter-based runtime policy**
-   - RAG endpoints use `gg_data_rag_endpoint_permission` and related security hooks.
+   - RAG endpoints use `gregius_data_rag_endpoint_permission` and related security hooks.
 3. **Ownership-aware access**
   - Interactions endpoints allow logged-in users to access their own records (read/update/delete), restrict direct create to admins, and allow admins full governance.
 
@@ -53,11 +53,11 @@ The subsystem uses three permission patterns:
 - Successful responses are structured JSON payloads.
 - Failures return `WP_Error` style responses with explicit status codes.
 
-## 4. Route Catalog (gg-data/v1)
+## 4. Route Catalog (gregius-data/v1)
 
 ### 4.1 Settings Controller
 
-Source: [../../includes/api/class-gg-data-rest-settings-controller.php](../../includes/api/class-gg-data-rest-settings-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-settings-controller.php](../../includes/api/class-gregius-data-rest-settings-controller.php)
 
 Key routes:
 - `GET /settings`
@@ -74,7 +74,7 @@ Key routes:
 
 ### 4.2 Connections Controller
 
-Source: [../../includes/api/class-gg-data-rest-connections-controller.php](../../includes/api/class-gg-data-rest-connections-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-connections-controller.php](../../includes/api/class-gregius-data-rest-connections-controller.php)
 
 Key routes:
 - `GET /connections`
@@ -93,7 +93,7 @@ Contract notes:
 
 ### 4.3 Connection Health Controller
 
-Source: [../../includes/api/class-gg-data-rest-connection-health-controller.php](../../includes/api/class-gg-data-rest-connection-health-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-connection-health-controller.php](../../includes/api/class-gregius-data-rest-connection-health-controller.php)
 
 Key routes:
 - `GET /sync/connection-health`
@@ -102,7 +102,7 @@ Key routes:
 
 ### 4.4 Connection Models Controller
 
-Source: [../../includes/api/class-gg-data-rest-connection-models-controller.php](../../includes/api/class-gg-data-rest-connection-models-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-connection-models-controller.php](../../includes/api/class-gregius-data-rest-connection-models-controller.php)
 
 Key routes:
 - `GET /connections/{connection}/vectors/models`
@@ -111,7 +111,7 @@ Key routes:
 
 ### 4.5 Schema Controller
 
-Source: [../../includes/api/class-gg-data-rest-schema-controller.php](../../includes/api/class-gg-data-rest-schema-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-schema-controller.php](../../includes/api/class-gregius-data-rest-schema-controller.php)
 
 Key routes:
 - `GET /schema/status`
@@ -122,7 +122,7 @@ Key routes:
 
 ### 4.6 Sync Controller
 
-Source: [../../includes/api/class-gg-data-rest-sync-controller.php](../../includes/api/class-gg-data-rest-sync-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-sync-controller.php](../../includes/api/class-gregius-data-rest-sync-controller.php)
 
 Key routes:
 - `GET /sync/post-types`
@@ -153,18 +153,18 @@ Contract notes:
 - Request args: `connection_name` (required), optional `batch_size`, `offset`, and `limit`.
 - The endpoint always reads from offset `0` inside each batch to avoid skipping rows as tables shrink.
 - The response includes `deleted`, `total_deleted`, `has_more`, `next_offset`, `duration_ms`, `errors`, `limit`, `table`, and `remaining`.
-- Batch-size customization is filter-driven through `gg_data_sync_delete_batch_size` and the table-specific filters documented in the sync guide.
+- Batch-size customization is filter-driven through `gregius_data_sync_delete_batch_size` and the table-specific filters documented in the sync guide.
 - The handler is provider-aware and supports both direct PostgreSQL/PDO and PostgREST/Supabase connections.
 - This endpoint is not intended for routine dashboard operation; use it only in controlled operator or automation workflows.
 
 Orphan cleanup notes:
 - The orphan cleanup endpoints accept an optional `batch_size` request argument.
-- The effective orphan cleanup batch size can also be overridden at runtime through `gg_data_orphan_delete_batch_size`.
-- `gg_data_sync_delete_batch_size` and its table-specific variants apply to `POST /sync/batch-delete`, not to the orphan cleanup endpoints.
+- The effective orphan cleanup batch size can also be overridden at runtime through `gregius_data_orphan_delete_batch_size`.
+- `gregius_data_sync_delete_batch_size` and its table-specific variants apply to `POST /sync/batch-delete`, not to the orphan cleanup endpoints.
 
 ### 4.7 Sync Validator Controller
 
-Source: [../../includes/api/class-gg-data-rest-sync-validator-controller.php](../../includes/api/class-gg-data-rest-sync-validator-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-sync-validator-controller.php](../../includes/api/class-gregius-data-rest-sync-validator-controller.php)
 
 Key routes:
 - `GET /sync/validation`
@@ -174,7 +174,7 @@ Key routes:
 
 ### 4.8 Search Controller
 
-Source: [../../includes/api/class-gg-data-rest-search-controller.php](../../includes/api/class-gg-data-rest-search-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-search-controller.php](../../includes/api/class-gregius-data-rest-search-controller.php)
 
 Key routes:
 - `GET /search/health`
@@ -189,7 +189,7 @@ Key routes:
 
 ### 4.9 Vector Queue Controller
 
-Source: [../../includes/api/class-gg-data-rest-vector-queue-controller.php](../../includes/api/class-gg-data-rest-vector-queue-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-vector-queue-controller.php](../../includes/api/class-gregius-data-rest-vector-queue-controller.php)
 
 Key routes:
 - `GET /vector-queue`
@@ -208,7 +208,7 @@ Contract notes:
 
 ### 4.10 Data Retention Controller
 
-Source: [../../includes/api/class-gg-data-rest-data-retention-controller.php](../../includes/api/class-gg-data-rest-data-retention-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-data-retention-controller.php](../../includes/api/class-gregius-data-rest-data-retention-controller.php)
 
 Key routes:
 - `POST /data-retention`
@@ -221,7 +221,7 @@ Contract notes:
 
 ### 4.11 Retry Queue Controller
 
-Source: [../../includes/api/class-gg-data-rest-retry-queue-controller.php](../../includes/api/class-gg-data-rest-retry-queue-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-retry-queue-controller.php](../../includes/api/class-gregius-data-rest-retry-queue-controller.php)
 
 Key routes:
 - `GET /sync/retry-queue`
@@ -230,7 +230,7 @@ Key routes:
 
 ### 4.12 Models Controller
 
-Source: [../../includes/api/class-gg-data-rest-models-controller.php](../../includes/api/class-gg-data-rest-models-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-models-controller.php](../../includes/api/class-gregius-data-rest-models-controller.php)
 
 Key routes:
 - `GET /models`
@@ -245,7 +245,7 @@ Key routes:
 
 ### 4.13 Prompts Controller
 
-Source: [../../includes/api/class-gg-data-rest-prompts-controller.php](../../includes/api/class-gg-data-rest-prompts-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-prompts-controller.php](../../includes/api/class-gregius-data-rest-prompts-controller.php)
 
 Key routes:
 - `GET /prompts`
@@ -256,7 +256,7 @@ Key routes:
 
 ### 4.14 Logs Controller
 
-Source: [../../includes/api/class-gg-data-rest-logs-controller.php](../../includes/api/class-gg-data-rest-logs-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-logs-controller.php](../../includes/api/class-gregius-data-rest-logs-controller.php)
 
 Key routes:
 - `GET /logs`
@@ -267,15 +267,15 @@ Key routes:
 - `POST /logs/settings`
 
 Contract notes:
-- `GET /logs/settings` exposes `retention_days` from site option `gg_data_log_retention_days`.
+- `GET /logs/settings` exposes `retention_days` from site option `gregius_data_log_retention_days`.
 - `POST /logs/settings` persists `retention_days` (bounded `1..365`) at site scope.
 - `DELETE /logs/purge` accepts `days` and returns deleted row count in `data.deleted`.
-- Purge operations are constrained to the current site's `{prefix}gg_data_logs` table.
-- Purge operations do not target `gg_interaction` records.
+- Purge operations are constrained to the current site's `{prefix}gregius_data_logs` table.
+- Purge operations do not target `gregius_interaction` records.
 
 ### 4.15 RAG Controller
 
-Source: [../../includes/api/class-gg-data-rest-rag-controller.php](../../includes/api/class-gg-data-rest-rag-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-rag-controller.php](../../includes/api/class-gregius-data-rest-rag-controller.php)
 
 Key routes:
 - `POST /rag/chat`
@@ -283,17 +283,17 @@ Key routes:
 - `GET /rag/actions`
 
 Key notes:
-- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-closed evaluation and logged-in default posture in current security hooks.
+- Permission is filter-based (`gregius_data_rag_endpoint_permission`) with fail-closed evaluation and logged-in default posture in current security hooks.
 - Route-scoped fixed-window throttling is enforced for `POST /rag/chat` and `POST /rag/action`.
-- Exceeded limits return `gg_data_rate_limited` with HTTP 429 and metadata (`retry_after`, `scope`, `limit`, `window`).
+- Exceeded limits return `gregius_data_rate_limited` with HTTP 429 and metadata (`retry_after`, `scope`, `limit`, `window`).
 - Request payloads include required and optional model and context fields.
 - `POST /rag/chat` accepts optional structured `metadata_filter` and `metadata_manifest` fields for scoped retrieval context.
 - `POST /rag/chat` accepts optional `manifest` (object) and `forced_tool` (string) to enable deterministic tool execution and manifest-aware context handling.
-- `forced_tool` executes a tool deterministically when it matches one registered via `gg_data_rag_tools` (for example `search_entity_content`, `search_content`, `compare_content`); unsupported values fall back to normal routing.
+- `forced_tool` executes a tool deterministically when it matches one registered via `gregius_data_rag_tools` (for example `search_entity_content`, `search_content`, `compare_content`); unsupported values fall back to normal routing.
 
 ### 4.16 RAG Journey Controller
 
-Source: [../../includes/api/class-gg-data-rest-rag-journey-controller.php](../../includes/api/class-gg-data-rest-rag-journey-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-rag-journey-controller.php](../../includes/api/class-gregius-data-rest-rag-journey-controller.php)
 
 Key routes (all `POST`):
 - `POST /rag/journey/issue`
@@ -301,7 +301,7 @@ Key routes (all `POST`):
 - `POST /rag/journey/history`
 
 Key notes:
-- Permission is filter-based (`gg_data_rag_endpoint_permission`) with fail-closed evaluation (default deny).
+- Permission is filter-based (`gregius_data_rag_endpoint_permission`) with fail-closed evaluation (default deny).
 - Caller context: `issue` binds a one-time continuation token to the caller's user account or guest session (hashed credential derived from WordPress authentication salts).
 - `consume` redeems the one-time token, validating the caller's user account or guest session, and returns the hydration payload.
 - `history` returns the hydration payload directly by `conversation_id`, enforcing read permission (`manage_options`, the interaction author, or a matching guest session hash — with first-claim binding for legacy guest records).
@@ -312,7 +312,7 @@ See [docs/rag §5.4](../rag/developer-documentation.md) for the canonical journe
 
 ### 4.17 Interactions Controller
 
-Source: [../../includes/api/class-gg-data-rest-interactions-controller.php](../../includes/api/class-gg-data-rest-interactions-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-interactions-controller.php](../../includes/api/class-gregius-data-rest-interactions-controller.php)
 
 Key routes:
 - `GET /interactions`
@@ -323,7 +323,7 @@ Key routes:
 - `POST /interactions/{id}/feedback`
 
 Contract notes:
-- `POST /interactions/{id}/feedback` accepts `feedback_type` (`helpful`, `unhelpful`, `rating`, `correction`) and `feedback_value`, and fires the `gg_data_interaction_feedback_received` action; `rating` values are clamped to `1..5`.
+- `POST /interactions/{id}/feedback` accepts `feedback_type` (`helpful`, `unhelpful`, `rating`, `correction`) and `feedback_value`, and fires the `gregius_interaction_feedback_received` action; `rating` values are clamped to `1..5`.
 - This controller extends `WP_REST_Posts_Controller` (standard CPT collection/single-item routes) and adds the feedback route.
 
 Notes:
@@ -338,45 +338,45 @@ Notes:
 
 ### 5.1 REST Access and Security Hooks
 
-- `gg_data_rag_endpoint_permission`
-- `gg_data_rag_access_level`
-- `gg_data_rag_required_capability`
+- `gregius_data_rag_endpoint_permission`
+- `gregius_data_rag_access_level`
+- `gregius_data_rag_required_capability`
 
 Use these to tighten or customize runtime access policy for RAG endpoints. Note that RAG chat and action endpoints use fail-closed permission semantics (default deny), and journey and SSE endpoints also use fail-closed semantics (default deny).
 
 ### 5.2 Streaming and Rate-Limit Extension Hook
 
-Source: [../../includes/api/class-gg-data-sse-handler.php](../../includes/api/class-gg-data-sse-handler.php)
+Source: [../../includes/api/class-gregius-data-sse-handler.php](../../includes/api/class-gregius-data-sse-handler.php)
 
-- `gg_data_rag_rate_limit`
+- `gregius_data_rag_rate_limit`
 
 Use this hook to implement custom throttling for streaming requests. This does not imply generic controller-wide rate limiting for all routes.
 
 ### 5.3 Route-Scoped RAG Rate-Limit Hooks
 
-Source: [../../includes/api/class-gg-data-rest-rag-controller.php](../../includes/api/class-gg-data-rest-rag-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-rag-controller.php](../../includes/api/class-gregius-data-rest-rag-controller.php)
 
-- `gg_data_rag_rate_limit_anonymous`
-- `gg_data_rag_rate_limit_authenticated`
-- `gg_data_rag_rate_limit_window_seconds`
+- `gregius_data_rag_rate_limit_anonymous`
+- `gregius_data_rag_rate_limit_authenticated`
+- `gregius_data_rag_rate_limit_window_seconds`
 
 Use these hooks to tune route-scoped fixed-window limits for RAG chat/action endpoints.
 
-For observability and telemetry, see the `gg_data_rag_rate_limit_decision` action hook documented in [../../docs/hooks/developer-documentation.md](../../docs/hooks/developer-documentation.md#gg_data_rag_rate_limit_decision). This action fires for all rate-limit decisions and is suitable for logging, metrics, and debugging.
+For observability and telemetry, see the `gregius_data_rag_rate_limit_decision` action hook documented in [../../docs/hooks/developer-documentation.md](../../docs/hooks/developer-documentation.md#gregius_data_rag_rate_limit_decision). This action fires for all rate-limit decisions and is suitable for logging, metrics, and debugging.
 
 ## 6. Usage Examples
 
 ### 6.1 Settings Retrieval (Admin)
 
 ```bash
-curl -X GET https://example.com/wp-json/gg-data/v1/settings \
+curl -X GET https://example.com/wp-json/gregius-data/v1/settings \
   -H "X-WP-Nonce: YOUR_NONCE"
 ```
 
 ### 6.2 RAG Chat Request
 
 ```bash
-curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
+curl -X POST https://example.com/wp-json/gregius-data/v1/rag/chat \
   -H "Content-Type: application/json" \
   -d '{
     "query": "How do I install WordPress?",
@@ -391,7 +391,7 @@ curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
 ### 6.3 Sync Status Check
 
 ```bash
-curl -X GET "https://example.com/wp-json/gg-data/v1/sync/status?connection=default" \
+curl -X GET "https://example.com/wp-json/gregius-data/v1/sync/status?connection=default" \
   -H "X-WP-Nonce: YOUR_NONCE"
 ```
 
@@ -415,7 +415,7 @@ Check route-specific required args and types:
 ### 7.3 Route Not Found
 
 Check:
-- namespace path (`/wp-json/gg-data/v1/...`)
+- namespace path (`/wp-json/gregius-data/v1/...`)
 - method mismatch (GET vs POST vs DELETE)
 - route pattern parameters (`{name}`, `{id}`, `{type}`)
 

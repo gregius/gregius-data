@@ -56,24 +56,24 @@ const LogsPage = () => {
 		error,
 		autoRefresh,
 	} = useSelect( ( select ) => ( {
-		logs: select( 'gg-data/logs' ).getLogs(),
-		pagination: select( 'gg-data/logs' ).getPagination(),
-		stats: select( 'gg-data/logs' ).getStats(),
-		settings: select( 'gg-data/logs' ).getSettings(),
-		isLoading: select( 'gg-data/logs' ).isLoading(),
-		error: select( 'gg-data/logs' ).getError(),
-		autoRefresh: select( 'gg-data/logs' ).getAutoRefresh(),
+		logs: select( 'gregius-data/logs' ).getLogs(),
+		pagination: select( 'gregius-data/logs' ).getPagination(),
+		stats: select( 'gregius-data/logs' ).getStats(),
+		settings: select( 'gregius-data/logs' ).getSettings(),
+		isLoading: select( 'gregius-data/logs' ).isLoading(),
+		error: select( 'gregius-data/logs' ).getError(),
+		autoRefresh: select( 'gregius-data/logs' ).getAutoRefresh(),
 	} ), [] );
 
 	// Get connections for filter dropdown
 	const { connections } = useSelect( ( select ) => ( {
-		connections: select( 'gg-data/connections' ).getConnectionsList(),
+		connections: select( 'gregius-data/connections' ).getConnectionsList(),
 	} ), [] );
 
 	const [ filterConnection, setFilterConnection ] = useState( '' );
 
 	// Store actions
-	const { fetchLogs, fetchStats, fetchSettings, setAutoRefresh } = useDispatch( 'gg-data/logs' );
+	const { fetchLogs, fetchStats, fetchSettings, setAutoRefresh } = useDispatch( 'gregius-data/logs' );
 
 	// Build current filters object
 	const getCurrentFilters = useCallback( () => ( {
@@ -137,7 +137,7 @@ const LogsPage = () => {
 		if ( filterDateTo ) params.append( 'date_to', filterDateTo );
 
 		const restUrl = window.wpApiSettings?.root || '/wp-json/';
-		const exportUrl = `${ restUrl }gg-data/v1/logs/export?${ params.toString() }&_wpnonce=${ window.wpApiSettings?.nonce || '' }`;
+		const exportUrl = `${ restUrl }gregius-data/v1/logs/export?${ params.toString() }&_wpnonce=${ window.wpApiSettings?.nonce || '' }`;
 		window.open( exportUrl, '_blank' );
 	};
 
@@ -151,7 +151,7 @@ const LogsPage = () => {
 		if ( filterDateTo ) params.append( 'date_to', filterDateTo );
 
 		const restUrl = window.wpApiSettings?.root || '/wp-json/';
-		const exportUrl = `${ restUrl }gg-data/v1/logs/export?${ params.toString() }&_wpnonce=${ window.wpApiSettings?.nonce || '' }`;
+		const exportUrl = `${ restUrl }gregius-data/v1/logs/export?${ params.toString() }&_wpnonce=${ window.wpApiSettings?.nonce || '' }`;
 		window.open( exportUrl, '_blank' );
 	};
 
@@ -204,7 +204,7 @@ const LogsPage = () => {
 	};
 
 	return (
-		<div className="gg-data-page gg-data-logs-page">
+		<div className="gregius-data-page gregius-data-logs-page">
 			<div style={ { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2rem 1.5rem 0', borderTop: '1px solid rgba(0, 0, 0, 0.1)' } }>
 				<Heading level={ 2 }>{ __( 'Logs', 'gregius-data' ) }</Heading>
 				<Flex gap={ 3 }>

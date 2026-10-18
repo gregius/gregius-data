@@ -98,7 +98,7 @@ Requirement notation:
 | TEST-DR-04 | WpIntegration tests MUST run from a separate PHPUnit configuration (`phpunit-wp.xml.dist`) to avoid loading `WP_UnitTestCase` when WordPress is not bootstrapped. | Must |
 | TEST-DR-05 | The wp-phpunit test framework MUST be installed via SVN into `tests/wp-phpunit/` and excluded from version control via `.gitignore`. | Must |
 | TEST-DR-06 | The `expectDeprecated()` method in wp-phpunit MUST be patched for PHPUnit 11 compatibility (`parseTestMethodAnnotations` removal). | Must |
-| TEST-DR-07 | All test files MUST follow the naming convention `Test_GG_Data_{ClassName}.php` in their respective tier directory. | Must |
+| TEST-DR-07 | All test files MUST follow the naming convention `Test_Gregius_Data_{ClassName}.php` in their respective tier directory. | Must |
 | TEST-DR-08 | Test files, PHPUnit configurations, vendor dependencies, and Composer metadata MUST be excluded from the production plugin zip. | Must |
 
 ### 3.3 Software Operations and Control Requirements
@@ -128,58 +128,58 @@ Requirement notation:
 
 | Source Class | Test File | Tests |
 |---|---|---|
-| GG_Data_Activator | Test_GG_Data_Activator.php | 6 |
-| GG_Data_Chunker | Test_GG_Data_Chunker.php | 12 |
-| GG_Data_Content_Processor | Test_GG_Data_Content_Processor.php | 8 |
-| GG_Data_Document_Extractor | Test_GG_Data_Document_Extractor.php | 4 |
-| GG_Data_Error_Handler | Test_GG_Data_Error_Handler.php | 13 |
-| GG_Data_Format_Json_Output (trait) | Test_GG_Data_Format_Json_Output.php | 8 |
-| GG_Data_Model_Catalog | Test_GG_Data_Model_Catalog.php | 10 |
-| GG_Data_Model_Discovery | Test_GG_Data_Model_Discovery.php | 6 |
-| GG_Data_Prompt_Resolver | Test_GG_Data_Prompt_Resolver.php | 8 |
-| GG_Data_Search_Schema | Test_GG_Data_Search_Schema.php | 4 |
-| GG_Data_Table_Prefix_Resolver | Test_GG_Data_Table_Prefix_Resolver.php | 8 |
-| GG_Data_Token_Counter | Test_GG_Data_Token_Counter.php | 6 |
+| Gregius_Data_Activator | Test_Gregius_Data_Activator.php | 6 |
+| Gregius_Data_Chunker | Test_Gregius_Data_Chunker.php | 12 |
+| Gregius_Data_Content_Processor | Test_Gregius_Data_Content_Processor.php | 8 |
+| Gregius_Data_Document_Extractor | Test_Gregius_Data_Document_Extractor.php | 4 |
+| Gregius_Data_Error_Handler | Test_Gregius_Data_Error_Handler.php | 13 |
+| Gregius_Data_Format_Json_Output (trait) | Test_Gregius_Data_Format_Json_Output.php | 8 |
+| Gregius_Data_Model_Catalog | Test_Gregius_Data_Model_Catalog.php | 10 |
+| Gregius_Data_Model_Discovery | Test_Gregius_Data_Model_Discovery.php | 6 |
+| Gregius_Data_Prompt_Resolver | Test_Gregius_Data_Prompt_Resolver.php | 8 |
+| Gregius_Data_Search_Schema | Test_Gregius_Data_Search_Schema.php | 4 |
+| Gregius_Data_Table_Prefix_Resolver | Test_Gregius_Data_Table_Prefix_Resolver.php | 8 |
+| Gregius_Data_Token_Counter | Test_Gregius_Data_Token_Counter.php | 6 |
 | **Total** | **12 files** | **93 tests** |
 
 ### 4.2 Tier 2 — Integration Tests (tests/Integration/)
 
 | Source Class | Test File | Tests |
 |---|---|---|
-| GG_Data_Content_Cleaner | Test_GG_Data_Content_Cleaner.php | 10 |
-| GG_Data_DB | Test_GG_Data_DB.php | 4 |
-| GG_Data_Gemini_Provider | Test_GG_Data_Gemini_Provider.php | 1 |
-| GG_Data_HashingTF_Embeddings | Test_GG_Data_HashingTF_Embeddings.php | 8 |
-| GG_Data_LLM_Registry | Test_GG_Data_LLM_Registry.php | 5 |
-| GG_Data_RAG_Service | Test_GG_Data_RAG_Service_QueryVector.php | 3 |
-| GG_Data_Settings_Manager | Test_GG_Data_Settings_Manager.php | 9 |
-| GG_Data_Vector_Generator | Test_GG_Data_Vector_Generator.php | 6 |
+| Gregius_Data_Content_Cleaner | Test_Gregius_Data_Content_Cleaner.php | 10 |
+| Gregius_Data_DB | Test_Gregius_Data_DB.php | 4 |
+| Gregius_Data_Gemini_Provider | Test_Gregius_Data_Gemini_Provider.php | 1 |
+| Gregius_Data_HashingTF_Embeddings | Test_Gregius_Data_HashingTF_Embeddings.php | 8 |
+| Gregius_Data_LLM_Registry | Test_Gregius_Data_LLM_Registry.php | 5 |
+| Gregius_Data_RAG_Service | Test_Gregius_Data_RAG_Service_QueryVector.php | 3 |
+| Gregius_Data_Settings_Manager | Test_Gregius_Data_Settings_Manager.php | 9 |
+| Gregius_Data_Vector_Generator | Test_Gregius_Data_Vector_Generator.php | 6 |
 | **Total** | **8 files** | **46 tests** |
 
 ### 4.3 Tier 3 — WpIntegration Tests (tests/WpIntegration/)
 
 | Source Class | Test File | Tests |
 |---|---|---|
-| GG_Data_Abilities_Manager | Test_GG_Data_Abilities_Manager.php | 4 |
-| GG_Data_Connection_Health | Test_GG_Data_Connection_Health.php | 7 |
-| GG_Data_Logger | Test_GG_Data_Logger.php | 11 |
-| GG_Data (Main Plugin) | Test_GG_Data_Main_Plugin.php | 5 |
-| GG_Data_Activator | Test_GG_Data_Plugin_Activation.php | 5 |
-| GG_Data_RAG_Service | Test_GG_Data_RAG_Service.php | 4 |
-| GG_Data_REST_Connections_Controller | Test_GG_Data_REST_Connections.php | 4 |
-| GG_Data_REST_Prompts_Controller | Test_GG_Data_REST_Prompts.php | 3 |
-| GG_Data_REST_Search_Controller | Test_GG_Data_REST_Search.php | 3 |
-| GG_Data_REST_Sync_Controller | Test_GG_Data_REST_Sync.php | 2 |
-| GG_Data_Sync_Service | Test_GG_Data_Sync_Service.php | 2 |
+| Gregius_Data_Abilities_Manager | Test_Gregius_Data_Abilities_Manager.php | 4 |
+| Gregius_Data_Connection_Health | Test_Gregius_Data_Connection_Health.php | 7 |
+| Gregius_Data_Logger | Test_Gregius_Data_Logger.php | 11 |
+| Gregius_Data (Main Plugin) | Test_Gregius_Data_Main_Plugin.php | 5 |
+| Gregius_Data_Activator | Test_Gregius_Data_Plugin_Activation.php | 5 |
+| Gregius_Data_RAG_Service | Test_Gregius_Data_RAG_Service.php | 4 |
+| Gregius_Data_REST_Connections_Controller | Test_Gregius_Data_REST_Connections.php | 4 |
+| Gregius_Data_REST_Prompts_Controller | Test_Gregius_Data_REST_Prompts.php | 3 |
+| Gregius_Data_REST_Search_Controller | Test_Gregius_Data_REST_Search.php | 3 |
+| Gregius_Data_REST_Sync_Controller | Test_Gregius_Data_REST_Sync.php | 2 |
+| Gregius_Data_Sync_Service | Test_Gregius_Data_Sync_Service.php | 2 |
 | **Total** | **11 files** | **50 tests** |
 
 ### 4.4 Exclusions
 
 | Class | Reason |
 |---|---|
-| GG_Data_Citation_Resolver | Not covered — no test file (class exists in `includes/rag/`) |
+| Gregius_Data_Citation_Resolver | Not covered — no test file (class exists in `includes/rag/`) |
 | AI Provider classes (OpenAI, Anthropic, DeepSeek, Cohere, TypeSafe) | Not covered — no test files (Gemini is covered; see §4.2) |
-| GG_Data_PostgREST_Provider | Not covered — requires Supabase/PostgREST endpoint mocking |
+| Gregius_Data_PostgREST_Provider | Not covered — requires Supabase/PostgREST endpoint mocking |
 
 ## 5. Verification and Acceptance
 

@@ -78,10 +78,10 @@ The RAG subsystem is a plugin feature that enables conversational access to sync
 - docs/rag/architecture.md
 - docs/rag/manifest-contract.md
 - docs/hooks/architecture.md
-- includes/rag/class-gg-data-rag-service.php
-- includes/rag/class-gg-data-coverage-gate.php
-- includes/api/class-gg-data-rest-rag-controller.php
-- includes/hooks/class-gg-data-rag-security-hooks.php
+- includes/rag/class-gregius-data-rag-service.php
+- includes/rag/class-gregius-data-coverage-gate.php
+- includes/api/class-gregius-data-rest-rag-controller.php
+- includes/hooks/class-gregius-data-rag-security-hooks.php
 
 ## 3. Software Requirements
 
@@ -192,15 +192,15 @@ Acceptance baseline for current implemented subsystem:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| RAG-FR-01 to RAG-FR-04 | docs/rag/architecture.md (Overview, Context View), includes/api/class-gg-data-rest-rag-controller.php | Chat input contract and default retrieval scope |
-| RAG-FR-05 to RAG-FR-17 | docs/rag/architecture.md (Component View, Runtime View, ADRs), includes/rag/class-gg-data-rag-service.php, includes/rag/class-gg-data-coverage-gate.php | Retrieval, passage selection, governance, abstain, and source behavior |
-| RAG-FR-18 to RAG-FR-23 | docs/rag/architecture.md (Component responsibilities and extension boundaries), includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php, includes/rag/class-gg-data-rag-service.php | External endpoints, metadata transport, and extension behavior |
-| RAG-FR-24, RAG-FR-25, RAG-FR-28, RAG-FR-29 | docs/rag/architecture.md (manifest contract and deterministic routing), includes/rag/class-gg-data-manifest-validator.php, includes/rag/class-gg-data-rag-service.php | Manifest normalization contract and deterministic tool execution behavior |
-| RAG-FR-30 to RAG-FR-33 | docs/rag/architecture.md (Journey continuity component and per-surface permission policy), includes/api/class-gg-data-rest-rag-journey-controller.php, includes/class-gg-data-interaction.php | Guest journey endpoints, session-bound continuity, and permission seed semantics |
-| RAG-FR-22, RAG-DR-01 to RAG-DR-12 | docs/rag/architecture.md (Runtime flow and metadata architecture), includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-sse-handler.php, includes/rag/class-gg-data-rag-service.php, includes/class-gg-data-interaction.php | Response schema, metadata, sanitation, observability, and errors |
-| RAG-DR-13 | docs/rag/architecture.md (response metadata contract), includes/rag/class-gg-data-rag-service.php, includes/class-gg-data-interaction.php | Manifest metadata observability and persistence |
-| RAG-DR-14, RAG-DR-15 | docs/rag/architecture.md (Security and journey ownership), includes/api/class-gg-data-rest-rag-journey-controller.php, includes/class-gg-data-interaction.php | Guest session hash ownership, first-claim binding for legacy records |
-| RAG-OR-01 to RAG-OR-09 | docs/rag/architecture.md (Security and extension layer), includes/hooks/class-gg-data-rag-security-hooks.php, includes/api/class-gg-data-rest-rag-controller.php, includes/api/class-gg-data-rest-rag-journey-controller.php, includes/rag/class-gg-data-rag-service.php, includes/class-gg-data-interaction.php | Access control, stateless handling, route-scoped throttling, optional capability behavior, guest session hashing |
+| RAG-FR-01 to RAG-FR-04 | docs/rag/architecture.md (Overview, Context View), includes/api/class-gregius-data-rest-rag-controller.php | Chat input contract and default retrieval scope |
+| RAG-FR-05 to RAG-FR-17 | docs/rag/architecture.md (Component View, Runtime View, ADRs), includes/rag/class-gregius-data-rag-service.php, includes/rag/class-gregius-data-coverage-gate.php | Retrieval, passage selection, governance, abstain, and source behavior |
+| RAG-FR-18 to RAG-FR-23 | docs/rag/architecture.md (Component responsibilities and extension boundaries), includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/rag/class-gregius-data-rag-service.php | External endpoints, metadata transport, and extension behavior |
+| RAG-FR-24, RAG-FR-25, RAG-FR-28, RAG-FR-29 | docs/rag/architecture.md (manifest contract and deterministic routing), includes/rag/class-gregius-data-manifest-validator.php, includes/rag/class-gregius-data-rag-service.php | Manifest normalization contract and deterministic tool execution behavior |
+| RAG-FR-30 to RAG-FR-33 | docs/rag/architecture.md (Journey continuity component and per-surface permission policy), includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/class-gregius-data-interaction.php | Guest journey endpoints, session-bound continuity, and permission seed semantics |
+| RAG-FR-22, RAG-DR-01 to RAG-DR-12 | docs/rag/architecture.md (Runtime flow and metadata architecture), includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Response schema, metadata, sanitation, observability, and errors |
+| RAG-DR-13 | docs/rag/architecture.md (response metadata contract), includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Manifest metadata observability and persistence |
+| RAG-DR-14, RAG-DR-15 | docs/rag/architecture.md (Security and journey ownership), includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/class-gregius-data-interaction.php | Guest session hash ownership, first-claim binding for legacy records |
+| RAG-OR-01 to RAG-OR-09 | docs/rag/architecture.md (Security and extension layer), includes/hooks/class-gregius-data-rag-security-hooks.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Access control, stateless handling, route-scoped throttling, optional capability behavior, guest session hashing |
 | RAG-QR-01 to RAG-QR-10 | docs/rag/architecture.md | Non-functional behavior and release-quality expectations |
 
 ## 6. Appendices

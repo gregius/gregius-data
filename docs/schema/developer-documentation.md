@@ -31,9 +31,9 @@ Not covered:
 
 ## 3. Key Components
 
-### 3.1 Schema Manager (`GG_Data_Schema_Manager`)
+### 3.1 Schema Manager (`Gregius_Data_Schema_Manager`)
 
-Source: [../../includes/class-gg-data-schema-manager.php](../../includes/class-gg-data-schema-manager.php)
+Source: [../../includes/class-gregius-data-schema-manager.php](../../includes/class-gregius-data-schema-manager.php)
 
 Core responsibilities:
 - Create all required schema structures for a target connection.
@@ -44,12 +44,12 @@ Core responsibilities:
 
 Notable behavior:
 - Reads provider type from connection config via settings manager.
-- Migrates legacy version key from `wp_options` to `wp_gg_settings`.
+- Migrates legacy version key from `wp_options` to `wp_gregius_data_settings`.
 - Uses transaction boundaries for direct PostgreSQL create and upgrade operations.
 
-### 3.2 Schema REST Controller (`GG_Data_REST_Schema_Controller`)
+### 3.2 Schema REST Controller (`Gregius_Data_REST_Schema_Controller`)
 
-Source: [../../includes/api/class-gg-data-rest-schema-controller.php](../../includes/api/class-gg-data-rest-schema-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-schema-controller.php](../../includes/api/class-gregius-data-rest-schema-controller.php)
 
 Core responsibilities:
 - Register `/schema/status`, `/schema/create`, `/schema/upgrade`, `/schema/verify`, and `/schema/sql`.
@@ -60,8 +60,8 @@ Core responsibilities:
 ### 3.3 Connection and Settings Services
 
 Sources:
-- [../../includes/class-gg-data-connection-manager.php](../../includes/class-gg-data-connection-manager.php)
-- [../../includes/class-gg-data-settings-manager.php](../../includes/class-gg-data-settings-manager.php)
+- [../../includes/class-gregius-data-connection-manager.php](../../includes/class-gregius-data-connection-manager.php)
+- [../../includes/class-gregius-data-settings-manager.php](../../includes/class-gregius-data-settings-manager.php)
 
 Core responsibilities:
 - Store/retrieve connection config and schema metadata.
@@ -71,9 +71,9 @@ Core responsibilities:
 ### 3.4 Provider Interfaces and Implementations
 
 Sources:
-- [../../includes/providers/interface-gg-db-provider.php](../../includes/providers/interface-gg-db-provider.php)
-- [../../includes/providers/class-gg-postgresql-provider.php](../../includes/providers/class-gg-postgresql-provider.php)
-- [../../includes/providers/class-gg-postgrest-provider.php](../../includes/providers/class-gg-postgrest-provider.php)
+- [../../includes/providers/interface-gregius-data-db-provider.php](../../includes/providers/interface-gregius-data-db-provider.php)
+- [../../includes/providers/class-gregius-data-postgresql-provider.php](../../includes/providers/class-gregius-data-postgresql-provider.php)
+- [../../includes/providers/class-gregius-data-postgrest-provider.php](../../includes/providers/class-gregius-data-postgrest-provider.php)
 
 Schema-related behavior:
 - Direct PostgreSQL path uses PDO for schema SQL and extension setup.
@@ -88,7 +88,7 @@ Role:
 
 ## 4. REST Route Catalog (Schema)
 
-Base namespace: `/wp-json/gg-data/v1`
+Base namespace: `/wp-json/gregius-data/v1`
 
 Routes:
 - `GET /schema/status`
@@ -144,7 +144,7 @@ SQL download flow highlights:
 - Includes `metadata_manifest` JSONB schema and `search_rag_orchestrate(..., metadata_filter jsonb DEFAULT '{}'::jsonb)` contract updates.
 
 Verify flow highlights:
-- Reads schema version from `gg_schema_meta` via PostgREST provider.
+- Reads schema version from `gregius_data_schema_meta` via PostgREST provider.
 - On success updates connection metadata with `schema_version` and `schema_status=ready`.
 - On missing schema returns status `not_created`.
 
@@ -153,7 +153,7 @@ Verify flow highlights:
 Schema version storage:
 - Category: `schema`
 - Keys used by manager: `version`, `updated_at`
-- Legacy fallback key: `gg_data_schema_version_{connection}` in `wp_options`
+- Legacy fallback key: `gregius_data_schema_version_{connection}` in `wp_options`
 
 Status response fields commonly consumed by clients:
 - `connected`

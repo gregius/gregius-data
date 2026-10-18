@@ -32,10 +32,10 @@ Out of scope:
 ## 3. Architecture Context (AV-01)
 
 System context summary:
-The RAG evaluation subsystem operates as an independent, plugin-adjacent component. It executes configured prompts through shipped `wp gg-data evaluation` commands, produces canonical JSONL and framework-specific adapter output, and writes a run manifest for provenance tracking.
+The RAG evaluation subsystem operates as an independent, plugin-adjacent component. It executes configured prompts through shipped `wp gregius-data evaluation` commands, produces canonical JSONL and framework-specific adapter output, and writes a run manifest for provenance tracking.
 
 Interfaces at context level:
-- CLI execution interface via `wp gg-data evaluation` commands.
+- CLI execution interface via `wp gregius-data evaluation` commands.
 - WordPress command interface (WP-CLI) for operator invocation and live prompt execution.
 - Local JSON configuration file for runtime parameters and prompt corpus, with a shipped template inside the plugin and a writable site-local config under uploads.
 - Canonical artifact filesystem boundary for JSONL and manifest output.
@@ -69,7 +69,7 @@ Element responsibilities:
 ### 4.2 Runtime Interaction View (AV-03)
 
 High-level runtime interaction flow:
-1. Operator invokes `wp gg-data evaluation run` with configuration path and options.
+1. Operator invokes `wp gregius-data evaluation run` with configuration path and options.
 2. Runner loads and validates evaluation config and prompt corpus.
 3. Runner resolves execution scope using the full configured prompt corpus or an explicit single-prompt filter.
 4. Runner initializes timestamped output directory with raw and framework subdirectories.
@@ -112,7 +112,7 @@ wp-content/uploads/gregius-data/artifacts/evaluation/YYYYMMDD-HHMMSS/
 ### Decision AD-01: WordPress-native WP-CLI evaluation orchestration
 
 - Status: Accepted
-- Decision: Use shipped `wp gg-data evaluation` commands as the evaluation orchestration entrypoint.
+- Decision: Use shipped `wp gregius-data evaluation` commands as the evaluation orchestration entrypoint.
 - Rationale: Aligns evaluation execution with the plugin's native command surface and makes the workflow available in packaged installs.
 - Alternatives considered:
   - Python runner (closer to Ragas native environment).

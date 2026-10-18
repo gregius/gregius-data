@@ -5,7 +5,7 @@
  * Each embedding model gets its own card with independent actions.
  *
  * Architecture:
- * - Models are global (stored in MySQL wp_gg_settings)
+ * - Models are global (stored in MySQL wp_gregius_data_settings)
  * - Connection-model associations per database (PostgreSQL connection_embedding_models)
  * - Each card shows model-specific vector status and actions
  * - "+ Add Model" button to add global models to this connection
@@ -32,16 +32,16 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 
 	// Use WordPress data stores.
 	const { connections, isLoadingConnections } = useSelect( ( select ) => ( {
-		connections: select( 'gg-data/connections' ).getConnectionsList(),
-		isLoadingConnections: select( 'gg-data/connections' ).isLoading(),
+		connections: select( 'gregius-data/connections' ).getConnectionsList(),
+		isLoadingConnections: select( 'gregius-data/connections' ).isLoading(),
 	} ), [] );
 
 	const selectedConnectionId = useSelect(
-		( select ) => select( 'gg-data/selected' ).getConnectionId(),
+		( select ) => select( 'gregius-data/selected' ).getConnectionId(),
 		[]
 	);
 
-	const { setConnection } = useDispatch( 'gg-data/selected' );
+	const { setConnection } = useDispatch( 'gregius-data/selected' );
 
 	/**
 	 * Fetch connection models when connection changes
@@ -59,7 +59,7 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 		setIsLoadingModels( true );
 		try {
 			const response = await apiFetch( {
-				path: `/gg-data/v1/connections/${ selectedConnectionId }/vectors/models`,
+				path: `/gregius-data/v1/connections/${ selectedConnectionId }/vectors/models`,
 			} );
 
 			if ( response.success && response.data ) {
@@ -78,7 +78,7 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 	const handleAddModel = async ( modelKey ) => {
 		try {
 			await apiFetch( {
-				path: `/gg-data/v1/connections/${ selectedConnectionId }/vectors/models`,
+				path: `/gregius-data/v1/connections/${ selectedConnectionId }/vectors/models`,
 				method: 'POST',
 				data: { model_key: modelKey },
 			} );
@@ -115,7 +115,7 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 
 		try {
 			await apiFetch( {
-				path: `/gg-data/v1/connections/${ selectedConnectionId }/vectors/models/${ modelKey }`,
+				path: `/gregius-data/v1/connections/${ selectedConnectionId }/vectors/models/${ modelKey }`,
 				method: 'DELETE',
 			} );
 
@@ -128,7 +128,7 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 	};
 
 	return (
-		<div className="gg-data-page">
+		<div className="gregius-data-page">
 			<div
 				style={ {
 					display: 'flex',
@@ -207,7 +207,7 @@ const VectorsPage = ( { settings, isLoading, error, apiStatus } ) => {
 						</Card>
 					) : (
 						<div
-							className="gg-data-model-cards"
+							className="gregius-data-model-cards"
 							style={ {
 								display: 'grid',
 								gridTemplateColumns:

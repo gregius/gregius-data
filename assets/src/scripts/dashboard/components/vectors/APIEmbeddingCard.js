@@ -58,7 +58,7 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/vectors/status?connection_name=${connection}&model_key=${model.model_key}`,
+				path: `/gregius-data/v1/vectors/status?connection_name=${connection}&model_key=${model.model_key}`,
 			});
 
 			if (response.success && response.status) {
@@ -117,7 +117,7 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 			// Batch processing loop
 			while (hasMore && !controller.signal.aborted) {
 				const response = await apiFetch({
-					path: '/gg-data/v1/vectors/batch-generate',
+					path: '/gregius-data/v1/vectors/batch-generate',
 					method: 'POST',
 					data: {
 						connection_name: connection,
@@ -295,11 +295,11 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 
 	return (
 		<>
-			<Card className="gg-data-vector-card gg-data-api-embedding-card">
+			<Card className="gregius-data-vector-card gregius-data-api-embedding-card">
 				<CardHeader>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
 
-						<div className="gg-data-card-header-content">
+						<div className="gregius-data-card-header-content">
 							<div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '.25em' }}>
 								<h3 style={{ margin: '0' }}>
 									{model.provider_model_id || model.model_key}{' '}
@@ -339,7 +339,7 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 				<CardBody>
 					{error && (
 						<div
-							className="gg-data-error-notice"
+							className="gregius-data-error-notice"
 							style={{
 								padding: '8px 12px',
 								marginBottom: '12px',
@@ -353,18 +353,18 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 						</div>
 					)}
 
-					<div className="gg-data-vector-stats">
+					<div className="gregius-data-vector-stats">
 						<div style={{marginBottom: '20px'}}>
-							<span className="gg-data-stat-label">
+							<span className="gregius-data-stat-label">
 								{__('Provider:', 'gregius-data')}
 							</span>
-							<span className="gg-data-stat-value">
+							<span className="gregius-data-stat-value">
 								{model.provider}
 							</span>
 						</div>
 
 						<div style={{marginBottom: '20px'}}>
-							<h4 className="gg-data-stat-label" style={{margin: '0 0 8px', fontSize: '13px', fontWeight: 600}}>
+							<h4 className="gregius-data-stat-label" style={{margin: '0 0 8px', fontSize: '13px', fontWeight: 600}}>
 								{__('Vector Status', 'gregius-data')}
 							</h4>
 							{vectorStatus !== null ? (
@@ -406,7 +406,7 @@ const APIEmbeddingCard = ({ model, connection, onRemove, onRefresh }) => {
 				<Modal
 					title={__('Generate Vectors', 'gregius-data')}
 					onRequestClose={handleCloseModal}
-					className="gg-data-vector-modal"
+					className="gregius-data-vector-modal"
 					shouldCloseOnClickOutside={operationState.status !== 'processing'}
 					shouldCloseOnEsc={operationState.status !== 'processing'}
 				>

@@ -43,7 +43,7 @@ The interface subsystem is the presentation layer for plugin administration. It 
 
 #### 1.3.2 System Functions Summary
 
-- Render a React app in `#gg-data-react-dashboard` on the plugin admin page.
+- Render a React app in `#gregius-data-react-dashboard` on the plugin admin page.
 - Configure API middleware for nonce and root URL handling.
 - Provide tab/page navigation for implemented dashboard sections.
 - Use stores/selectors/actions for shared interface state where implemented.
@@ -66,8 +66,8 @@ The interface subsystem is the presentation layer for plugin administration. It 
 - `assets/src/scripts/dashboard/components/App.js`
 - `assets/src/scripts/dashboard/pages/`
 - `assets/src/scripts/dashboard/stores/`
-- `includes/class-gg-data-admin.php`
-- `includes/api/class-gg-data-rest-api.php`
+- `includes/class-gregius-data-admin.php`
+- `includes/api/class-gregius-data-rest-api.php`
 - `docs/rest-api/architecture.md`
 - `docs/wpcli/architecture.md`
 
@@ -82,7 +82,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| IF-FR-01 | The software MUST render the dashboard React application in the admin container `#gg-data-react-dashboard` on the plugin settings page. | Must |
+| IF-FR-01 | The software MUST render the dashboard React application in the admin container `#gregius-data-react-dashboard` on the plugin settings page. | Must |
 | IF-FR-02 | The software MUST configure REST client middleware for nonce and root URL when WordPress API settings are available. | Must |
 | IF-FR-03 | The dashboard MUST provide implemented tabs for Models, Connections, Sync, Vectors, Prompts, Search, and Logs. | Must |
 | IF-FR-04 | The dashboard MUST perform startup API connectivity checks and surface connection failures to users. | Must |
@@ -95,7 +95,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| IF-DR-01 | Dashboard API calls MUST target the `gg-data/v1` REST namespace through `apiFetch` path contracts. | Must |
+| IF-DR-01 | Dashboard API calls MUST target the `gregius-data/v1` REST namespace through `apiFetch` path contracts. | Must |
 | IF-DR-02 | Interface store contracts MUST expose selectors for settings, loading status, and error states for settings workflows. | Must |
 | IF-DR-03 | Connections store contracts MUST support loading/error and CRUD state transitions for connection records. | Must |
 | IF-DR-04 | Interface components MUST consume settings/loading/error props passed from the app shell to feature pages. | Must |
@@ -105,7 +105,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| IF-OR-01 | If the primary dashboard container is absent, the interface SHOULD create a fallback container under `.wrap.gg-data-admin` and attempt render. | Should |
+| IF-OR-01 | If the primary dashboard container is absent, the interface SHOULD create a fallback container under `.wrap.gregius-data-admin` and attempt render. | Should |
 | IF-OR-02 | Interface initialization failures MUST be caught and surfaced through console output and failure signaling hooks. | Must |
 | IF-OR-03 | REST operations initiated by the interface MUST rely on backend permission enforcement and present returned permission errors to users. | Must |
 | IF-OR-04 | Dashboard tab definitions MUST map deterministically to page components and remain selectable through `TabPanel`. | Must |
@@ -140,10 +140,10 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| IF-FR-01, IF-FR-02, IF-OR-01, IF-OR-02, IF-DR-05 | `assets/src/scripts/dashboard.js`, `includes/class-gg-data-admin.php` | Dashboard bootstrap, middleware, fallback container, failure signaling |
+| IF-FR-01, IF-FR-02, IF-OR-01, IF-OR-02, IF-DR-05 | `assets/src/scripts/dashboard.js`, `includes/class-gregius-data-admin.php` | Dashboard bootstrap, middleware, fallback container, failure signaling |
 | IF-FR-03, IF-FR-04, IF-FR-05, IF-FR-07, IF-OR-04, IF-DR-04 | `assets/src/scripts/dashboard/components/App.js` | Tab shell, initialization check, event-driven navigation, page props |
 | IF-FR-06, IF-DR-02, IF-DR-03 | `assets/src/scripts/dashboard/stores/settings/index.js`, `assets/src/scripts/dashboard/stores/connections/index.js`, `assets/src/scripts/dashboard/stores/` | Store registration and state contracts |
-| IF-DR-01, IF-OR-03, IF-QR-04 | `assets/src/scripts/dashboard/utils/api.js`, `includes/api/class-gg-data-rest-api.php` | REST namespace usage and interface/backend integration |
+| IF-DR-01, IF-OR-03, IF-QR-04 | `assets/src/scripts/dashboard/utils/api.js`, `includes/api/class-gregius-data-rest-api.php` | REST namespace usage and interface/backend integration |
 | IF-FR-08, IF-OR-05, IF-QR-03, IF-QR-05 | `assets/src/scripts/dashboard/components/App.js`, `assets/src/scripts/dashboard/stores/`, `docs/interface/developer-documentation.md` | Feature integration guidance and scope-discipline expectations |
 
 ## 6. Appendices

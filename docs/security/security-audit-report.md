@@ -140,23 +140,23 @@ Record command outputs, screenshots, and request/response traces here.
 Commands executed from plugin root:
 - `rg -n "register_rest_route\(" includes/api | wc -l` -> 93
 - `rg -n "permission_callback" includes/api | wc -l` -> 104
-- `rg -n "gg_data_rag_endpoint_permission|ACCESS_PUBLIC|ACCESS_LOGGED_IN|ACCESS_CAPABILITY" includes/hooks/class-gg-data-rag-security-hooks.php includes/api/class-gg-data-rest-rag-controller.php`
+- `rg -n "gregius_data_rag_endpoint_permission|ACCESS_PUBLIC|ACCESS_LOGGED_IN|ACCESS_CAPABILITY" includes/hooks/class-gregius-data-rag-security-hooks.php includes/api/class-gregius-data-rest-rag-controller.php`
 - `rg -n "wp_remote_get|wp_remote_post|wp_remote_request|wp_safe_remote_get|wp_safe_remote_post" includes`
 - `rg -n "unserialize\(|maybe_unserialize\(" includes`
 
 Code-verified notes:
-- `includes/api/class-gg-data-rest-rag-controller.php` permission callback calls `apply_filters( 'gg_data_rag_endpoint_permission', true, $request )`.
-- `includes/hooks/class-gg-data-rag-security-hooks.php` defaults `rag_access_level` to `public` and unknown access level also returns allow.
-- `includes/class-gg-data-settings-manager.php` includes a double `maybe_unserialize` recovery path for legacy data.
+- `includes/api/class-gregius-data-rest-rag-controller.php` permission callback calls `apply_filters( 'gregius_data_rag_endpoint_permission', true, $request )`.
+- `includes/hooks/class-gregius-data-rag-security-hooks.php` defaults `rag_access_level` to `public` and unknown access level also returns allow.
+- `includes/class-gregius-data-settings-manager.php` includes a double `maybe_unserialize` recovery path for legacy data.
 
 ### 8.2 Follow-up static validation (2026-04-22)
 
 Code-verified notes:
-- `includes/api/class-gg-data-rest-connections-controller.php` enforces admin capability through `check_admin_permission()`.
+- `includes/api/class-gregius-data-rest-connections-controller.php` enforces admin capability through `check_admin_permission()`.
 - State-changing connection endpoints verify REST nonce (`X-WP-Nonce` + `wp_verify_nonce( ..., 'wp_rest' )`).
 - Sensitive connection fields are masked in API responses via `mask_sensitive_connection_fields()` for `password`, `publishable_key`, and `secret_key`.
-- `includes/api/class-gg-data-rest-sync-controller.php` uses `permissions_check()` with `current_user_can( 'manage_options' )`.
-- No explicit request throttling/rate-limiting controls were identified in `includes/api/class-gg-data-rest-rag-controller.php` during static pass.
+- `includes/api/class-gregius-data-rest-sync-controller.php` uses `permissions_check()` with `current_user_can( 'manage_options' )`.
+- No explicit request throttling/rate-limiting controls were identified in `includes/api/class-gregius-data-rest-rag-controller.php` during static pass.
 
 ### 8.3 Runtime readiness and execution path (Docker + WSL2)
 
@@ -174,9 +174,9 @@ Operational note:
 Target site (multisite): `https://gregius.local/wordpress/`
 
 Anonymous HTTP tests (no auth headers):
-- `POST /wp-json/gg-data/v1/rag/chat` with `{}` -> `400` missing params (`query`, `connection_name`, `embedding_model_key`, `llm_model_id`)
-- `POST /wp-json/gg-data/v1/rag/action` with `{}` -> `400` missing params
-- `GET /wp-json/gg-data/v1/rag/actions` -> `400` missing param (`connection_name`)
+- `POST /wp-json/gregius-data/v1/rag/chat` with `{}` -> `400` missing params (`query`, `connection_name`, `embedding_model_key`, `llm_model_id`)
+- `POST /wp-json/gregius-data/v1/rag/action` with `{}` -> `400` missing params
+- `GET /wp-json/gregius-data/v1/rag/actions` -> `400` missing param (`connection_name`)
 
 Interpretation:
 - `400` parameter-validation responses confirm requests passed permission callback and reached endpoint argument validation.
@@ -186,7 +186,7 @@ WP-CLI runtime permission simulation:
 - Result: `{ "anonymous": {"allowed": true}, "subscriber": {"allowed": true}, "editor": {"allowed": true}, "administrator": {"allowed": true} }`
 
 Config state checks:
-- `option get gg_data_rag_access_level` -> option not present
+- `option get gregius_data_rag_access_level` -> option not present
 - Effective behavior therefore follows code default (`ACCESS_PUBLIC`).
 
 ### 8.5 Dynamic role matrix - core admin endpoints (2026-04-22)
@@ -194,10 +194,10 @@ Config state checks:
 Target site (multisite): `https://gregius.local/wordpress/`
 
 Role-based dispatch via `rest_do_request` for:
-- `GET /gg-data/v1/connections`
-- `GET /gg-data/v1/sync/status` (`connection=default`)
-- `GET /gg-data/v1/vector-queue` (`connection_name=default`)
-- `POST /gg-data/v1/rag/chat` (required params provided)
+- `GET /gregius-data/v1/connections`
+- `GET /gregius-data/v1/sync/status` (`connection=default`)
+- `GET /gregius-data/v1/vector-queue` (`connection_name=default`)
+- `POST /gregius-data/v1/rag/chat` (required params provided)
 
 Observed results summary:
 - Anonymous / Subscriber / Editor:
@@ -215,7 +215,7 @@ Sensitive field masking check (admin `GET /connections`):
 ### 8.6 Dynamic burst probe - anonymous RAG chat (2026-04-22)
 
 Probe:
-- 20 sequential anonymous `POST /wp-json/gg-data/v1/rag/chat` requests with required params.
+- 20 sequential anonymous `POST /wp-json/gregius-data/v1/rag/chat` requests with required params.
 
 Results:
 - Status distribution: `500 x 20`
@@ -237,13 +237,13 @@ Method:
 - Each endpoint tested twice: (a) without `X-WP-Nonce`, (b) with valid `X-WP-Nonce = wp_create_nonce( 'wp_rest' )`.
 
 Results:
-- `POST /gg-data/v1/connections`
+- `POST /gregius-data/v1/connections`
 	- No nonce -> `403` (`invalid_nonce`)
 	- Valid nonce -> `201` (request passed nonce gate)
-- `POST /gg-data/v1/connections/nonexistent_nonce_audit` (editable route)
+- `POST /gregius-data/v1/connections/nonexistent_nonce_audit` (editable route)
 	- No nonce -> `403` (`invalid_nonce`)
 	- Valid nonce -> `404` (`connection_not_found`)
-- `DELETE /gg-data/v1/connections/nonexistent_nonce_audit`
+- `DELETE /gregius-data/v1/connections/nonexistent_nonce_audit`
 	- No nonce -> `403` (`invalid_nonce`)
 	- Valid nonce -> `404` (`connection_not_found`)
 
@@ -254,9 +254,9 @@ Interpretation:
 ### 8.8 Logging/error-path exposure checks - connection flows (2026-04-22)
 
 Runtime state checks:
-- `gg_data_debug_mode` option -> truthy
-- `gg_data_log_level` -> `info`
-- Effective logger state via `GG_Data_Logger`:
+- `gregius_data_debug_mode` option -> truthy
+- `gregius_data_log_level` -> `info`
+- Effective logger state via `Gregius_Data_Logger`:
 	- `debug_enabled = true`
 	- `logging_enabled = true`
 	- `log_level = info`
@@ -269,7 +269,7 @@ Controlled admin error-path probe:
 	- host: `invalid-host-for-audit`
 	- username: `audit_user`
 	- password: `AUDIT_SECRET_PASSWORD_123`
-- Endpoint tested: `POST /gg-data/v1/connections/audit_leak_test_conn/test` with valid nonce.
+- Endpoint tested: `POST /gregius-data/v1/connections/audit_leak_test_conn/test` with valid nonce.
 - Result: status `200`, message indicated failure (`Connection test failed: could not find driver`).
 - Response leak markers:
 	- password -> false
@@ -278,8 +278,8 @@ Controlled admin error-path probe:
 	- DSN marker (`pgsql:host=`) -> false
 
 Static code note:
-- `GG_Data_Settings_Manager::save_connection()` writes a debug log message that includes `wp_json_encode( $connection_config )` in the message string.
-- `GG_Data_Logger` masks sensitive values in structured context, but not in the freeform `message` field.
+- `Gregius_Data_Settings_Manager::save_connection()` writes a debug log message that includes `wp_json_encode( $connection_config )` in the message string.
+- `Gregius_Data_Logger` masks sensitive values in structured context, but not in the freeform `message` field.
 - Because current log level is `info`, this message does not appear to be emitted in the current environment; risk becomes active if log level is lowered to `debug`.
 
 ### 8.9 Static tooling availability and Plugin Check baseline (2026-04-22)
@@ -309,10 +309,10 @@ Interpretation:
 Target site (multisite): `https://gregius.local/wordpress/`
 
 Routes tested via `rest_do_request` as anonymous and administrator:
-- `GET /gg-data/v1/settings`
-- `GET /gg-data/v1/models`
-- `GET /gg-data/v1/logs`
-- `GET /gg-data/v1/search/health`
+- `GET /gregius-data/v1/settings`
+- `GET /gregius-data/v1/models`
+- `GET /gregius-data/v1/logs`
+- `GET /gregius-data/v1/search/health`
 
 Observed results:
 - Anonymous:
@@ -350,15 +350,15 @@ Implementation note:
 Target site (multisite): `https://gregius.local/wordpress/`
 
 Anonymous HTTP checks (no auth headers):
-- `POST /wp-json/gg-data/v1/rag/chat` with required params -> `401 Unauthorized`
-- `POST /wp-json/gg-data/v1/rag/action` -> `401 Unauthorized`
-- `GET /wp-json/gg-data/v1/rag/actions?connection_name=default` -> `401 Unauthorized`
-- Body code for all three: `gg_data_login_required`
+- `POST /wp-json/gregius-data/v1/rag/chat` with required params -> `401 Unauthorized`
+- `POST /wp-json/gregius-data/v1/rag/action` -> `401 Unauthorized`
+- `GET /wp-json/gregius-data/v1/rag/actions?connection_name=default` -> `401 Unauthorized`
+- Body code for all three: `gregius_data_login_required`
 
 Authenticated admin runtime checks (WP-CLI `rest_do_request`, user id `1`):
-- `POST /gg-data/v1/rag/chat` -> `500` with `invalid_security_model` (operational/config path)
-- `POST /gg-data/v1/rag/action` -> `400` with `gg_data_unknown_action` for action `x`
-- `GET /gg-data/v1/rag/actions` -> `200` with empty actions list
+- `POST /gregius-data/v1/rag/chat` -> `500` with `invalid_security_model` (operational/config path)
+- `POST /gregius-data/v1/rag/action` -> `400` with `gregius_data_unknown_action` for action `x`
+- `GET /gregius-data/v1/rag/actions` -> `200` with empty actions list
 
 Interpretation:
 - Access-control objective is met post-push: anonymous users are denied on all tested RAG routes.
@@ -367,16 +367,16 @@ Interpretation:
 ### 8.13 SEC-003 throttling verification (2026-04-22)
 
 Implementation summary:
-- Added fixed-window transient limiter in `includes/api/class-gg-data-rest-rag-controller.php`.
+- Added fixed-window transient limiter in `includes/api/class-gregius-data-rest-rag-controller.php`.
 - Applied at start of `generate_answer` and `execute_action`.
 - Defaults: anonymous `10/60s`, authenticated `30/60s`.
-- Over-limit response: `WP_Error` code `gg_data_rate_limited`, status `429`, includes `retry_after` metadata.
+- Over-limit response: `WP_Error` code `gregius_data_rate_limited`, status `429`, includes `retry_after` metadata.
 
-Runtime verification (authenticated user id `1`, 35 sequential requests to `POST /gg-data/v1/rag/chat`):
+Runtime verification (authenticated user id `1`, 35 sequential requests to `POST /gregius-data/v1/rag/chat`):
 - Status distribution: `500 x 30`, `429 x 5`
 - First `429` at iteration `31`
 - First `429` payload:
-	- `code`: `gg_data_rate_limited`
+	- `code`: `gregius_data_rate_limited`
 	- `status`: `429`
 	- `retry_after`: `60`
 	- `scope`: `authenticated`
@@ -392,17 +392,17 @@ Commit under test:
 - `481d58e94b2be265eb906a7ff0526445a28f28bd`
 
 Authenticated burst checks (user id `1`):
-- `POST /gg-data/v1/rag/chat` x35:
+- `POST /gregius-data/v1/rag/chat` x35:
 	- `CHAT_COUNTS={"429":5,"500":30}`
-	- first throttled response at request `31` with code `gg_data_rate_limited`
-- `POST /gg-data/v1/rag/action` x35:
+	- first throttled response at request `31` with code `gregius_data_rate_limited`
+- `POST /gregius-data/v1/rag/action` x35:
 	- `ACTION_COUNTS={"400":30,"429":5}`
-	- first throttled response at request `31` with code `gg_data_rate_limited`
+	- first throttled response at request `31` with code `gregius_data_rate_limited`
 
 Anonymous control check:
-- `POST /gg-data/v1/rag/chat` (required params present):
+- `POST /gregius-data/v1/rag/chat` (required params present):
 	- `ANON_STATUS=401`
-	- body code `gg_data_login_required`
+	- body code `gregius_data_login_required`
 
 Interpretation:
 - Post-push runtime confirms endpoint-level throttling is active and consistent across both expensive RAG POST routes.
@@ -410,7 +410,7 @@ Interpretation:
 ### 8.15 SEC-004 deserialization hardening verification (2026-04-22)
 
 Implementation summary:
-- Removed the second `maybe_unserialize` pass from `GG_Data_Settings_Manager::get_with_category()`.
+- Removed the second `maybe_unserialize` pass from `Gregius_Data_Settings_Manager::get_with_category()`.
 - `get_with_category()` now performs a single deserialization pass and returns the result directly.
 
 Runtime verification (`./bin/cli wp eval`):
@@ -442,10 +442,10 @@ Interpretation:
 - Title: Permissive default access path for RAG REST endpoints
 - CWE category: CWE-284 Improper Access Control
 - Affected files/symbols:
-	- `includes/api/class-gg-data-rest-rag-controller.php` -> `get_permission_callback`
-	- `includes/hooks/class-gg-data-rag-security-hooks.php` -> `check_access_permission`, `get_access_level`, `register_settings`
+	- `includes/api/class-gregius-data-rest-rag-controller.php` -> `get_permission_callback`
+	- `includes/hooks/class-gregius-data-rag-security-hooks.php` -> `check_access_permission`, `get_access_level`, `register_settings`
 - Evidence:
-	- Permission callback uses `apply_filters( 'gg_data_rag_endpoint_permission', true, $request )` with allow default.
+	- Permission callback uses `apply_filters( 'gregius_data_rag_endpoint_permission', true, $request )` with allow default.
 	- Access level setting defaults to `ACCESS_PUBLIC`.
 	- Unknown access level path returns allow (`default: return true`).
 - Dynamic validation:
@@ -467,7 +467,7 @@ Interpretation:
 - Title: Double deserialization recovery path in settings retrieval
 - CWE category: CWE-502 Deserialization of Untrusted Data (context-dependent)
 - Affected files/symbols:
-	- `includes/class-gg-data-settings-manager.php` -> `get_with_category`
+	- `includes/class-gregius-data-settings-manager.php` -> `get_with_category`
 - Evidence:
 	- Prior behavior performed a second `maybe_unserialize` pass when serialized markers were detected in a post-deserialization string.
 	- Current behavior performs a single-pass `maybe_unserialize` and returns the result directly.
@@ -486,7 +486,7 @@ Interpretation:
 - Title: Missing explicit endpoint throttling controls for high-cost RAG operations (pre-remediation)
 - CWE category: CWE-770 Allocation of Resources Without Limits or Throttling
 - Affected files/symbols:
-	- `includes/api/class-gg-data-rest-rag-controller.php` -> `generate_answer`, `execute_action`
+	- `includes/api/class-gregius-data-rest-rag-controller.php` -> `generate_answer`, `execute_action`
 - Evidence:
 	- Initial static pass did not identify rate-limit, cooldown, or quota enforcement in controller path.
 	- Pre-fix dynamic burst probe (20 anonymous requests) returned `500 x 20` with sub-second response times.
@@ -507,7 +507,7 @@ Interpretation:
 - Title: Connection endpoints enforce admin access and mask key sensitive fields
 - CWE category: N/A (control verification)
 - Affected files/symbols:
-	- `includes/api/class-gg-data-rest-connections-controller.php` -> `check_admin_permission`, `mask_sensitive_connection_fields`
+	- `includes/api/class-gregius-data-rest-connections-controller.php` -> `check_admin_permission`, `mask_sensitive_connection_fields`
 - Dynamic validation:
 	- Non-admin roles denied on `GET /connections`.
 	- Admin response returned masked sensitive fields (`***`) for non-empty `password`, `publishable_key`, `secret_key`.
@@ -522,8 +522,8 @@ Interpretation:
 - Title: Connection save debug log message embedded raw config values before masking (pre-remediation)
 - CWE category: CWE-532 Insertion of Sensitive Information into Log File
 - Affected files/symbols:
-	- `includes/class-gg-data-settings-manager.php` -> `save_connection`
-	- `includes/class-gg-data-logger.php` -> `log`
+	- `includes/class-gregius-data-settings-manager.php` -> `save_connection`
+	- `includes/class-gregius-data-logger.php` -> `log`
 - Evidence:
 	- `save_connection()` logs `Saving connection '{$connection_name}' with config: ` plus `wp_json_encode( $connection_config )` in the message field.
 	- Logger masking is applied to structured context, not to the freeform message string.
@@ -566,22 +566,22 @@ Patch status:
 ### 13.1 Patch A (Applied) - SEC-001 fail-closed defaults in RAG security hooks
 
 Target file:
-- [includes/hooks/class-gg-data-rag-security-hooks.php](includes/hooks/class-gg-data-rag-security-hooks.php)
+- [includes/hooks/class-gregius-data-rag-security-hooks.php](includes/hooks/class-gregius-data-rag-security-hooks.php)
 
 Implemented edits:
 1. Change access-level default in get_access_level from public to logged_in.
-2. Change register_setting default for gg_data_rag_access_level from public to logged_in.
+2. Change register_setting default for gregius_data_rag_access_level from public to logged_in.
 3. Change sanitize_access_level fallback from public to logged_in.
 4. Change unknown access-level switch default from allow to deny (WP_Error 403).
 
 Applied hunk:
 
 - return apply_filters(
-- 	'gg_data_rag_access_level',
+- 	'gregius_data_rag_access_level',
 - 	$this->settings->get( 'rag_access_level', self::ACCESS_PUBLIC )
 - );
 + return apply_filters(
-+ 	'gg_data_rag_access_level',
++ 	'gregius_data_rag_access_level',
 + 	$this->settings->get( 'rag_access_level', self::ACCESS_LOGGED_IN )
 + );
 
@@ -596,7 +596,7 @@ Applied hunk:
 - 	return true;
 + default:
 + 	return new WP_Error(
-+ 		'gg_data_invalid_access_level',
++ 		'gregius_data_invalid_access_level',
 + 		__( 'RAG access policy is misconfigured.', 'gregius-data' ),
 + 		array( 'status' => 403 )
 + 	);
@@ -604,7 +604,7 @@ Applied hunk:
 ### 13.2 Patch B (Applied) - SEC-001 fail-closed permission callback in REST controller
 
 Target file:
-- [includes/api/class-gg-data-rest-rag-controller.php](includes/api/class-gg-data-rest-rag-controller.php)
+- [includes/api/class-gregius-data-rest-rag-controller.php](includes/api/class-gregius-data-rest-rag-controller.php)
 
 Implemented edits:
 1. Change filter seed in get_permission_callback from true to false.
@@ -613,8 +613,8 @@ Implemented edits:
 
 Applied hunk:
 
-- $allowed = apply_filters( 'gg_data_rag_endpoint_permission', true, $request );
-+ $allowed = apply_filters( 'gg_data_rag_endpoint_permission', false, $request );
+- $allowed = apply_filters( 'gregius_data_rag_endpoint_permission', true, $request );
++ $allowed = apply_filters( 'gregius_data_rag_endpoint_permission', false, $request );
 
 + if ( is_wp_error( $allowed ) ) {
 + 	return $allowed;
@@ -632,7 +632,7 @@ Applied hunk:
 ### 13.3 Patch C (Applied) - SEC-005 remove secret-bearing debug log messages
 
 Target file:
-- [includes/class-gg-data-settings-manager.php](includes/class-gg-data-settings-manager.php)
+- [includes/class-gregius-data-settings-manager.php](includes/class-gregius-data-settings-manager.php)
 
 Implemented edits:
 1. Replace raw config/value debug messages with masked summaries.
@@ -641,9 +641,9 @@ Implemented edits:
 
 Applied hunk:
 
-- $this->logger->log( "GG_Data_Settings_Manager: Saving connection '{$connection_name}' with config: " . wp_json_encode( $connection_config ), 'debug', 'connection', $connection_name );
+- $this->logger->log( "Gregius_Data_Settings_Manager: Saving connection '{$connection_name}' with config: " . wp_json_encode( $connection_config ), 'debug', 'connection', $connection_name );
 + $this->logger->log(
-+ 	"GG_Data_Settings_Manager: Saving connection '{$connection_name}'",
++ 	"Gregius_Data_Settings_Manager: Saving connection '{$connection_name}'",
 + 	'debug',
 + 	'connection',
 + 	$connection_name,
@@ -652,9 +652,9 @@ Applied hunk:
 + 	)
 + );
 
-- $this->logger->log( 'GG_Data_Settings_Manager: Final config after defaults: ' . wp_json_encode( $connection_config ), 'debug', 'connection', $connection_name );
+- $this->logger->log( 'Gregius_Data_Settings_Manager: Final config after defaults: ' . wp_json_encode( $connection_config ), 'debug', 'connection', $connection_name );
 + $this->logger->log(
-+ 	'GG_Data_Settings_Manager: Final connection config prepared',
++ 	'Gregius_Data_Settings_Manager: Final connection config prepared',
 + 	'debug',
 + 	'connection',
 + 	$connection_name,
@@ -663,9 +663,9 @@ Applied hunk:
 + 	)
 + );
 
-- $this->logger->log( "GG_Data_Settings_Manager: Saving setting '{$key}' = " . wp_json_encode( $value ), 'debug', 'connection', $connection_name );
+- $this->logger->log( "Gregius_Data_Settings_Manager: Saving setting '{$key}' = " . wp_json_encode( $value ), 'debug', 'connection', $connection_name );
 + $this->logger->log(
-+ 	"GG_Data_Settings_Manager: Saving setting '{$key}'",
++ 	"Gregius_Data_Settings_Manager: Saving setting '{$key}'",
 + 	'debug',
 + 	'connection',
 + 	$connection_name,
@@ -696,7 +696,7 @@ Add helper method (same class):
 ### 13.4 Patch D (Applied) - SEC-003 endpoint throttling
 
 Target file:
-- [includes/api/class-gg-data-rest-rag-controller.php](includes/api/class-gg-data-rest-rag-controller.php)
+- [includes/api/class-gregius-data-rest-rag-controller.php](includes/api/class-gregius-data-rest-rag-controller.php)
 
 Proposed edits:
 1. Add lightweight per-IP or per-user transient-based limiter (for example 10 requests/minute for anonymous, 30/minute for authenticated).
@@ -704,16 +704,16 @@ Proposed edits:
 3. Return HTTP 429 with Retry-After metadata when limit exceeded.
 
 Implemented behavior:
-- Key format: gg_data_rag_rl_{scope}_{bucket}
+- Key format: gregius_data_rag_rl_{scope}_{bucket}
 - Window: 60 seconds
 - Anonymous scope bucket: endpoint + request IP hash
 - Authenticated scope bucket: endpoint + user ID
-- Response on exceed: WP_Error code gg_data_rate_limited with status 429
+- Response on exceed: WP_Error code gregius_data_rate_limited with status 429
 
 ### 13.5 Patch E (Applied) - SEC-004 remove double deserialization fallback
 
 Target file:
-- [includes/class-gg-data-settings-manager.php](includes/class-gg-data-settings-manager.php)
+- [includes/class-gregius-data-settings-manager.php](includes/class-gregius-data-settings-manager.php)
 
 Implemented edits:
 1. Removed legacy second-pass `maybe_unserialize` logic in `get_with_category()`.

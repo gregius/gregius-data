@@ -88,46 +88,46 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. **Lifecycle Hooks Component** (`GG_Data_Lifecycle_Hooks`)
+1. **Lifecycle Hooks Component** (`Gregius_Data_Lifecycle_Hooks`)
    - Registers WP action listeners for post/status/meta/term changes
    - Checks sync configuration (enabled types, statuses, real-time flag)
    - Routes to sync service; logs errors without raising exceptions
 
-2. **Batch Processor Components** (`GG_Data_Post_Sync`, `GG_Data_Taxonomy_Sync`, `GG_Data_Postmeta_Sync`)
+2. **Batch Processor Components** (`Gregius_Data_Post_Sync`, `Gregius_Data_Taxonomy_Sync`, `Gregius_Data_Postmeta_Sync`)
    - Implements offset-based pagination loops
    - Queries WordPress in batches; delegates to sync service per item
    - Aggregates counts and status; handles resumable operations
 
-3. **Sync Service Component** (`GG_Data_Sync_Service`)
+3. **Sync Service Component** (`Gregius_Data_Sync_Service`)
    - Facade and router; orchestrates upsert/delete for applicable entity
    - Dispatches to content cleaner and chunker
    - Calls metadata manager to record sync state
 
-4. **Content Cleaner Component** (`GG_Data_Content_Cleaner`)
+4. **Content Cleaner Component** (`Gregius_Data_Content_Cleaner`)
    - Strips HTML, calculates hash for change detection
    - Populates wp_posts_clean table
    - Invokes chunker for further segmentation
 
-5. **Chunker Component** (`GG_Data_Chunker`)
+5. **Chunker Component** (`Gregius_Data_Chunker`)
    - Selects strategy per connection and post type
    - Generates normalized chunk rows in wp_posts_chunks
    - Returns chunk count for metadata aggregation
 
-6. **Sync Metadata Manager** (`GG_Data_Sync_Metadata_Manager`)
-   - Reads/updates wp_gg_sync_metadata table
+6. **Sync Metadata Manager** (`Gregius_Data_Sync_Metadata_Manager`)
+   - Reads/updates wp_gregius_data_sync_metadata table
    - Tracks WordPress and PostgreSQL record counts
    - Calculates drift; supports fast UI queries
 
-7. **Sync Validator Component** (`GG_Data_Sync_Validator`)
+7. **Sync Validator Component** (`Gregius_Data_Sync_Validator`)
    - Metadata-based validation (fast, ~100ms, auto-loaded by dashboard UI)
    - Full table-scan validation (comprehensive, 3–13s, backend/internal only — not exposed in dashboard)
    - Reports orphaned and missing records
 
-8. **REST Controller Components** (`GG_Data_REST_Sync_Controller`, `GG_Data_REST_Sync_Validator_Controller`)
+8. **REST Controller Components** (`Gregius_Data_REST_Sync_Controller`, `Gregius_Data_REST_Sync_Validator_Controller`)
    - Registers routes for configuration, batch ops, content cleaning, validation
    - Permission checks and request validation
 
-9. **DB Operations & Providers** (`GG_Data_DB`, `GG_Data_PostgreSQL_Provider`, `GG_Data_PostgREST_Provider`)
+9. **DB Operations & Providers** (`Gregius_Data_DB`, `Gregius_Data_PostgreSQL_Provider`, `Gregius_Data_PostgREST_Provider`)
    - DB wrapper delegates to deterministic provider contract execution
    - Providers implement equivalent bulk-capable sync operations
 
@@ -180,7 +180,7 @@ Key property: **Non-blocking**. All errors logged but not raised.
 ### 4.2 Batch Sync Flow
 
 ```
-POST /gg-data/v1/sync/post-type/{type}
+POST /gregius-data/v1/sync/post-type/{type}
     │
     ▼
 Permission check (manage_options)
@@ -271,7 +271,7 @@ Linked requirements:
 ### AD-03: Sync Metadata as Operational Aggregate
 
 Decision:
-- Maintain wp_gg_sync_metadata table with WordPress/PostgreSQL counts and drift for fast UI validation.
+- Maintain wp_gregius_data_sync_metadata table with WordPress/PostgreSQL counts and drift for fast UI validation.
 
 Rationale:
 - Metadata-based validation executes in <500ms vs 3–13s for full scans.

@@ -1,4 +1,4 @@
-const GregiusLogo = ({ className = 'gg-data-logo-clean' }) => (
+const GregiusLogo = ({ className = 'gregius-data-logo-clean' }) => (
     <svg
         className={className}
         xmlns="http://www.w3.org/2000/svg"
@@ -9,7 +9,7 @@ const GregiusLogo = ({ className = 'gg-data-logo-clean' }) => (
         focusable="false"
     >
         <defs>
-            <linearGradient id="ggDataCleanLogoGradient" x1="28" y1="28" x2="272" y2="272" gradientUnits="userSpaceOnUse">
+            <linearGradient id="gregiusDataCleanLogoGradient" x1="28" y1="28" x2="272" y2="272" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" stopColor="#FF0000">
                     <animate
                         attributeName="stop-color"
@@ -47,7 +47,7 @@ const GregiusLogo = ({ className = 'gg-data-logo-clean' }) => (
                 </stop>
             </linearGradient>
         </defs>
-        <g fill="url(#ggDataCleanLogoGradient)">
+        <g fill="url(#gregiusDataCleanLogoGradient)">
             <g>
                 <path d="M150.709,172.563c-5.833,0-11.665-2.227-16.115-6.674c-8.901-8.9-8.901-23.332,0-32.231l89.18-89.184c8.902-8.9,23.33-8.902,32.231,0c8.9,8.899,8.9,23.33,0,32.23l-89.181,89.185C162.375,170.337,156.544,172.563,150.709,172.563z"></path>
             </g>

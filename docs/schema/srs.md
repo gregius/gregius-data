@@ -49,7 +49,7 @@ The schema subsystem sits between connection/provider configuration and feature 
 
 | User Class | Technical Level | Primary Interaction Point |
 |---|---|---|
-| Site Administrator | Technical/Operational | Dashboard schema setup and `/wp-json/gg-data/v1/schema/*` endpoints |
+| Site Administrator | Technical/Operational | Dashboard schema setup and `/wp-json/gregius-data/v1/schema/*` endpoints |
 | Plugin Developer or Integrator | Technical | Schema manager APIs, provider contracts, and migration behavior |
 | Operations | Technical/Operational | Schema status diagnostics and upgrade workflows |
 
@@ -61,7 +61,7 @@ The schema subsystem sits between connection/provider configuration and feature 
 | Schema version | Version value persisted per connection for migration and compatibility checks |
 | Provider-aware routing | Runtime branch that chooses direct PostgreSQL or PostgREST-compatible schema path |
 | Supabase manual SQL flow | Setup path where SQL must be applied manually via SQL editor and then verified |
-| Settings category schema | `wp_gg_settings` category used to store version metadata |
+| Settings category schema | `wp_gregius_data_settings` category used to store version metadata |
 
 ### 1.5 Abbreviations and Acronyms
 
@@ -76,13 +76,13 @@ The schema subsystem sits between connection/provider configuration and feature 
 ## 2. References
 
 - docs/schema/architecture.md
-- includes/class-gg-data-schema-manager.php
-- includes/api/class-gg-data-rest-schema-controller.php
-- includes/class-gg-data-connection-manager.php
-- includes/class-gg-data-settings-manager.php
-- includes/providers/interface-gg-db-provider.php
-- includes/providers/class-gg-postgresql-provider.php
-- includes/providers/class-gg-postgrest-provider.php
+- includes/class-gregius-data-schema-manager.php
+- includes/api/class-gregius-data-rest-schema-controller.php
+- includes/class-gregius-data-connection-manager.php
+- includes/class-gregius-data-settings-manager.php
+- includes/providers/interface-gregius-data-db-provider.php
+- includes/providers/class-gregius-data-postgresql-provider.php
+- includes/providers/class-gregius-data-postgrest-provider.php
 - includes/sql/postgrest-schema.sql
 
 ## 3. Software Requirements
@@ -159,11 +159,11 @@ Acceptance baseline for migration phase:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| SCH-FR-01 to SCH-FR-07 | includes/class-gg-data-schema-manager.php | Core lifecycle and status behavior |
-| SCH-FR-04, SCH-FR-08, SCH-DR-05, SCH-DR-06 | includes/api/class-gg-data-rest-schema-controller.php, includes/sql/postgrest-schema.sql | Manual PostgREST SQL and verification workflow |
-| SCH-FR-05, SCH-FR-06, SCH-DR-03, SCH-DR-04 | includes/class-gg-data-schema-manager.php, includes/class-gg-data-settings-manager.php | Version storage and legacy fallback migration |
-| SCH-DR-01 to SCH-DR-08 | includes/api/class-gg-data-rest-schema-controller.php, includes/class-gg-data-schema-manager.php | Route and payload contract obligations |
-| SCH-OR-01 to SCH-OR-06 | includes/api/class-gg-data-rest-schema-controller.php, includes/class-gg-data-schema-manager.php | Security, transactions, extension handling |
+| SCH-FR-01 to SCH-FR-07 | includes/class-gregius-data-schema-manager.php | Core lifecycle and status behavior |
+| SCH-FR-04, SCH-FR-08, SCH-DR-05, SCH-DR-06 | includes/api/class-gregius-data-rest-schema-controller.php, includes/sql/postgrest-schema.sql | Manual PostgREST SQL and verification workflow |
+| SCH-FR-05, SCH-FR-06, SCH-DR-03, SCH-DR-04 | includes/class-gregius-data-schema-manager.php, includes/class-gregius-data-settings-manager.php | Version storage and legacy fallback migration |
+| SCH-DR-01 to SCH-DR-08 | includes/api/class-gregius-data-rest-schema-controller.php, includes/class-gregius-data-schema-manager.php | Route and payload contract obligations |
+| SCH-OR-01 to SCH-OR-06 | includes/api/class-gregius-data-rest-schema-controller.php, includes/class-gregius-data-schema-manager.php | Security, transactions, extension handling |
 | SCH-QR-01 to SCH-QR-05 | docs/schema/architecture.md, implementation references above | Parity, determinism, and compatibility expectations |
 
 ## 6. Appendices

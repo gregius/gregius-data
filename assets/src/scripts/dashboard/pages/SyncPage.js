@@ -23,15 +23,15 @@ const SyncPage = ({ settings, isLoading, error, apiStatus }) => {
 
     // Use WordPress data stores (no duplicate calls!)
     const { connections, isLoadingConnections } = useSelect((select) => ({
-        connections: select('gg-data/connections').getConnectionsList(),
-        isLoadingConnections: select('gg-data/connections').isLoading(),
+        connections: select('gregius-data/connections').getConnectionsList(),
+        isLoadingConnections: select('gregius-data/connections').isLoading(),
     }), []);
 
     const { selectedConnectionId } = useSelect((select) => ({
-        selectedConnectionId: select('gg-data/selected').getConnectionId(),
+        selectedConnectionId: select('gregius-data/selected').getConnectionId(),
     }), []);
 
-    const { setConnection } = useDispatch('gg-data/selected');
+    const { setConnection } = useDispatch('gregius-data/selected');
 
     // Callback for when sync configuration changes (post types)
     const handlePostTypeChange = () => {
@@ -46,7 +46,7 @@ const SyncPage = ({ settings, isLoading, error, apiStatus }) => {
     };
 
     return (
-        <div className="gg-data-page">
+        <div className="gregius-data-page">
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2rem 1.5rem 0', borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
                 <Heading level={2}>{__('Synchronization', 'gregius-data')}</Heading>
                 {!isLoadingConnections && connections.length > 0 && (

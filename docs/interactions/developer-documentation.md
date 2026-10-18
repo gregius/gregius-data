@@ -35,7 +35,7 @@ Not covered:
 Use this pattern when writing internal plugin flows that need explicit search interaction recording. [SRS: INT-FR-03, INT-FR-04]
 
 ```php
-$post_id = GG_Data_Interaction::record_search(
+$post_id = Gregius_Data_Interaction::record_search(
 	array(
 		'connection'   => 'default',
 		'query'        => 'dementia care',
@@ -54,7 +54,7 @@ $post_id = GG_Data_Interaction::record_search(
 `record_rag()` validates the UUID, acquires a short lock, and appends to an existing conversation or creates a new one. [SRS: INT-FR-05, INT-FR-06, INT-OR-02]
 
 ```php
-$post_id = GG_Data_Interaction::record_rag(
+$post_id = Gregius_Data_Interaction::record_rag(
 	'2f4e0f0c-0d52-4886-a919-4d7774f5ecb0',
 	array(
 		'connection' => 'default',
@@ -68,13 +68,13 @@ $post_id = GG_Data_Interaction::record_rag(
 
 ## 4. Core Classes
 
-### 4.1 `GG_Data_Interaction`
+### 4.1 `Gregius_Data_Interaction`
 
-Source: `includes/class-gg-data-interaction.php`
+Source: `includes/class-gregius-data-interaction.php`
 
 Responsibilities:
 - Register interaction post type and REST-exposed meta fields
-- Listen to `gg_data_rag_complete` and `gg_data_search_completed`
+- Listen to `gregius_data_rag_complete` and `gregius_data_search_completed`
 - Persist interaction records (`record_search`, `record_rag`)
 - Append RAG turns to existing conversations
 - Emit extensibility hooks and log context
@@ -90,12 +90,12 @@ Important methods:
 - `record_rag( $conversation_id, array $args )`
 - `validate_conversation_id( $conversation_id )`
 
-### 4.2 `GG_Data_REST_Interactions_Controller`
+### 4.2 `Gregius_Data_REST_Interactions_Controller`
 
-Source: `includes/api/class-gg-data-rest-interactions-controller.php`
+Source: `includes/api/class-gregius-data-rest-interactions-controller.php`
 
 Responsibilities:
-- Expose interaction endpoints under `gg-data/v1/interactions`
+- Expose interaction endpoints under `gregius-data/v1/interactions`
 - Enforce authentication for all reads/writes
 - Scope non-admin users to authored records for read/update/delete
 - Restrict non-admin direct creation (interaction creation is chat-lifecycle driven)
@@ -112,26 +112,26 @@ Overridden permission checks:
 
 ### 5.1 Post Type Contract
 
-- Post type: `gg_interaction`
+- Post type: `gregius_interaction`
 - Public visibility: `false`
 - REST exposure: `true`
-- REST namespace/base: `gg-data/v1/interactions`
+- REST namespace/base: `gregius-data/v1/interactions`
 - Supports: `title`, `editor`, `custom-fields`
 
 ### 5.2 Interaction Meta Fields
 
 | Meta Key | Type | Description | REST Exposed |
 |---|---|---|---|
-| `_gg_interaction_type` | string | Interaction type (`search` or `rag`) | Yes |
-| `_gg_interaction_source` | string | Source type (`frontend`, `rest`, `wpcli`, `mcp`) | Yes |
-| `_gg_interaction_connection` | string | Connection slug used for request | Yes |
-| `_gg_interaction_conversation_id` | string | RAG conversation UUID | Yes |
-| `_gg_interaction_zero_results` | boolean | Whether a search returned no results | Yes |
-| `_gg_interaction_data` | string | Canonical JSON payload with full interaction details | Yes |
+| `_gregius_interaction_type` | string | Interaction type (`search` or `rag`) | Yes |
+| `_gregius_interaction_source` | string | Source type (`frontend`, `rest`, `wpcli`, `mcp`) | Yes |
+| `_gregius_interaction_connection` | string | Connection slug used for request | Yes |
+| `_gregius_interaction_conversation_id` | string | RAG conversation UUID | Yes |
+| `_gregius_interaction_zero_results` | boolean | Whether a search returned no results | Yes |
+| `_gregius_interaction_data` | string | Canonical JSON payload with full interaction details | Yes |
 
 ### 5.3 JSON Payload Patterns
 
-#### Search payload (stored in `_gg_interaction_data`)
+#### Search payload (stored in `_gregius_interaction_data`)
 
 ```json
 {
@@ -146,7 +146,7 @@ Overridden permission checks:
 }
 ```
 
-#### RAG payload (stored in `_gg_interaction_data`)
+#### RAG payload (stored in `_gregius_interaction_data`)
 
 ```json
 {
@@ -196,7 +196,7 @@ Manifest observability notes:
 
 ## 6. REST API Reference
 
-Base namespace: `gg-data/v1`
+Base namespace: `gregius-data/v1`
 
 ### 6.1 List interactions
 
@@ -256,7 +256,7 @@ Base namespace: `gg-data/v1`
 
 ## 7. Hooks and Extension Points
 
-### 7.1 `gg_data_interaction_meta_fields`
+### 7.1 `gregius_interaction_meta_fields`
 
 - Type: Filter
 - Signature: `(array $meta_fields): array`
@@ -265,8 +265,8 @@ Base namespace: `gg-data/v1`
 Example:
 
 ```php
-add_filter( 'gg_data_interaction_meta_fields', function( $fields ) {
-	$fields['_gg_interaction_channel'] = array(
+add_filter( 'gregius_interaction_meta_fields', function( $fields ) {
+	$fields['_gregius_interaction_channel'] = array(
 		'type'        => 'string',
 		'description' => 'Channel label for interaction source grouping',
 	);
@@ -275,30 +275,30 @@ add_filter( 'gg_data_interaction_meta_fields', function( $fields ) {
 } );
 ```
 
-### 7.2 `gg_data_interaction_log_context`
+### 7.2 `gregius_interaction_log_context`
 
 - Type: Filter
 - Signature: `(array $log_context, int $post_id, string $type): array`
 - Purpose: Shape context written into logs for recorded interactions
 
-### 7.3 `gg_data_interaction_recorded`
+### 7.3 `gregius_interaction_recorded`
 
 - Type: Action
 - Signature: `(int $post_id, string $type, array $args): void`
 - Purpose: React to newly recorded interactions (analytics, notifications, external sync)
 
-### 7.4 `gg_data_should_sync_post` (integration boundary)
+### 7.4 `gregius_data_should_sync_post` (integration boundary)
 
 - Type: Filter
 - Signature: `(bool $should_sync, int $post_id): bool`
-- Interaction behavior: returns `false` for `gg_interaction` post type
+- Interaction behavior: returns `false` for `gregius_interaction` post type
 
 ## 8. Integration Recipes
 
 ### 8.1 Subscribe to New Interaction Events
 
 ```php
-add_action( 'gg_data_interaction_recorded', function( $post_id, $type, $args ) {
+add_action( 'gregius_interaction_recorded', function( $post_id, $type, $args ) {
 	if ( 'rag' === $type ) {
 		error_log( 'New RAG interaction #' . $post_id );
 	}
@@ -308,7 +308,7 @@ add_action( 'gg_data_interaction_recorded', function( $post_id, $type, $args ) {
 ### 8.2 Add Per-Record Context for Logs
 
 ```php
-add_filter( 'gg_data_interaction_log_context', function( $context, $post_id, $type ) {
+add_filter( 'gregius_interaction_log_context', function( $context, $post_id, $type ) {
 	$context['integration_tag'] = 'my-plugin';
 	$context['post_id']         = $post_id;
 	$context['kind']            = $type;
@@ -319,28 +319,28 @@ add_filter( 'gg_data_interaction_log_context', function( $context, $post_id, $ty
 ### 8.3 Query Current User Interactions via REST
 
 ```bash
-curl -X GET https://example.com/wp-json/gg-data/v1/interactions \
+curl -X GET https://example.com/wp-json/gregius-data/v1/interactions \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 8.4 Read a Conversation Transcript
 
 ```php
-$turns = GG_Data_Interaction::get_conversation_transcript( $conversation_id );
+$turns = Gregius_Data_Interaction::get_conversation_transcript( $conversation_id );
 // array of full turn records (query/response/sources/tool/usage/feedback/...), or [].
 ```
 
 ### 8.5 Read Normalized Chat Messages
 
 ```php
-$messages = GG_Data_Interaction::get_conversation_turns( $conversation_id );
+$messages = Gregius_Data_Interaction::get_conversation_turns( $conversation_id );
 // [ [ 'role' => 'user', 'content' => ... ], [ 'role' => 'assistant', 'content' => ... ], ... ]
 ```
 
 ### 8.6 Record Per-Turn Feedback
 
 ```php
-$result = GG_Data_Interaction::record_turn_feedback(
+$result = Gregius_Data_Interaction::record_turn_feedback(
 	$conversation_id,
 	0, // 0-indexed turn offset.
 	array(
@@ -352,22 +352,22 @@ $result = GG_Data_Interaction::record_turn_feedback(
 	)
 );
 // true|WP_Error. Serialized with turn appends via the conversation lock;
-// keys whitelisted via the gg_data_interaction_feedback_schema filter.
+// keys whitelisted via the gregius_interaction_feedback_schema filter.
 ```
 
 ### 8.7 Read Conversation Source
 
 ```php
-$source = GG_Data_Interaction::get_conversation_source( $conversation_id );
+$source = Gregius_Data_Interaction::get_conversation_source( $conversation_id );
 // [ 'type' => 'frontend' ], or [] when the conversation/source is absent.
 ```
 
 ## 9. Parity Coverage Snapshot
 
 Coverage verified from code:
-- Event ingress hooks documented: 2 (`gg_data_rag_complete`, `gg_data_search_completed`)
-- Interaction extension hooks documented: 6 (`gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_schema`, `gg_data_interaction_turn_feedback_recorded`, `gg_data_interaction_feedback_received`)
-- Integration filter documented: 1 (`gg_data_should_sync_post`)
+- Event ingress hooks documented: 2 (`gregius_data_rag_complete`, `gregius_data_search_completed`)
+- Interaction extension hooks documented: 6 (`gregius_interaction_meta_fields`, `gregius_interaction_log_context`, `gregius_interaction_recorded`, `gregius_interaction_feedback_schema`, `gregius_interaction_turn_feedback_recorded`, `gregius_interaction_feedback_received`)
+- Integration filter documented: 1 (`gregius_data_should_sync_post`)
 - Public conversation access methods: 4 (`get_conversation_transcript`, `get_conversation_turns`, `get_conversation_source`, `record_turn_feedback`)
 - Interaction meta fields documented: 6
 - REST endpoint family documented: list/get/create/update/delete (+ governance constraints)
@@ -409,7 +409,7 @@ This should not happen under the current contract.
 ### Search interactions missing
 
 Check:
-1. `gg_data_search_completed` is emitted by search integration.
+1. `gregius_data_search_completed` is emitted by search integration.
 2. `connection` is present in search results payload.
 
 ## 11. Limitations

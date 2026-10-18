@@ -38,8 +38,8 @@ System context summary:
 The Prompt subsystem is an internal service consumed by RAG generation and upstream command/ability entrypoints. It stores prompt records as WordPress posts organized by type (system, security, evaluation), resolves effective prompt content with controlled fallback and runtime expansion, and enforces security gatekeeper LLM-based classification before retrieval.
 
 Interfaces at context level:
-- WordPress post/meta storage for `gg_prompt` data with `gg_prompt_type` taxonomy.
-- Prompt REST API (`/gg-data/v1/prompts*`) for admin management of typed prompts.
+- WordPress post/meta storage for `gregius_prompt` data with `gregius_prompt_type` taxonomy.
+- Prompt REST API (`/gregius-data/v1/prompts*`) for admin management of typed prompts.
 - RAG service system prompt resolution call path (type-scoped to 'system').
 - RAG service security gatekeeper pre-retrieval check (type-scoped to 'security').
 - CLI and Abilities prompt override argument contracts.
@@ -50,18 +50,18 @@ Interfaces at context level:
 ### 4.1 Component View (AV-02)
 
 Major elements:
-- Prompt CPT + Taxonomy Registrar (`GG_Data_Prompt`)
-- Prompt Resolver (`GG_Data_Prompt_Resolver`)
-- Prompt REST Controller (`GG_Data_REST_Prompts_Controller`)
-- Security Gatekeeper Check (`GG_Data_RAG_Service::run_security_gatekeeper_check()`)
-- Lifecycle Seed/Migration (`GG_Data_Activator` helpers)
+- Prompt CPT + Taxonomy Registrar (`Gregius_Data_Prompt`)
+- Prompt Resolver (`Gregius_Data_Prompt_Resolver`)
+- Prompt REST Controller (`Gregius_Data_REST_Prompts_Controller`)
+- Security Gatekeeper Check (`Gregius_Data_RAG_Service::run_security_gatekeeper_check()`)
+- Lifecycle Seed/Migration (`Gregius_Data_Activator` helpers)
 - Prompt Consumers (RAG Service, CLI Answer, Abilities Manager)
 
 Element responsibilities:
 
 | Element | Responsibility |
 |---|---|
-| Prompt CPT + Taxonomy Registrar | Registers `gg_prompt` post type, metadata schema, and `gg_prompt_type` hierarchical taxonomy with 'system', 'security', and 'evaluation' terms. |
+| Prompt CPT + Taxonomy Registrar | Registers `gregius_prompt` post type, metadata schema, and `gregius_prompt_type` hierarchical taxonomy with 'system', 'security', and 'evaluation' terms. |
 | Prompt Resolver | Resolves effective prompt by fallback order, validity rules, token expansion, hash maintenance, and type-scoping (e.g., resolve('system') or resolve('security')). |
 | Prompt REST Controller | Exposes prompt CRUD + activate routes with capability checks, prompt_type parameter handling, type-scoped activation (deselects only prompts of same type). |
 | Security Gatekeeper Check | Pre-retrieval LLM-based query classifier; resolves 'security' prompt, invokes LLM with security prompt as system message, parses classify response (safe/unsafe), blocks unsafe queries. |
@@ -106,9 +106,9 @@ Environment assumptions:
 - REST routes are available under plugin namespace.
 
 Persistence dependencies:
-- `wp_posts` for `gg_prompt` records.
-- `wp_postmeta` for `_gg_prompt_*` contracts.
-- `wp_term_taxonomy` and `wp_terms` for `gg_prompt_type` taxonomy terms ('system', 'security', 'evaluation').
+- `wp_posts` for `gregius_prompt` records.
+- `wp_postmeta` for `_gregius_prompt_*` contracts.
+- `wp_term_taxonomy` and `wp_terms` for `gregius_prompt_type` taxonomy terms ('system', 'security', 'evaluation').
 - `wp_term_relationships` for post-to-type term associations.
 - `wp_options` for seed/migration idempotency flags.
 - Interaction metadata storage for security check results.
@@ -118,7 +118,7 @@ Persistence dependencies:
 ### Decision AD-01: Single canonical resolver for effective prompt selection
 
 - Status: Accepted
-- Decision: Use `GG_Data_Prompt_Resolver` as the canonical prompt resolution component for RAG generation and prompt metadata output.
+- Decision: Use `Gregius_Data_Prompt_Resolver` as the canonical prompt resolution component for RAG generation and prompt metadata output.
 - Rationale: Centralizes fallback, validation, token expansion, and hashing behavior to avoid drift across consuming layers.
 - Alternatives considered:
   - Inline prompt resolution in each consumer.
@@ -131,7 +131,7 @@ Persistence dependencies:
 ### Decision AD-02: Metadata-driven fallback chain
 
 - Status: Accepted
-- Decision: Resolve prompts in strict order explicit -> selected -> factory using `_gg_prompt_selected` and `_gg_prompt_is_factory` markers.
+- Decision: Resolve prompts in strict order explicit -> selected -> factory using `_gregius_prompt_selected` and `_gregius_prompt_is_factory` markers.
 - Rationale: Supports deterministic overrides while preserving safe default behavior.
 - Alternatives considered:
   - Selected-only resolution.
@@ -170,7 +170,7 @@ Persistence dependencies:
 ### Decision AD-05: Type-scoped prompt resolution and activation
 
 - Status: Accepted
-- Decision: Resolve and activate prompts independently per type via `gg_prompt_type` taxonomy; resolver accepts `$prompt_type` parameter; REST activation deselects only prompts of same type.
+- Decision: Resolve and activate prompts independently per type via `gregius_prompt_type` taxonomy; resolver accepts `$prompt_type` parameter; REST activation deselects only prompts of same type.
 - Rationale: Allows independent selection of system, security, and evaluation prompts without conflict; prevents accidental hijacking of one prompt type by activating another.
 - Alternatives considered:
   - Single merged system/security/evaluation prompt.
@@ -199,7 +199,7 @@ Persistence dependencies:
 ## 6. Constraints and Risks
 
 Constraints:
-- Prompt eligibility depends on both post state, `_gg_prompt_status` metadata, and type term assignment.
+- Prompt eligibility depends on both post state, `_gregius_prompt_status` metadata, and type term assignment.
 - Type-scoped resolution requires taxonomy to exist; resolver gracefully degrades if taxonomy not registered.
 - REST management is administrator-only by design.
 - Prompt consumer integrations depend on resolver output shape and type parameter.

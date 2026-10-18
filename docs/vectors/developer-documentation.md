@@ -30,9 +30,9 @@ Not covered:
 
 ## 3. Key Components
 
-### 3.1 Vector Generator (`GG_Data_Vector_Generator`)
+### 3.1 Vector Generator (`Gregius_Data_Vector_Generator`)
 
-Source: [../../includes/vectors/class-gg-data-vector-generator.php](../../includes/vectors/class-gg-data-vector-generator.php)
+Source: [../../includes/vectors/class-gregius-data-vector-generator.php](../../includes/vectors/class-gregius-data-vector-generator.php)
 
 Core responsibilities:
 - Resolve model configuration from registry by connection + model key.
@@ -44,9 +44,9 @@ Notable behavior:
 - Built-in strategies are registered at construction time.
 - Model lookup supports fallback to global `gregius-data` scope when needed.
 
-### 3.2 Vector Strategy Interface (`GG_Data_Vector_Strategy_Interface`)
+### 3.2 Vector Strategy Interface (`Gregius_Data_Vector_Strategy_Interface`)
 
-Source: [../../includes/vectors/interface-gg-data-vector-strategy.php](../../includes/vectors/interface-gg-data-vector-strategy.php)
+Source: [../../includes/vectors/interface-gregius-data-vector-strategy.php](../../includes/vectors/interface-gregius-data-vector-strategy.php)
 
 Core contract:
 - `generate( array $model, int $batch_size, string $connection_name ): array`
@@ -65,29 +65,29 @@ Required generation response keys:
 Connection awareness:
 - Strategy implementations route execution by connection provider type (PDO vs PostgREST/Supabase compatible).
 
-### 3.3 Vector Queue REST Controller (`GG_Data_REST_Vector_Queue_Controller`)
+### 3.3 Vector Queue REST Controller (`Gregius_Data_REST_Vector_Queue_Controller`)
 
-Source: [../../includes/api/class-gg-data-rest-vector-queue-controller.php](../../includes/api/class-gg-data-rest-vector-queue-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-vector-queue-controller.php](../../includes/api/class-gregius-data-rest-vector-queue-controller.php)
 
 Core responsibilities:
 - Expose queue inspection and vector generation controls.
 - Expose status and posts-list diagnostics.
 - Expose vector clear operation.
 
-### 3.4 Connection Models REST Controller (`GG_Data_REST_Connection_Models_Controller`)
+### 3.4 Connection Models REST Controller (`Gregius_Data_REST_Connection_Models_Controller`)
 
-Source: [../../includes/api/class-gg-data-rest-connection-models-controller.php](../../includes/api/class-gg-data-rest-connection-models-controller.php)
+Source: [../../includes/api/class-gregius-data-rest-connection-models-controller.php](../../includes/api/class-gregius-data-rest-connection-models-controller.php)
 
 Core responsibilities:
 - List active models per connection.
 - Add/remove model associations per connection.
 - Mask API key material in response payloads.
 
-### 3.5 HashingTF Generator (`GG_Data_HashingTF_Embeddings`) and Strategy (`GG_Data_HashingTF_Strategy`)
+### 3.5 HashingTF Generator (`Gregius_Data_HashingTF_Embeddings`) and Strategy (`Gregius_Data_HashingTF_Strategy`)
 
 Sources:
-- [../../includes/vectors/class-gg-data-hashingtf-embeddings.php](../../includes/vectors/class-gg-data-hashingtf-embeddings.php)
-- [../../includes/vectors/strategies/class-gg-data-hashingtf-strategy.php](../../includes/vectors/strategies/class-gg-data-hashingtf-strategy.php)
+- [../../includes/vectors/class-gregius-data-hashingtf-embeddings.php](../../includes/vectors/class-gregius-data-hashingtf-embeddings.php)
+- [../../includes/vectors/strategies/class-gregius-data-hashingtf-strategy.php](../../includes/vectors/strategies/class-gregius-data-hashingtf-strategy.php)
 
 Core responsibilities:
 - Generate 1024-dimensional vectors via PHP-native MurmurHash3 feature hashing.
@@ -104,7 +104,7 @@ Vector table: `wp_posts_hashingtf_murmur3_1024`
 
 ## 4. REST Route Catalog (Vectors)
 
-Base namespace: `/wp-json/gg-data/v1`
+Base namespace: `/wp-json/gregius-data/v1`
 
 Vector queue and generation:
 - `GET /vector-queue`
@@ -134,8 +134,8 @@ Permissions:
 ## 5. Runtime Settings and Model Contracts
 
 Primary model and association sources:
-- [../../includes/class-gg-data-model-registry.php](../../includes/class-gg-data-model-registry.php)
-- [../../includes/class-gg-data-connection-model-manager.php](../../includes/class-gg-data-connection-model-manager.php)
+- [../../includes/class-gregius-data-model-registry.php](../../includes/class-gregius-data-model-registry.php)
+- [../../includes/class-gregius-data-connection-model-manager.php](../../includes/class-gregius-data-connection-model-manager.php)
 
 Model contract keys expected by vector strategies:
 - `model_key`
@@ -176,7 +176,7 @@ Contract invariants:
 
 ### 7.1 Add a New Vector Strategy
 
-Implement [../../includes/vectors/interface-gg-data-vector-strategy.php](../../includes/vectors/interface-gg-data-vector-strategy.php) and register strategy with generator startup wiring.
+Implement [../../includes/vectors/interface-gregius-data-vector-strategy.php](../../includes/vectors/interface-gregius-data-vector-strategy.php) and register strategy with generator startup wiring.
 
 Practical guidance:
 - Keep `supports_model()` deterministic and narrowly scoped.
@@ -238,14 +238,14 @@ Checklist:
 Checklist:
 - Use `POST /vectors/batch-delete` for large datasets instead of `DELETE /vectors`.
 - Confirm target model table comes from registry `vector_table_name`.
-- Tune `gg_data_vector_delete_batch_size` for environment timeout profile.
+- Tune `gregius_data_vector_delete_batch_size` for environment timeout profile.
 - If a response includes zero deleted rows with remaining rows, inspect `errors` field; backend now aborts to prevent infinite polling.
 - Re-run delete to continue from remaining rows.
 
 ### 9.5 HashingTF Vectors Missing After Tokenizer Version Bump
 
 Checklist:
-- HashingTF does not use vocabulary state. If `TOKENIZER_VERSION` is incremented in `GG_Data_HashingTF_Embeddings`, existing rows are NOT automatically invalidated.
+- HashingTF does not use vocabulary state. If `TOKENIZER_VERSION` is incremented in `Gregius_Data_HashingTF_Embeddings`, existing rows are NOT automatically invalidated.
 - Run `DELETE /vectors?connection_name=<name>&model_key=hashingtf-murmur3-1024` to clear stale vectors.
 - Re-run batch generation to regenerate with the new tokenizer version.
 - Confirm `tokenizer_version` column in `wp_posts_hashingtf_murmur3_1024` reflects the new constant value after completion.

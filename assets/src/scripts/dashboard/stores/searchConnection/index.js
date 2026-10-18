@@ -10,8 +10,8 @@
 import { createConnectionSelectionStore } from '../connectionSelection/factory';
 
 const store = createConnectionSelectionStore({
-	storeName: 'gg-data/search-connection',
-	storageKey: 'gg_data_search_connection',
+	storeName: 'gregius-data/search-connection',
+	storageKey: 'gregius_data_search_connection',
 	actionPrefix: 'SEARCH',
 });
 

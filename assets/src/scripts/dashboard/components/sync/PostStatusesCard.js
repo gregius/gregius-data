@@ -42,7 +42,7 @@ const PostStatusesCard = ({ selectedConnectionId, onConfigurationChange }) => {
         try {
             setIsLoading(true);
             const response = await apiFetch({ 
-                path: `/gg-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
             });
             
             setFullConfig(response.configuration || {});
@@ -71,11 +71,11 @@ const PostStatusesCard = ({ selectedConnectionId, onConfigurationChange }) => {
 
             // Fetch latest config to avoid race conditions
             const latestConfigRes = await apiFetch({ 
-                path: `/gg-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
             });
 
             const response = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`,
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`,
                 method: 'POST',
                 data: {
                     ...latestConfigRes.configuration,
@@ -116,12 +116,12 @@ const PostStatusesCard = ({ selectedConnectionId, onConfigurationChange }) => {
                     <Spinner />
                 ) : (
                     <>
-                        <div className="gg-data-sync-section">
+                        <div className="gregius-data-sync-section">
                             <p className="description">
                                 {__('Select which post statuses should be synchronized:', 'gregius-data')}
                             </p>
 
-                            <div className="gg-data-toggle-grid" style={{display: 'flex', flexDirection: 'column', gap: '.5rem'}}>
+                            <div className="gregius-data-toggle-grid" style={{display: 'flex', flexDirection: 'column', gap: '.5rem'}}>
                                 {postStatuses.map(status => (
                                     <ToggleControl
                                         key={status.value}

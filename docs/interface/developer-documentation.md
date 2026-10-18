@@ -58,7 +58,7 @@ NODE_ENV=production node node_modules/webpack/bin/webpack.js --config webpack.co
 ### 3.3 Verify Dashboard Mount
 
 1. Open plugin admin page.
-2. Confirm `#gg-data-react-dashboard` exists in rendered HTML.
+2. Confirm `#gregius-data-react-dashboard` exists in rendered HTML.
 3. Confirm app shell loads tabs and no fatal JS errors occur.
 
 [SRS: IF-FR-01, IF-FR-03]
@@ -67,10 +67,10 @@ NODE_ENV=production node node_modules/webpack/bin/webpack.js --config webpack.co
 
 ### 4.1 Admin Container
 
-Source: `includes/class-gg-data-admin.php`
+Source: `includes/class-gregius-data-admin.php`
 
 Contract:
-- `render_settings_page()` must output `#gg-data-react-dashboard` within `.wrap.gg-data-admin`.
+- `render_settings_page()` must output `#gregius-data-react-dashboard` within `.wrap.gregius-data-admin`.
 
 [SRS: IF-FR-01]
 
@@ -82,7 +82,7 @@ Contract:
 - Wait for `domReady()`.
 - Configure `apiFetch` nonce/root middleware.
 - Render `<App />` into primary container.
-- Fallback: create container under `.wrap.gg-data-admin` when needed.
+- Fallback: create container under `.wrap.gregius-data-admin` when needed.
 - Emit failure diagnostics on render exceptions.
 
 [SRS: IF-FR-02, IF-OR-01, IF-OR-02]
@@ -116,13 +116,13 @@ Sources:
 - `assets/src/scripts/dashboard/stores/`
 
 Implemented stores:
-- `gg-data/settings`
-- `gg-data/connections`
-- `gg-data/logs`
-- `gg-data/selected`
-- `gg-data/search-connection`
+- `gregius-data/settings`
+- `gregius-data/connections`
+- `gregius-data/logs`
+- `gregius-data/selected`
+- `gregius-data/search-connection`
 
-The `gg-data/selected` and `gg-data/search-connection` stores are created by `createConnectionSelectionStore()` in `assets/src/scripts/dashboard/stores/connectionSelection/factory.js`.
+The `gregius-data/selected` and `gregius-data/search-connection` stores are created by `createConnectionSelectionStore()` in `assets/src/scripts/dashboard/stores/connectionSelection/factory.js`.
 
 Store pattern expectations:
 - Register store via `registerStore`.
@@ -136,7 +136,7 @@ Store pattern expectations:
 Source: `assets/src/scripts/dashboard/utils/api.js`
 
 Contract:
-- Base API path uses `/gg-data/v1`.
+- Base API path uses `/gregius-data/v1`.
 - Utility wrappers call `apiFetch` with consistent path composition.
 - `checkApiConnection()` uses `/wp/v2/users/me` to validate runtime API access.
 - `handleAPIError()` normalizes interface error objects.
@@ -189,7 +189,7 @@ Do not represent deferred items as implemented behavior in interface docs.
 ### Dashboard does not render
 
 Check:
-1. `#gg-data-react-dashboard` container exists.
+1. `#gregius-data-react-dashboard` container exists.
 2. Assets loaded successfully in admin page.
 3. Browser console for render exceptions.
 
@@ -198,7 +198,7 @@ Check:
 Check:
 1. Nonce/root middleware initialization in `dashboard.js`.
 2. User authentication/session status.
-3. REST route availability under `/wp-json/gg-data/v1/`.
+3. REST route availability under `/wp-json/gregius-data/v1/`.
 
 ### Tab content not switching
 

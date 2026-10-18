@@ -24,7 +24,7 @@ This SRS defines what the Gregius Data WP-CLI interface must do to expose automa
 ### 1.2 System Scope
 
 The WP-CLI subsystem includes:
-- Command namespace bootstrap and command registration for `wp gg-data`
+- Command namespace bootstrap and command registration for `wp gregius-data`
 - Sync command family for posts, terms, and full sync workflows
 - Vector command family for generate and rebuild workflows
 - RAG answer command and optional prompt override behavior
@@ -41,11 +41,11 @@ Repository path: `public/wp-content/plugins/gregius-data`
 
 #### 1.3.1 System Context
 
-The CLI layer is an operator-facing interface that delegates business logic to existing service managers (`GG_Data_Post_Sync`, `GG_Data_Taxonomy_Sync`, `GG_Data_Vector_Generator`, `GG_Data_Abilities_Manager`, `GG_Data_Logger`) while standardizing validation, command routing, and output behavior.
+The CLI layer is an operator-facing interface that delegates business logic to existing service managers (`Gregius_Data_Post_Sync`, `Gregius_Data_Taxonomy_Sync`, `Gregius_Data_Vector_Generator`, `Gregius_Data_Abilities_Manager`, `Gregius_Data_Logger`) while standardizing validation, command routing, and output behavior.
 
 #### 1.3.2 System Functions Summary
 
-- Register command namespace and seven command families under `gg-data`.
+- Register command namespace and seven command families under `gregius-data`.
 - Validate required/optional options and enforce safe defaults.
 - Process batch workloads for sync and vectors with progress and memory cleanup.
 - Execute RAG answers through Abilities manager with optional prompt overrides.
@@ -65,15 +65,15 @@ The CLI layer is an operator-facing interface that delegates business logic to e
 
 - `docs/wpcli/architecture.md`
 - `docs/wpcli/developer-documentation.md`
-- `includes/cli/class-gg-data-cli.php`
-- `includes/cli/class-gg-data-cli-namespace.php`
-- `includes/cli/class-gg-data-cli-sync.php`
-- `includes/cli/class-gg-data-cli-vectors.php`
-- `includes/cli/class-gg-data-cli-answer.php`
-- `includes/cli/class-gg-data-cli-evaluation.php`
-- `includes/cli/class-gg-data-cli-list-connections.php`
-- `includes/cli/class-gg-data-cli-list-models.php`
-- `includes/cli/class-gg-data-cli-logs.php`
+- `includes/cli/class-gregius-data-cli.php`
+- `includes/cli/class-gregius-data-cli-namespace.php`
+- `includes/cli/class-gregius-data-cli-sync.php`
+- `includes/cli/class-gregius-data-cli-vectors.php`
+- `includes/cli/class-gregius-data-cli-answer.php`
+- `includes/cli/class-gregius-data-cli-evaluation.php`
+- `includes/cli/class-gregius-data-cli-list-connections.php`
+- `includes/cli/class-gregius-data-cli-list-models.php`
+- `includes/cli/class-gregius-data-cli-logs.php`
 
 ## 3. Software Requirements
 
@@ -86,7 +86,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| CLI-FR-01 | The software MUST register the `gg-data` namespace and the command families `sync`, `vectors`, `answer`, `evaluation`, `list-connections`, `list-models`, and `logs`. | Must |
+| CLI-FR-01 | The software MUST register the `gregius-data` namespace and the command families `sync`, `vectors`, `answer`, `evaluation`, `list-connections`, `list-models`, and `logs`. | Must |
 | CLI-FR-02 | The software MUST provide sync subcommands `posts`, `terms`, and `all`. | Must |
 | CLI-FR-03 | The software MUST provide vectors subcommands `generate` and `rebuild`. | Must |
 | CLI-FR-04 | The software MUST provide an `answer` command with a required `<query>` positional argument. | Must |
@@ -146,14 +146,14 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| CLI-FR-01, CLI-QR-05 | `includes/cli/class-gg-data-cli.php` | Namespace and command registration contracts |
-| CLI-FR-02, CLI-DR-01, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
-| CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gg-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
-| CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-QR-04 | `includes/cli/class-gg-data-cli-answer.php` | Query contract, prompt override handling, errors |
-| CLI-FR-01, CLI-QR-02 | `includes/cli/class-gg-data-cli-evaluation.php` | Evaluation command family (run, list_prompts, validate_config, adapters) delegation |
-| CLI-FR-05, CLI-DR-04, CLI-DR-07 | `includes/cli/class-gg-data-cli-list-connections.php`, `includes/cli/class-gg-data-cli-list-models.php` | Connections/models inventory command contracts and optional list-connections enrichment flags |
-| CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-05 | `includes/cli/class-gg-data-cli-logs.php` | Logs management command contracts and validation |
-| CLI-FR-07, CLI-FR-08, CLI-QR-01, CLI-QR-02 | `includes/cli/class-gg-data-cli-*.php` | Shared defaults, output formats, and delegation pattern |
+| CLI-FR-01, CLI-QR-05 | `includes/cli/class-gregius-data-cli.php` | Namespace and command registration contracts |
+| CLI-FR-02, CLI-DR-01, CLI-OR-01..04 | `includes/cli/class-gregius-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
+| CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gregius-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
+| CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-QR-04 | `includes/cli/class-gregius-data-cli-answer.php` | Query contract, prompt override handling, errors |
+| CLI-FR-01, CLI-QR-02 | `includes/cli/class-gregius-data-cli-evaluation.php` | Evaluation command family (run, list_prompts, validate_config, adapters) delegation |
+| CLI-FR-05, CLI-DR-04, CLI-DR-07 | `includes/cli/class-gregius-data-cli-list-connections.php`, `includes/cli/class-gregius-data-cli-list-models.php` | Connections/models inventory command contracts and optional list-connections enrichment flags |
+| CLI-FR-06, CLI-DR-05, CLI-DR-06, CLI-OR-05 | `includes/cli/class-gregius-data-cli-logs.php` | Logs management command contracts and validation |
+| CLI-FR-07, CLI-FR-08, CLI-QR-01, CLI-QR-02 | `includes/cli/class-gregius-data-cli-*.php` | Shared defaults, output formats, and delegation pattern |
 
 ## 6. Appendices
 

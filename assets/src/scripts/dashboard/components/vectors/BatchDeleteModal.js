@@ -88,7 +88,7 @@ const BatchDeleteModal = ({
 		try {
 			while (hasMore && !controller.signal.aborted) {
 				try {
-					const path = mode === 'sync' ? '/gg-data/v1/sync/batch-delete' : '/gg-data/v1/vectors/batch-delete';
+					const path = mode === 'sync' ? '/gregius-data/v1/sync/batch-delete' : '/gregius-data/v1/vectors/batch-delete';
 					const payload = mode === 'sync'
 						? {
 							connection_name: connectionName,
@@ -258,7 +258,7 @@ const BatchDeleteModal = ({
 			onRequestClose={handleClose}
 			shouldCloseOnClickOutside={canClose}
 			shouldCloseOnEsc={canClose}
-			className="gg-data-batch-delete-modal"
+			className="gregius-data-batch-delete-modal"
 		>
 			{deleteState.status === 'idle' && (
 				<>

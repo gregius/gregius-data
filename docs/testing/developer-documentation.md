@@ -99,9 +99,9 @@ Handles all three tiers through conditional loading:
 
 Source: `tests/helpers.php`
 
-**`gg_data_test_setup_wpdb()`** — Sets up `$wpdb` global as a stdClass with `prefix` set to `'wp_'`. Called in bootstrap for tier 1-2 only.
+**`gregius_data_test_setup_wpdb()`** — Sets up `$wpdb` global as a stdClass with `prefix` set to `'wp_'`. Called in bootstrap for tier 1-2 only.
 
-**`gg_data_test_stub_common_functions()`** — Registers Brain Monkey stubs for frequently-used WP functions. Call in `setUp()` after `Monkey\setUp()`:
+**`gregius_data_test_stub_common_functions()`** — Registers Brain Monkey stubs for frequently-used WP functions. Call in `setUp()` after `Monkey\setUp()`:
 - `get_current_blog_id()` → 1
 - `__()` → identity (returns text unchanged)
 - `wp_kses_post()` → identity
@@ -118,13 +118,13 @@ Source: `tests/helpers.php`
 
 ### 5.1 File Naming Convention
 
-All test files follow the pattern `Test_GG_Data_{ClassName}.php` in the appropriate directory:
+All test files follow the pattern `Test_Gregius_Data_{ClassName}.php` in the appropriate directory:
 
 | Tier | Directory | Base Class | Example |
 |---|---|---|---|
-| Unit | `tests/Unit/` | `PHPUnit\Framework\TestCase` | `Test_GG_Data_Chunker.php` |
-| Integration | `tests/Integration/` | `PHPUnit\Framework\TestCase` | `Test_GG_Data_LLM_Registry.php` |
-| WpIntegration | `tests/WpIntegration/` | `WP_UnitTestCase` or `WP_Test_REST_TestCase` | `Test_GG_Data_Logger.php` |
+| Unit | `tests/Unit/` | `PHPUnit\Framework\TestCase` | `Test_Gregius_Data_Chunker.php` |
+| Integration | `tests/Integration/` | `PHPUnit\Framework\TestCase` | `Test_Gregius_Data_LLM_Registry.php` |
+| WpIntegration | `tests/WpIntegration/` | `WP_UnitTestCase` or `WP_Test_REST_TestCase` | `Test_Gregius_Data_Logger.php` |
 
 PHPUnit 11 uses `suffix=".php"` for test discovery. The class name must match the filename.
 
@@ -136,13 +136,13 @@ PHPUnit 11 uses `suffix=".php"` for test discovery. The class name must match th
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 
-class Test_GG_Data_MyClass extends PHPUnit\Framework\TestCase {
+class Test_Gregius_Data_MyClass extends PHPUnit\Framework\TestCase {
 
     protected function setUp(): void {
         parent::setUp();
         Monkey\setUp();
-        gg_data_test_stub_common_functions();
-        require_once __DIR__ . '/../../includes/class-gg-data-my-class.php';
+        gregius_data_test_stub_common_functions();
+        require_once __DIR__ . '/../../includes/class-gregius-data-my-class.php';
     }
 
     protected function tearDown(): void {
@@ -156,7 +156,7 @@ class Test_GG_Data_MyClass extends PHPUnit\Framework\TestCase {
             ->with('expected_arg')
             ->andReturn('stubbed_value');
 
-        $instance = new GG_Data_MyClass();
+        $instance = new Gregius_Data_MyClass();
         $result   = $instance->public_method();
 
         $this->assertSame('expected', $result);
@@ -169,13 +169,13 @@ class Test_GG_Data_MyClass extends PHPUnit\Framework\TestCase {
 ```php
 <?php
 
-class Test_GG_Data_MyClass extends WP_UnitTestCase {
+class Test_Gregius_Data_MyClass extends WP_UnitTestCase {
 
     protected $instance;
 
     public function set_up() {
         parent::set_up();
-        $this->instance = new GG_Data_MyClass();
+        $this->instance = new Gregius_Data_MyClass();
     }
 
     public function tear_down() {
@@ -197,7 +197,7 @@ Note: Tier 3 uses `set_up()` and `tear_down()` (underscores) following WordPress
 |---|---|---|
 | Stub a WP function | Brain Monkey `Functions\when()` | `Functions\when('get_option')->justReturn('value')` |
 | Expect a WP function call | Brain Monkey `Functions\expect()` | `Functions\expect('apply_filters')->once()->andReturn($val)` |
-| Mock a plugin class | Mockery `Mockery::mock()` | `Mockery::mock(GG_Data_DB::class)` |
+| Mock a plugin class | Mockery `Mockery::mock()` | `Mockery::mock(Gregius_Data_DB::class)` |
 | Test private methods | Reflection | `$reflection->getMethod('count_words')->setAccessible(true)` |
 | Instance without constructor | Reflection | `$reflection->newInstanceWithoutConstructor()` |
 | Set private property | Reflection | `$prop->setAccessible(true); $prop->setValue($obj, $mock)` |
@@ -209,11 +209,11 @@ Many plugin classes create their own internal instances in constructors rather t
 
 ```php
 // ❌ WRONG — constructor ignores the mock, creates real instances internally
-$mock_db = Mockery::mock(GG_Data_DB::class);
-$instance = new GG_Data_HashingTF_Embeddings($mock_db); // mock discarded!
+$mock_db = Mockery::mock(Gregius_Data_DB::class);
+$instance = new Gregius_Data_HashingTF_Embeddings($mock_db); // mock discarded!
 
 // ✅ CORRECT — skip constructor, test public methods directly
-$reflection = new ReflectionClass(GG_Data_HashingTF_Embeddings::class);
+$reflection = new ReflectionClass(Gregius_Data_HashingTF_Embeddings::class);
 $instance   = $reflection->newInstanceWithoutConstructor();
 $vector     = $instance->generate_hashingtf_vector('hello', 'post_title');
 ```
@@ -231,8 +231,8 @@ tests_add_filter( 'muplugins_loaded', function () use ( $plugin_dir ) {
 
 // Activate plugin after theme setup (creates tables, seeds data)
 tests_add_filter( 'setup_theme', function () {
-    if ( ! get_option( 'gg_data_db_version' ) ) {
-        GG_Data_Activator::activate();
+    if ( ! get_option( 'gregius_data_db_version' ) ) {
+        Gregius_Data_Activator::activate();
     }
 } );
 ```
@@ -242,7 +242,7 @@ tests_add_filter( 'setup_theme', function () {
 For REST tests (Tier 3), register routes with `do_action('rest_api_init')` in `set_up()`:
 
 ```php
-class Test_GG_Data_REST_Example extends WP_Test_REST_TestCase {
+class Test_Gregius_Data_REST_Example extends WP_Test_REST_TestCase {
     public function set_up() {
         parent::set_up();
         $this->server = rest_get_server();
@@ -250,7 +250,7 @@ class Test_GG_Data_REST_Example extends WP_Test_REST_TestCase {
     }
 
     public function test_route_exists() {
-        $routes = $this->server->get_routes('gg-data/v1');
+        $routes = $this->server->get_routes('gregius-data/v1');
         $this->assertNotEmpty($routes);
     }
 }
@@ -265,7 +265,7 @@ class Test_GG_Data_REST_Example extends WP_Test_REST_TestCase {
 protected function setUp(): void {
     parent::setUp();
     Monkey\setUp();
-    $ref = new ReflectionClass(GG_Data_LLM_Registry::class);
+    $ref = new ReflectionClass(Gregius_Data_LLM_Registry::class);
     $prop = $ref->getProperty('providers');
     $prop->setAccessible(true);
     $prop->setValue([]);
@@ -316,10 +316,10 @@ if ( ! $running_wp_tests ) {
 }
 
 // ❌ DON'T — pass mock dependencies to constructors that ignore them
-$instance = new GG_Data_HashingTF_Embeddings($mock_db);
+$instance = new Gregius_Data_HashingTF_Embeddings($mock_db);
 
 // ✅ DO — use newInstanceWithoutConstructor() for coupled constructors
-$instance = (new ReflectionClass(GG_Data_HashingTF_Embeddings::class))
+$instance = (new ReflectionClass(Gregius_Data_HashingTF_Embeddings::class))
     ->newInstanceWithoutConstructor();
 ```
 
@@ -377,7 +377,7 @@ if ( ! $running_wp_tests ) {
 }
 ```
 
-### Issue: `Table 'gregius_test.wptests_gg_data_logs' doesn't exist`
+### Issue: `Table 'gregius_test.wptests_gregius_data_logs' doesn't exist`
 
 **Symptom:** WpIntegration tests fail with missing table errors.
 
@@ -386,8 +386,8 @@ if ( ! $running_wp_tests ) {
 **Solution:** Ensure the bootstrap includes the `setup_theme` hook:
 ```php
 tests_add_filter( 'setup_theme', function () {
-    if ( ! get_option( 'gg_data_db_version' ) ) {
-        GG_Data_Activator::activate();
+    if ( ! get_option( 'gregius_data_db_version' ) ) {
+        Gregius_Data_Activator::activate();
     }
 } );
 ```
@@ -404,7 +404,7 @@ A: This is a known pattern in the codebase. Constructors create their own intern
 
 **Q: How do I add a new test class?**
 
-A: Create `Test_GG_Data_{ClassName}.php` in the appropriate tier directory, extend the correct base class, follow the template in section 5, and run `./bin/test` to verify.
+A: Create `Test_Gregius_Data_{ClassName}.php` in the appropriate tier directory, extend the correct base class, follow the template in section 5, and run `./bin/test` to verify.
 
 **Q: Why is wp-phpunit installed via SVN instead of Composer?**
 

@@ -45,7 +45,7 @@ const TermsSyncCard = ({ selectedConnectionId, onSyncComplete }) => {
         try {
             setLoading(true);
             const response = await apiFetch({
-                path: `/gg-data/v1/sync/validation/fast?connection=${selectedConnectionId}`
+                path: `/gregius-data/v1/sync/validation/fast?connection=${selectedConnectionId}`
             });
             
             if (response.success && response.data?.terms) {
@@ -60,8 +60,8 @@ const TermsSyncCard = ({ selectedConnectionId, onSyncComplete }) => {
 
     const handleBatchOperation = async (type) => {
         const endpoint = type === 'sync' 
-            ? '/gg-data/v1/sync/batch-sync-terms'
-            : `/gg-data/v1/sync/terms/orphans?connection=${selectedConnectionId}&batch_size=100`;
+            ? '/gregius-data/v1/sync/batch-sync-terms'
+            : `/gregius-data/v1/sync/terms/orphans?connection=${selectedConnectionId}&batch_size=100`;
             
         const method = type === 'sync' ? 'POST' : 'DELETE';
         const startTime = Date.now();

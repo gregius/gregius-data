@@ -50,7 +50,7 @@ A sync operation flows through a predictable pipeline regardless of whether it w
 2. **Content Cleaner** — Strips HTML, calculates an MD5 content hash, and detects whether content changed since the last sync. Unchanged content is skipped.
 3. **Chunker** — Segments cleaned content into chunks per connection-specific strategy (fixed-size or semantic).
 4. **Provider Dispatch** — Routes cleaned content and chunks to the configured provider (PDO or PostgREST), which writes to PostgreSQL mirror tables (`wp_posts`, `wp_posts_clean`, `wp_posts_chunks`).
-5. **Metadata Update** — Records sync state in `wp_gg_sync_metadata` for fast validation without table scans.
+5. **Metadata Update** — Records sync state in `wp_gregius_data_sync_metadata` for fast validation without table scans.
 
 [SRS: SYNC-FR-04, SYNC-DR-04, SYNC-DR-05]
 
@@ -98,7 +98,7 @@ Batch sync lets you synchronize large volumes of content on demand via REST API.
 - Large-scale content migrations or re-syncs
 - Periodic full synchronization for data assurance
 
-**REST endpoint:** `POST /wp-json/gg-data/v1/sync/post-type/{type}`
+**REST endpoint:** `POST /wp-json/gregius-data/v1/sync/post-type/{type}`
 
 **Response format:**
 ```json
@@ -142,7 +142,7 @@ After cleaning, the chunker segments content using the connection's chunking str
 
 The target is ~512 tokens with a ~100-token minimum (tokens are estimated at ~4 characters each), and chunks do not overlap. Small trailing fragments are merged into the previous chunk.
 
-The active strategy is resolved per connection through the `gg_data_chunking_strategy` filter (default `default`); additional strategies can be registered with the `gg_data_chunking_strategies` filter. If you change the strategy, existing content needs to be re-chunked — trigger this via a manual batch sync.
+The active strategy is resolved per connection through the `gregius_data_chunking_strategy` filter (default `default`); additional strategies can be registered with the `gregius_data_chunking_strategies` filter. If you change the strategy, existing content needs to be re-chunked — trigger this via a manual batch sync.
 
 Chunks are stored in `wp_posts_chunks` and consumed downstream by the Search and Vector subsystems.
 

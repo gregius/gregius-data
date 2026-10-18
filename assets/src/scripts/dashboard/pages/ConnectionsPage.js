@@ -36,22 +36,22 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
   // Use WordPress data stores
   const { connections, isLoadingConnections, connectionsError } = useSelect(
     (select) => ({
-      connections: select("gg-data/connections").getConnections(),
-      isLoadingConnections: select("gg-data/connections").isLoading(),
-      connectionsError: select("gg-data/connections").getError(),
+      connections: select("gregius-data/connections").getConnections(),
+      isLoadingConnections: select("gregius-data/connections").isLoading(),
+      connectionsError: select("gregius-data/connections").getError(),
     }),
     [],
   );
 
   const { addConnection, updateConnectionData, removeConnection } = useDispatch(
-    "gg-data/connections",
+    "gregius-data/connections",
   );
 
   // Test connection and health check functions (using apiFetch directly)
   const testConnection = async (connectionName) => {
     try {
       const response = await apiFetch({
-        path: `/gg-data/v1/connections/${connectionName}/test`,
+        path: `/gregius-data/v1/connections/${connectionName}/test`,
         method: "POST",
       });
       return response;
@@ -63,7 +63,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
   const getConnectionHealth = async (connectionName) => {
     try {
       const response = await apiFetch({
-        path: `/gg-data/v1/connections/${connectionName}/health`,
+        path: `/gregius-data/v1/connections/${connectionName}/health`,
         method: "GET",
       });
       return response;
@@ -134,7 +134,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
       };
 
       const response = await apiFetch({
-        path: "/gg-data/v1/connections",
+        path: "/gregius-data/v1/connections",
         method: "POST",
         data: requestData,
       });
@@ -217,7 +217,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
     try {
       // Make API call directly in component - PUT endpoint expects only { config } in body
       const response = await apiFetch({
-        path: `/gg-data/v1/connections/${connectionName}`,
+        path: `/gregius-data/v1/connections/${connectionName}`,
         method: "PUT",
         data: { config: sanitizedConfig },
       });
@@ -251,7 +251,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
       try {
         // Make API call directly in component
         const response = await apiFetch({
-          path: `/gg-data/v1/connections/${connectionName}`,
+          path: `/gregius-data/v1/connections/${connectionName}`,
           method: "DELETE",
         });
 
@@ -304,7 +304,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
   // Show loading state
   if (isLoading || isLoadingConnections) {
     return (
-      <div className="gg-data-page">
+      <div className="gregius-data-page">
         <Card isRounded={false}>
           <CardBody style={{ textAlign: "center", padding: "40px" }}>
             <p style={{ marginTop: "16px" }}>
@@ -339,7 +339,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
   // Show error state
   if (connectionsError) {
     return (
-      <div className="gg-data-page">
+      <div className="gregius-data-page">
         <Notice status="error" isDismissible={false}>
           {__("Failed to load connections: ", "gregius-data") +
             connectionsError.message}
@@ -367,9 +367,9 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
   }
 
   return (
-    <div className="gg-data-page">
+    <div className="gregius-data-page">
       {/* Page header with create button */}
-      <div className="gg-data-page">
+      <div className="gregius-data-page">
         <div
           style={{
             display: "flex",
@@ -445,7 +445,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
         <Modal
           title={__("Add New Connection", "gregius-data")}
           onRequestClose={() => setShowCreateModal(false)}
-          className="gg-data-connection-modal"
+          className="gregius-data-connection-modal"
         >
           <ConnectionForm
             onSubmit={handleCreateConnection}
@@ -460,7 +460,7 @@ const ConnectionsPage = ({ settings, isLoading, error, apiStatus }) => {
         <Modal
           title={__("Edit Connection", "gregius-data")}
           onRequestClose={handleCancelEdit}
-          className="gg-data-connection-modal"
+          className="gregius-data-connection-modal"
         >
           <ConnectionForm
             initialData={editingConnection}

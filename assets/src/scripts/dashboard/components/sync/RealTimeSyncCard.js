@@ -36,7 +36,7 @@ const RealTimeSyncCard = ({ selectedConnectionId, onConfigurationChange }) => {
         try {
             setIsLoading(true);
             const response = await apiFetch({ 
-                path: `/gg-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}` 
             });
             
             setFullConfig(response.configuration || {});
@@ -55,7 +55,7 @@ const RealTimeSyncCard = ({ selectedConnectionId, onConfigurationChange }) => {
             setError(null);
 
             const response = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`,
+                path: `/gregius-data/v1/sync/configuration?connection=${encodeURIComponent(selectedConnectionId)}`,
                 method: 'POST',
                 data: {
                     ...fullConfig,

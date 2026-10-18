@@ -44,7 +44,7 @@ const AddModelModal = ( { connection, existingModels, onAdd, onClose } ) => {
 		try {
 			// Fetch all global embedding models.
 			const response = await apiFetch( {
-				path: '/gg-data/v1/models?type=embeddings&status=active',
+				path: '/gregius-data/v1/models?type=embeddings&status=active',
 			} );
 
 			if ( response.success && response.data ) {
@@ -99,15 +99,15 @@ const AddModelModal = ( { connection, existingModels, onAdd, onClose } ) => {
 		<Modal
 			title={ __( 'Add Embedding Model', 'gregius-data' ) }
 			onRequestClose={ onClose }
-			className="gg-data-add-model-modal"
+			className="gregius-data-add-model-modal"
 		>
 			{ isLoading ? (
-				<div className="gg-data-modal-loading">
+				<div className="gregius-data-modal-loading">
 					<Spinner />
 					<p>{ __( 'Loading available models...', 'gregius-data' ) }</p>
 				</div>
 			) : error ? (
-				<div className="gg-data-modal-error">
+				<div className="gregius-data-modal-error">
 					<p style={ { color: '#d63638' } }>{ error }</p>
 					<Button onClick={ fetchAvailableModels }>
 						{ __( 'Retry', 'gregius-data' ) }

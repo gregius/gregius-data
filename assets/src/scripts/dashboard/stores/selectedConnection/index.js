@@ -11,8 +11,8 @@
 import { createConnectionSelectionStore } from '../connectionSelection/factory';
 
 const store = createConnectionSelectionStore({
-	storeName: 'gg-data/selected',
-	storageKey: 'gg_data_selected_connection',
+	storeName: 'gregius-data/selected',
+	storageKey: 'gregius_data_selected_connection',
 	actionPrefix: 'SELECTED',
 });
 

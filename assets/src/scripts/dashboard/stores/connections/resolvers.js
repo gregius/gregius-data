@@ -12,7 +12,7 @@ export function* getConnections() {
     // Get current state via select
     const currentConnections = yield { 
         type: 'SELECT',
-        storeName: 'gg-data/connections',
+        storeName: 'gregius-data/connections',
         selectorName: 'getConnections'
     };
     
@@ -27,7 +27,7 @@ export function* getConnections() {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: '/gg-data/v1/connections',
+                path: '/gregius-data/v1/connections',
                 method: 'GET',
             }
         };
@@ -50,7 +50,7 @@ export function* getConnection(name) {
     // First ensure connections are loaded
     const connections = yield {
         type: 'SELECT',
-        storeName: 'gg-data/connections',
+        storeName: 'gregius-data/connections',
         selectorName: 'getConnections'
     };
     
@@ -76,7 +76,7 @@ export function* invalidateConnections() {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: '/gg-data/v1/connections',
+                path: '/gregius-data/v1/connections',
                 method: 'GET',
             }
         };

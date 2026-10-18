@@ -72,12 +72,12 @@ Hooks connect plugin subsystems (sync, chunking, search, RAG, providers, interac
 ## 2. References
 
 - docs/hooks/architecture.md
-- includes/hooks/class-gg-data-lifecycle-hooks.php
-- includes/class-gg-data-chunker.php
-- includes/search/class-gg-data-search-integration.php
-- includes/rag/class-gg-data-rag-service.php
-- includes/ai/class-gg-data-llm-registry.php
-- includes/class-gg-data-interaction.php
+- includes/hooks/class-gregius-data-lifecycle-hooks.php
+- includes/class-gregius-data-chunker.php
+- includes/search/class-gregius-data-search-integration.php
+- includes/rag/class-gregius-data-rag-service.php
+- includes/ai/class-gregius-data-llm-registry.php
+- includes/class-gregius-data-interaction.php
 
 ## 3. Software Requirements
 
@@ -90,7 +90,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| HOOKS-FR-01 | The software MUST emit custom hooks using the `gg_data_` prefix for plugin-owned extension points, except for intentionally documented dynamic variants. | Must |
+| HOOKS-FR-01 | The software MUST emit custom hooks using the `gregius_data_` prefix for plugin-owned extension points, except for intentionally documented dynamic variants. | Must |
 | HOOKS-FR-02 | The software MUST expose Tier 1 public hooks for core extension categories: sync control, chunking strategy/output, search tuning, interaction tracking, and RAG tool registration. | Must |
 | HOOKS-FR-03 | The software MUST preserve expected execution order semantics between hook emissions and core processing for documented Tier 1 hooks. | Must |
 | HOOKS-FR-04 | The software MUST allow filters to override default values where a default value is provided at emission. | Must |
@@ -105,10 +105,10 @@ Requirement notation:
 | HOOKS-FR-13 | The software MUST expose a pre-retrieval filter hook to allow exclusion of document types, date ranges, and taxonomy constraints before candidate search. | Must |
 | HOOKS-FR-14 | The software MUST expose an LLM response filter hook to allow post-processing of raw answer text before citation normalization. | Must |
 | HOOKS-FR-15 | The software MUST expose a feedback submission action hook to fire when user feedback is persisted on an interaction for RLHF signal collection. | Must |
-| HOOKS-FR-21 | The software MUST expose a `gg_data_metadata_manifest` Tier 1 filter hook at the return of `GG_Data_Content_Cleaner::build_metadata_manifest()` so external plugins can enrich the manifest written to the PostgreSQL sync table. Signature: `(array $manifest, int $post_id): array`. | Must |
-| HOOKS-FR-22 | The software MUST expose a `gg_data_sync_post_types_updated` Tier 1 action hook after sync post type configuration is persisted for a connection, so downstream plugins can rebuild connection-scoped corpus artifacts. Signature: `(string $connection_name, array $enabled_post_types): void`. | Must |
-| HOOKS-FR-24 | The software MUST expose a `gg_data_vector_delete_batch_size` Tier 1 filter hook for operational tuning of vector batch deletion by model and connection. Signature: `(int $batch_size, string $model_key, string $connection_name): int`. | Must |
-| HOOKS-FR-25 | The software MUST expose a `gg_data_rag_tool_selection_system_prompt` Tier 1 filter hook in every tool-selection strategy so downstream plugins can inject context into the routing model's system prompt (e.g. entity grounding). Signature: `(string $system_prompt): string`. | Must |
+| HOOKS-FR-21 | The software MUST expose a `gregius_data_metadata_manifest` Tier 1 filter hook at the return of `Gregius_Data_Content_Cleaner::build_metadata_manifest()` so external plugins can enrich the manifest written to the PostgreSQL sync table. Signature: `(array $manifest, int $post_id): array`. | Must |
+| HOOKS-FR-22 | The software MUST expose a `gregius_data_sync_post_types_updated` Tier 1 action hook after sync post type configuration is persisted for a connection, so downstream plugins can rebuild connection-scoped corpus artifacts. Signature: `(string $connection_name, array $enabled_post_types): void`. | Must |
+| HOOKS-FR-24 | The software MUST expose a `gregius_data_vector_delete_batch_size` Tier 1 filter hook for operational tuning of vector batch deletion by model and connection. Signature: `(int $batch_size, string $model_key, string $connection_name): int`. | Must |
+| HOOKS-FR-25 | The software MUST expose a `gregius_data_rag_tool_selection_system_prompt` Tier 1 filter hook in every tool-selection strategy so downstream plugins can inject context into the routing model's system prompt (e.g. entity grounding). Signature: `(string $system_prompt): string`. | Must |
 
 ### 3.2 Data and Contract Requirements
 
@@ -158,15 +158,15 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| HOOKS-FR-01 to HOOKS-FR-05 | includes/hooks/class-gg-data-lifecycle-hooks.php, includes/class-gg-data-chunker.php, includes/search/class-gg-data-search-integration.php, includes/class-gg-data-interaction.php | Core sync/chunk/search/interaction hook emissions |
-| HOOKS-FR-06 to HOOKS-FR-10 | includes/rag/class-gg-data-rag-service.php, includes/ai/class-gg-data-llm-registry.php | Dynamic and tiered hook surface |
-| HOOKS-FR-11, HOOKS-FR-12 | includes/class-gg-data-logger.php | Logs retention governance hooks |
-| HOOKS-FR-13 | includes/rag/class-gg-data-rag-service.php | Pre-retrieval filtering hook (new Tier 1) |
-| HOOKS-FR-14 | includes/rag/class-gg-data-rag-service.php | LLM response post-processing hook (new Tier 1) |
-| HOOKS-FR-15 | includes/api/class-gg-data-rest-interactions-controller.php | Feedback submission action hook (new Tier 1) |
-| HOOKS-FR-21 | includes/class-gg-data-content-cleaner.php | Metadata manifest sync enrichment hook (Tier 1) |
-| HOOKS-FR-22 | includes/api/class-gg-data-rest-sync-controller.php | Sync post types updated action hook (Tier 1) |
-| HOOKS-FR-24 | includes/api/class-gg-data-rest-vector-queue-controller.php | Vector batch delete batch-size filter hook (Tier 1) |
+| HOOKS-FR-01 to HOOKS-FR-05 | includes/hooks/class-gregius-data-lifecycle-hooks.php, includes/class-gregius-data-chunker.php, includes/search/class-gregius-data-search-integration.php, includes/class-gregius-data-interaction.php | Core sync/chunk/search/interaction hook emissions |
+| HOOKS-FR-06 to HOOKS-FR-10 | includes/rag/class-gregius-data-rag-service.php, includes/ai/class-gregius-data-llm-registry.php | Dynamic and tiered hook surface |
+| HOOKS-FR-11, HOOKS-FR-12 | includes/class-gregius-data-logger.php | Logs retention governance hooks |
+| HOOKS-FR-13 | includes/rag/class-gregius-data-rag-service.php | Pre-retrieval filtering hook (new Tier 1) |
+| HOOKS-FR-14 | includes/rag/class-gregius-data-rag-service.php | LLM response post-processing hook (new Tier 1) |
+| HOOKS-FR-15 | includes/api/class-gregius-data-rest-interactions-controller.php | Feedback submission action hook (new Tier 1) |
+| HOOKS-FR-21 | includes/class-gregius-data-content-cleaner.php | Metadata manifest sync enrichment hook (Tier 1) |
+| HOOKS-FR-22 | includes/api/class-gregius-data-rest-sync-controller.php | Sync post types updated action hook (Tier 1) |
+| HOOKS-FR-24 | includes/api/class-gregius-data-rest-vector-queue-controller.php | Vector batch delete batch-size filter hook (Tier 1) |
 | HOOKS-DR-01 to HOOKS-DR-07 | docs/hooks/developer-documentation.md + emission source files | Hook signature, ordering, tier contract obligations |
 | HOOKS-OR-01 to HOOKS-OR-05 | docs/hooks package + docs/README rewiring | Governance and retirement policy obligations |
 | HOOKS-QR-01 to HOOKS-QR-04 | Canonical docs and repo reference checks | Parity and integrity quality obligations |
@@ -183,7 +183,7 @@ Acceptance baseline:
 
 | ID | Section | Issue | Owner | Target Date |
 |---|---|---|---|---|
-| HOOKS-TBD-01 | 3.1 | Dynamic tool-hook families should include additional concrete examples beyond `gg_data_rag_tool_search_entity_content` to reduce ambiguity for integrators. | Engineering | TBD |
+| HOOKS-TBD-01 | 3.1 | Dynamic tool-hook families should include additional concrete examples beyond `gregius_data_rag_tool_search_entity_content` to reduce ambiguity for integrators. | Engineering | TBD |
 | HOOKS-TBD-02 | 3.4 | Tier 2/Tier 3 boundaries for RAG planning internals should be revisited in future governance pass. | Engineering | TBD |
 
 ### 6.3 Decisions Log
@@ -192,4 +192,4 @@ Acceptance baseline:
 |---|---|---|---|
 | 2026-04-04 | Split hooks monolith into canonical package | Improve contract clarity and parity governance for extension surface | Documentation migration decision |
 | 2026-04-04 | Use tier model (Tier 1/2/3) in canonical docs | Avoid overpromising internal hooks as stable API | Documentation migration decision |
-| 2026-04-04 | Promote `gg_data_rag_search_query` and `gg_data_rag_source_min_relevance` to Tier 1 | Both hooks are live, externally useful, and signature-stable for extension use | Hooks tier parity audit |
+| 2026-04-04 | Promote `gregius_data_rag_search_query` and `gregius_data_rag_source_min_relevance` to Tier 1 | Both hooks are live, externally useful, and signature-stable for extension use | Hooks tier parity audit |

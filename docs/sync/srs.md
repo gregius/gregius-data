@@ -61,7 +61,7 @@ The sync subsystem consumes WordPress content changes (post/meta/term/status) an
 | Batch sync | Synchronous bulk sync operation with pagination and offset-based loops; user-initiated via REST API |
 | Content cleaning | Automatic HTML stripping, hash-based change detection, and preparation for search/vectors workflows |
 | Chunking | Adaptive content segmentation (paragraph-first, sentence-aware, fixed-size fallback) per connection-specific strategy |
-| Sync metadata | Aggregate tracking table (wp_gg_sync_metadata) recording WordPress ↔ PostgreSQL record counts and last-sync timestamps |
+| Sync metadata | Aggregate tracking table (wp_gregius_data_sync_metadata) recording WordPress ↔ PostgreSQL record counts and last-sync timestamps |
 | Provider routing | Runtime dispatch to provider implementations through a strict bulk-capable contract |
 
 ### 1.5 Abbreviations and Acronyms
@@ -76,21 +76,21 @@ The sync subsystem consumes WordPress content changes (post/meta/term/status) an
 ## 2. References
 
 - docs/sync/architecture.md
-- includes/hooks/class-gg-data-lifecycle-hooks.php
-- includes/batch/class-gg-data-post-sync.php
-- includes/batch/class-gg-data-taxonomy-sync.php
-- includes/batch/class-gg-data-postmeta-sync.php
-- includes/class-gg-data-sync-service.php
-- includes/class-gg-data-sync-metadata-manager.php
-- includes/class-gg-data-sync-validator.php
-- includes/class-gg-data-db.php
-- includes/providers/interface-gg-db-provider.php
-- includes/providers/class-gg-postgresql-provider.php
-- includes/providers/class-gg-postgrest-provider.php
-- includes/api/class-gg-data-rest-sync-controller.php
-- includes/api/class-gg-data-rest-sync-validator-controller.php
-- includes/class-gg-data-content-cleaner.php
-- includes/class-gg-data-chunker.php
+- includes/hooks/class-gregius-data-lifecycle-hooks.php
+- includes/batch/class-gregius-data-post-sync.php
+- includes/batch/class-gregius-data-taxonomy-sync.php
+- includes/batch/class-gregius-data-postmeta-sync.php
+- includes/class-gregius-data-sync-service.php
+- includes/class-gregius-data-sync-metadata-manager.php
+- includes/class-gregius-data-sync-validator.php
+- includes/class-gregius-data-db.php
+- includes/providers/interface-gregius-data-db-provider.php
+- includes/providers/class-gregius-data-postgresql-provider.php
+- includes/providers/class-gregius-data-postgrest-provider.php
+- includes/api/class-gregius-data-rest-sync-controller.php
+- includes/api/class-gregius-data-rest-sync-validator-controller.php
+- includes/class-gregius-data-content-cleaner.php
+- includes/class-gregius-data-chunker.php
 
 ## 3. Software Requirements
 
@@ -165,14 +165,14 @@ Acceptance baseline for migration phase:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| SYNC-FR-01, SYNC-FR-02 | includes/hooks/class-gg-data-lifecycle-hooks.php | Real-time orchestration and non-blocking error handling |
-| SYNC-FR-03 to SYNC-FR-05 | includes/batch/class-gg-data-post-sync.php, includes/batch/class-gg-data-taxonomy-sync.php | Batch processors and provider routing |
-| SYNC-FR-04, SYNC-DR-04, SYNC-DR-05 | includes/class-gg-data-content-cleaner.php, includes/class-gg-data-chunker.php | Content cleaning and chunking |
-| SYNC-FR-06, SYNC-DR-03 | includes/class-gg-data-sync-metadata-manager.php | Metadata tracking and drift detection |
-| SYNC-FR-07 | includes/class-gg-data-sync-validator.php, includes/api/class-gg-data-rest-sync-validator-controller.php | Validation logic and endpoints |
-| SYNC-FR-08, SYNC-OR-03 | includes/class-gg-data-settings-manager.php (multisite support) | Per-site configuration isolation |
-| SYNC-FR-09 | includes/api/class-gg-data-rest-sync-controller.php | REST endpoint registration and request validation |
-| SYNC-OR-01, SYNC-OR-04 | includes/hooks/class-gg-data-lifecycle-hooks.php, includes/class-gg-data-content-cleaner.php | Error handling and change detection |
+| SYNC-FR-01, SYNC-FR-02 | includes/hooks/class-gregius-data-lifecycle-hooks.php | Real-time orchestration and non-blocking error handling |
+| SYNC-FR-03 to SYNC-FR-05 | includes/batch/class-gregius-data-post-sync.php, includes/batch/class-gregius-data-taxonomy-sync.php | Batch processors and provider routing |
+| SYNC-FR-04, SYNC-DR-04, SYNC-DR-05 | includes/class-gregius-data-content-cleaner.php, includes/class-gregius-data-chunker.php | Content cleaning and chunking |
+| SYNC-FR-06, SYNC-DR-03 | includes/class-gregius-data-sync-metadata-manager.php | Metadata tracking and drift detection |
+| SYNC-FR-07 | includes/class-gregius-data-sync-validator.php, includes/api/class-gregius-data-rest-sync-validator-controller.php | Validation logic and endpoints |
+| SYNC-FR-08, SYNC-OR-03 | includes/class-gregius-data-settings-manager.php (multisite support) | Per-site configuration isolation |
+| SYNC-FR-09 | includes/api/class-gregius-data-rest-sync-controller.php | REST endpoint registration and request validation |
+| SYNC-OR-01, SYNC-OR-04 | includes/hooks/class-gregius-data-lifecycle-hooks.php, includes/class-gregius-data-content-cleaner.php | Error handling and change detection |
 
 ## 6. Appendices
 

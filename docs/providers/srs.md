@@ -84,15 +84,15 @@ The provider architecture operates as a foundational layer within the Gregius Da
 ## 2. References
 
 - docs/providers/architecture.md
-- includes/providers/interface-gg-db-provider.php
-- includes/providers/class-gg-provider-factory.php
-- includes/providers/class-gg-postgresql-provider.php
-- includes/providers/class-gg-postgrest-provider.php
-- includes/interfaces/interface-gg-data-ai-provider.php
-- includes/ai/class-gg-data-llm-registry.php
-- includes/ai/class-gg-data-ai-client.php
-- includes/ai/strategies/interface-gg-data-tool-calling-strategy.php
-- includes/ai/strategies/class-gg-data-tool-strategy-factory.php
+- includes/providers/interface-gregius-data-db-provider.php
+- includes/providers/class-gregius-data-provider-factory.php
+- includes/providers/class-gregius-data-postgresql-provider.php
+- includes/providers/class-gregius-data-postgrest-provider.php
+- includes/interfaces/interface-gregius-data-ai-provider.php
+- includes/ai/class-gregius-data-llm-registry.php
+- includes/ai/class-gregius-data-ai-client.php
+- includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php
+- includes/ai/strategies/class-gregius-data-tool-strategy-factory.php
 - includes/sql/postgrest-schema.sql
 
 ## 3. Software Requirements

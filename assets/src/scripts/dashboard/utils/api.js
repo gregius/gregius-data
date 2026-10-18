@@ -10,7 +10,7 @@ import apiFetch from '@wordpress/api-fetch';
 /**
  * Base API path for Gregius PostgreSQL endpoints
  */
-const API_BASE = '/gg-data/v1';
+const API_BASE = '/gregius-data/v1';
 
 /**
  * Settings API endpoints

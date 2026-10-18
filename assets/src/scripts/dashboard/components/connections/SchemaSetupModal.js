@@ -45,7 +45,7 @@ const SchemaSetupModal = ({
         try {
             setLoading(true);
             const response = await apiFetch({
-                path: `/gg-data/v1/schema/sql?connection=${connectionName}`
+                path: `/gregius-data/v1/schema/sql?connection=${connectionName}`
             });
 
             if (response.success) {
@@ -84,7 +84,7 @@ const SchemaSetupModal = ({
             setVerifying(true);
             setVerifyResult(null);
             const response = await apiFetch({
-                path: `/gg-data/v1/schema/verify`,
+                path: `/gregius-data/v1/schema/verify`,
                 method: 'POST',
                 data: {
                     connection: connectionName

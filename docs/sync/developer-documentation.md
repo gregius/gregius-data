@@ -10,12 +10,12 @@ Upstream Architecture: [architecture.md](architecture.md)
 
 ## 1. Component Overview
 
-### Lifecycle Hooks (`GG_Data_Lifecycle_Hooks`)
+### Lifecycle Hooks (`Gregius_Data_Lifecycle_Hooks`)
 
 Registers WordPress action listeners for post/status/term/meta changes. Filters by:
-- Synced post types (from wp_options: `gg_synced_post_types`)
-- Enabled statuses (from wp_options: `gg_enabled_statuses`)
-- Real-time sync enabled (from wp_options: `gg_realtime_sync_enabled`)
+- Synced post types (from wp_options: `gregius_data_synced_post_types`)
+- Enabled statuses (from wp_options: `gregius_data_enabled_statuses`)
+- Real-time sync enabled (from wp_options: `gregius_data_realtime_sync_enabled`)
 
 Example:
 ```php
@@ -24,7 +24,7 @@ add_action('save_post', [$lifecycle_hooks, 'on_post_saved']);
 
 All errors logged via `error_log()`; never raised to WordPress.
 
-### Batch Processors (`GG_Data_Post_Sync`, `GG_Data_Taxonomy_Sync`)
+### Batch Processors (`Gregius_Data_Post_Sync`, `Gregius_Data_Taxonomy_Sync`)
 
 Implements offset paginated loops for batch operations. Signature:
 ```php
@@ -40,11 +40,11 @@ public function sync_batch(int $batch_size = 100, int $offset = 0): array {
 
 Retrieve `has_more` to determine whether to paginate; increment offset and re-call.
 
-### Content Cleaner (`GG_Data_Content_Cleaner`)
+### Content Cleaner (`Gregius_Data_Content_Cleaner`)
 
 Accepts post content; returns cleaned text and MD5 hash. Changes detected by hash comparison:
 ```php
-$cleaner = new GG_Data_Content_Cleaner();
+$cleaner = new Gregius_Data_Content_Cleaner();
 $result = $cleaner->clean($post_id);
 // $result = ['text' => '...', 'hash' => 'abc123...', 'changed' => true]
 ```
@@ -56,7 +56,7 @@ Behavior contract:
 - If chunk generation or chunk write fails, the clean operation returns failure and sync surfaces that failure.
 - Hash-match skip paths still support rechunking when chunk drift is detected.
 
-### Sync Service (`GG_Data_Sync_Service`)
+### Sync Service (`Gregius_Data_Sync_Service`)
 
 Public orchestration facade:
 ```php
@@ -66,7 +66,7 @@ public function delete(int $post_id, int $site_id): bool { }
 
 Invokes cleaner → chunker → db provider. Returns true if all internal steps succeed.
 
-### Batch Delete Flow (`GG_Data_REST_Sync_Controller::batch_delete_sync`)
+### Batch Delete Flow (`Gregius_Data_REST_Sync_Controller::batch_delete_sync`)
 
 Deletes synchronized content from PostgreSQL in a destructive batch loop. This is a maintenance/internal endpoint intended for controlled operator or automation usage, not routine dashboard operations.
 
@@ -83,26 +83,26 @@ Behavior:
 - Stops if a batch deletes `0` rows while rows still remain, which prevents infinite polling.
 - Requires deliberate invocation because the operation is irreversible for the targeted synchronized rows.
 
-Batch-size extension hooks: `gg_data_sync_delete_batch_size` (global) plus per-table variants `gg_data_sync_delete_batch_size_wp_posts_chunks`, `..._wp_posts_clean`, and `..._wp_posts`. See the canonical hook catalog (docs/hooks/developer-documentation.md) for signatures and defaults.
+Batch-size extension hooks: `gregius_data_sync_delete_batch_size` (global) plus per-table variants `gregius_data_sync_delete_batch_size_wp_posts_chunks`, `..._wp_posts_clean`, and `..._wp_posts`. See the canonical hook catalog (docs/hooks/developer-documentation.md) for signatures and defaults.
 
 Use the global filter for a default sync-wide limit and the table-specific filters when one table needs a different batch size.
 
-### Metadata Manager (`GG_Data_Sync_Metadata_Manager`)
+### Metadata Manager (`Gregius_Data_Sync_Metadata_Manager`)
 
-Tracks sync state in `wp_gg_sync_metadata` table:
+Tracks sync state in `wp_gregius_data_sync_metadata` table:
 ```php
-$mgr = new GG_Data_Sync_Metadata_Manager();
+$mgr = new Gregius_Data_Sync_Metadata_Manager();
 $mgr->mark_synced($post_id, $site_id, $chunk_count);
 $mgr->get_site_stats($site_id); // [wp_count => 42, pg_count => 41, drift => 1]
 ```
 
 Used by dashboard and validation components. Atomic with sync operations.
 
-### Validators (`GG_Data_Sync_Validator`)
+### Validators (`Gregius_Data_Sync_Validator`)
 
 Fast validation (metadata-based, <500ms):
 ```php
-$validator = new GG_Data_Sync_Validator();
+$validator = new Gregius_Data_Sync_Validator();
 $validator->validate_metadata($site_id);
 // Returns: ['missing' => [...], 'orphaned' => [...], 'drift' => 3]
 ```
@@ -118,7 +118,7 @@ $validator->validate_full($site_id);
 
 ### Batch Sync
 
-**POST** `/wp-json/gg-data/v1/sync/post-type/{type}`
+**POST** `/wp-json/gregius-data/v1/sync/post-type/{type}`
 
 Parameters:
 - `type` (path): post, page, etc.
@@ -141,7 +141,7 @@ Required capability: `manage_options`
 
 ### Batch Delete Synced Content (Maintenance/Internal)
 
-**POST** `/wp-json/gg-data/v1/sync/batch-delete`
+**POST** `/wp-json/gregius-data/v1/sync/batch-delete`
 
 Use this endpoint only for controlled maintenance/reset workflows. It is intentionally destructive and is not part of the routine sync dashboard flow.
 
@@ -171,7 +171,7 @@ Required capability: `manage_options`
 
 ### List Configuration
 
-**GET** `/wp-json/gg-data/v1/sync/configuration?connection=default`
+**GET** `/wp-json/gregius-data/v1/sync/configuration?connection=default`
 
 Response:
 ```json
@@ -184,7 +184,7 @@ Response:
 
 ### Clean Content
 
-**POST** `/wp-json/gg-data/v1/sync/post-type/{type}/clean`
+**POST** `/wp-json/gregius-data/v1/sync/post-type/{type}/clean`
 
 Parameters:
 - `type` (path): post type slug (post, page, etc.)
@@ -201,7 +201,7 @@ Response:
 
 ### Fast Validation (Auto-Loaded by Dashboard)
 
-**GET** `/wp-json/gg-data/v1/sync/validation/fast?connection=default`
+**GET** `/wp-json/gregius-data/v1/sync/validation/fast?connection=default`
 
 This endpoint is called automatically by the sync dashboard on page load. Returns per-post-type and per-entity drift data with health status badges.
 
@@ -234,7 +234,7 @@ Response:
 
 ### Manual Validation (Operator/Internal)
 
-**POST** `/wp-json/gg-data/v1/sync/validation/run?connection=default`
+**POST** `/wp-json/gregius-data/v1/sync/validation/run?connection=default`
 
 Warning: This endpoint performs a full table-scan and is not called by the dashboard UI. Intended for operator use or troubleshooting.
 
@@ -276,7 +276,7 @@ Response:
 ### Sync Metadata Row
 
 ```
-wp_gg_sync_metadata
+wp_gregius_data_sync_metadata
 ├─ post_id: integer
 ├─ site_id: integer
 ├─ last_synced: timestamp
@@ -289,7 +289,7 @@ wp_gg_sync_metadata
 
 ## 4. Provider-Specific Behavior
 
-### Supabase/PostgREST (`GG_Data_PostgREST_Provider`)
+### Supabase/PostgREST (`Gregius_Data_PostgREST_Provider`)
 
 - **Supports** `bulk_upsert`: Single HTTP request commits up to 1,000 posts in one round-trip.
 - **Row-Level Security (RLS)**: Enabled on all tables. Service role (anon key) has unrestricted access if properly configured.
@@ -305,7 +305,7 @@ POST /rest/v1/wp_posts_clean?upsert=true
 ]
 ```
 
-### PostgreSQL/PDO (`GG_Data_PostgreSQL_Provider`)
+### PostgreSQL/PDO (`Gregius_Data_PostgreSQL_Provider`)
 
 - **Implements** required bulk provider methods used by sync batch orchestration.
 - **Latency**: Depends on deployment topology and database load.
@@ -319,31 +319,31 @@ POST /rest/v1/wp_posts_clean?upsert=true
 ### Filters: Batch Size
 
 ```php
-apply_filters('gg_data_post_sync_batch_size', 100, $connection_name)
-apply_filters('gg_data_term_sync_batch_size', 500, $connection_name)
+apply_filters('gregius_data_post_sync_batch_size', 100, $connection_name)
+apply_filters('gregius_data_term_sync_batch_size', 500, $connection_name)
 ```
 
 Allows custom batch sizing for post and taxonomy sync flows per connection. Example:
 ```php
-add_filter('gg_data_post_sync_batch_size', function($size, $connection_name) {
+add_filter('gregius_data_post_sync_batch_size', function($size, $connection_name) {
   return 'default' === $connection_name ? 75 : $size;
 }, 10, 2);
 
-add_filter('gg_data_term_sync_batch_size', function($size, $connection_name) {
+add_filter('gregius_data_term_sync_batch_size', function($size, $connection_name) {
   return 'default' === $connection_name ? 300 : $size;
 }, 10, 2);
 ```
 
 ### Filter: Batch Delete Size
 
-`gg_data_sync_delete_batch_size` (global) plus the per-table variants documented in the canonical hook catalog (docs/hooks/developer-documentation.md).
+`gregius_data_sync_delete_batch_size` (global) plus the per-table variants documented in the canonical hook catalog (docs/hooks/developer-documentation.md).
 
 These filters let operators tune destructive batch deletes for direct API or automation workflows without changing cursor handling.
 
 ### Filter: Chunking Strategy
 
 ```php
-apply_filters('gg_data_chunking_strategy', 'default', $connection_name, $context)
+apply_filters('gregius_data_chunking_strategy', 'default', $connection_name, $context)
 ```
 
 Supported values: `fixed_size`, `semantic`. Operators can configure via wp-admin settings.
@@ -351,7 +351,7 @@ Supported values: `fixed_size`, `semantic`. Operators can configure via wp-admin
 ### Action: Chunking Strategy Resolved
 
 ```php
-do_action('gg_data_chunking_strategy_resolved', $strategy_key, $connection_name, $context)
+do_action('gregius_data_chunking_strategy_resolved', $strategy_key, $connection_name, $context)
 ```
 
 Fired after the chunker resolves the chunking strategy for a connection. Useful for logging or monitoring which strategy was selected.
@@ -359,7 +359,7 @@ Fired after the chunker resolves the chunking strategy for a connection. Useful 
 ### Action: Sync Post Types Updated
 
 ```php
-do_action('gg_data_sync_post_types_updated', $connection_name, $enabled_post_types)
+do_action('gregius_data_sync_post_types_updated', $connection_name, $enabled_post_types)
 ```
 
 Fired when sync configuration is saved. Allows downstream systems to react to changes in synced post types.
@@ -373,13 +373,13 @@ Fired when sync configuration is saved. Allows downstream systems to react to ch
 **Root cause:** Real-time sync errors OR batch operation incomplete.
 
 **Diagnosis:**
-1. Run fast validation: `GET /wp-json/gg-data/v1/sync/validation/fast?connection=default`
+1. Run fast validation: `GET /wp-json/gregius-data/v1/sync/validation/fast?connection=default`
 2. Inspect `missing` IDs; check WordPress posts exist.
 3. Review error logs for sync failures.
 
 **Resolution:**
 1. Review error log for exceptions.
-2. Run batch sync for affected post type: `POST /wp-json/gg-data/v1/sync/post-type/post`
+2. Run batch sync for affected post type: `POST /wp-json/gregius-data/v1/sync/post-type/post`
 3. Repeat fast validation; confirm drift resolved.
 
 ### Symptom: Batch operation times out
@@ -399,7 +399,7 @@ Fired when sync configuration is saved. Allows downstream systems to react to ch
 **Root cause:** A destructive delete was paginated from a shrinking client-side offset instead of letting the controller manage the cursor.
 
 **Diagnosis:**
-1. Confirm the direct API or automation request is going to `/wp-json/gg-data/v1/sync/batch-delete`.
+1. Confirm the direct API or automation request is going to `/wp-json/gregius-data/v1/sync/batch-delete`.
 2. Check the response for `has_more`, `deleted`, and `remaining`.
 3. Inspect any custom batch-size filters that may be forcing a zero or tiny batch.
 
@@ -413,8 +413,8 @@ Fired when sync configuration is saved. Allows downstream systems to react to ch
 **Root cause:** Site ID mismatch in metadata OR sync ran with wrong site context.
 
 **Diagnosis:**
-1. Confirm `wp_gg_sync_metadata.site_id` matches request site_id.
-2. Check wp-cli: `wp option get gg_enabled_sites` across all sites.
+1. Confirm `wp_gregius_data_sync_metadata.site_id` matches request site_id.
+2. Check wp-cli: `wp option get gregius_data_enabled_sites` across all sites.
 
 **Resolution:**
 1. Ensure sync endpoints are called with correct `site_id` query parameter.
@@ -426,7 +426,7 @@ Fired when sync configuration is saved. Allows downstream systems to react to ch
 
 ### Consume Synced Content (Search Indexing)
 
-The sync subsystem does not currently fire a per-post sync-complete action. To react to synced content, use the `gg_data_sync_post_types_updated` action which fires when sync configuration changes, or poll sync metadata for changes.
+The sync subsystem does not currently fire a per-post sync-complete action. To react to synced content, use the `gregius_data_sync_post_types_updated` action which fires when sync configuration changes, or poll sync metadata for changes.
 
 ### Consume Synced Chunks (Vector Embedding)
 

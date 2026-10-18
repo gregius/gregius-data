@@ -47,7 +47,7 @@ This subsystem bridges WordPress plugin lifecycle events and connection-scoped P
 - Persist plugin version in WordPress options.
 - Retrieve and persist schema version per connection in categorized settings.
 - Migrate legacy schema-version options into the settings table format.
-- Expose schema status/create/upgrade/verify/sql routes under `gg-data/v1/schema`.
+- Expose schema status/create/upgrade/verify/sql routes under `gregius-data/v1/schema`.
 - Run connection-scoped schema upgrades with transactional rollback on failures.
 - Signal update availability when schema version lags plugin version.
 
@@ -64,10 +64,10 @@ This subsystem bridges WordPress plugin lifecycle events and connection-scoped P
 - `docs/updates/architecture.md`
 - `docs/updates/developer-documentation.md`
 - `gregius-data.php`
-- `includes/class-gg-data-activator.php`
-- `includes/class-gg-data-schema-manager.php`
-- `includes/api/class-gg-data-rest-schema-controller.php`
-- `includes/class-gg-data-settings-manager.php`
+- `includes/class-gregius-data-activator.php`
+- `includes/class-gregius-data-schema-manager.php`
+- `includes/api/class-gregius-data-rest-schema-controller.php`
+- `includes/class-gregius-data-settings-manager.php`
 
 ## 3. Software Requirements
 
@@ -81,19 +81,19 @@ Requirement notation:
 | ID | Requirement | Priority |
 |---|---|---|
 | UPD-FR-01 | The software MUST register lifecycle hooks that trigger activation, deactivation, and version-check behaviors for updates control flow. | Must |
-| UPD-FR-02 | The software MUST compare installed plugin version (`gg_data_db_version`) against runtime version and execute upgrade dispatcher logic when the installed version is older. | Must |
+| UPD-FR-02 | The software MUST compare installed plugin version (`gregius_data_db_version`) against runtime version and execute upgrade dispatcher logic when the installed version is older. | Must |
 | UPD-FR-03 | The software MUST persist plugin version state in WordPress options after upgrade dispatcher completion. | Must |
 | UPD-FR-04 | The software MUST provide per-connection schema-version retrieval and update APIs. | Must |
-| UPD-FR-05 | The software MUST support legacy schema-version fallback (`gg_data_schema_version_<connection>`) and migrate it into current settings storage when encountered. | Must |
-| UPD-FR-06 | The software MUST expose schema status/create/upgrade REST routes under `gg-data/v1/schema`. | Must |
-| UPD-FR-07 | The software MUST expose Supabase/PostgREST-specific verify and SQL download routes under `gg-data/v1/schema`. | Must |
+| UPD-FR-05 | The software MUST support legacy schema-version fallback (`gregius_data_schema_version_<connection>`) and migrate it into current settings storage when encountered. | Must |
+| UPD-FR-06 | The software MUST expose schema status/create/upgrade REST routes under `gregius-data/v1/schema`. | Must |
+| UPD-FR-07 | The software MUST expose Supabase/PostgREST-specific verify and SQL download routes under `gregius-data/v1/schema`. | Must |
 | UPD-FR-08 | The software MUST report schema update availability when schema version is lower than plugin version for a connection. | Must |
 
 ### 3.2 Data and Contract Requirements
 
 | ID | Requirement | Priority |
 |---|---|---|
-| UPD-DR-01 | Plugin version state MUST be stored in `gg_data_db_version`. | Must |
+| UPD-DR-01 | Plugin version state MUST be stored in `gregius_data_db_version`. | Must |
 | UPD-DR-02 | Schema version state MUST be stored in settings category `schema` with key `version` per connection name. | Must |
 | UPD-DR-03 | Schema version updates MUST also persist an `updated_at` timestamp in settings category `schema` for the same connection. | Must |
 | UPD-DR-04 | Schema status responses MUST include compatibility fields for frontend consumption including `schema_version`, `plugin_version`, and update flags. | Must |
@@ -140,11 +140,11 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| UPD-FR-01, UPD-FR-02, UPD-FR-03, UPD-DR-01 | `gregius-data.php`, `includes/class-gg-data-activator.php` | Hook registration and plugin version option management |
-| UPD-FR-04, UPD-FR-05, UPD-DR-02, UPD-DR-03, UPD-QR-05 | `includes/class-gg-data-schema-manager.php` | Per-connection version APIs and legacy fallback migration |
-| UPD-FR-06, UPD-FR-07, UPD-DR-04..06, UPD-OR-04, UPD-OR-05 | `includes/api/class-gg-data-rest-schema-controller.php` | Schema route contracts and permission gate |
-| UPD-FR-08, UPD-OR-02, UPD-OR-03, UPD-QR-01, UPD-QR-03, UPD-QR-04 | `includes/class-gg-data-schema-manager.php`, `includes/api/class-gg-data-rest-schema-controller.php` | Version comparison and status compatibility fields |
-| UPD-OR-01, UPD-OR-06, UPD-QR-02 | `includes/class-gg-data-schema-manager.php` | Transaction handling, rollback, and logging behavior |
+| UPD-FR-01, UPD-FR-02, UPD-FR-03, UPD-DR-01 | `gregius-data.php`, `includes/class-gregius-data-activator.php` | Hook registration and plugin version option management |
+| UPD-FR-04, UPD-FR-05, UPD-DR-02, UPD-DR-03, UPD-QR-05 | `includes/class-gregius-data-schema-manager.php` | Per-connection version APIs and legacy fallback migration |
+| UPD-FR-06, UPD-FR-07, UPD-DR-04..06, UPD-OR-04, UPD-OR-05 | `includes/api/class-gregius-data-rest-schema-controller.php` | Schema route contracts and permission gate |
+| UPD-FR-08, UPD-OR-02, UPD-OR-03, UPD-QR-01, UPD-QR-03, UPD-QR-04 | `includes/class-gregius-data-schema-manager.php`, `includes/api/class-gregius-data-rest-schema-controller.php` | Version comparison and status compatibility fields |
+| UPD-OR-01, UPD-OR-06, UPD-QR-02 | `includes/class-gregius-data-schema-manager.php` | Transaction handling, rollback, and logging behavior |
 
 ## 6. Appendices
 

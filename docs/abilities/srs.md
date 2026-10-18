@@ -63,10 +63,10 @@ The subsystem bridges Gregius plugin runtime services with WordPress Abilities A
 
 - `docs/abilities/architecture.md`
 - `docs/abilities/developer-documentation.md`
-- `includes/class-gg-data-abilities-manager.php`
-- `includes/rag/class-gg-data-rag-service.php`
-- `includes/class-gg-data-settings-manager.php`
-- `includes/class-gg-data-model-registry.php`
+- `includes/class-gregius-data-abilities-manager.php`
+- `includes/rag/class-gregius-data-rag-service.php`
+- `includes/class-gregius-data-settings-manager.php`
+- `includes/class-gregius-data-model-registry.php`
 
 ## 3. Software Requirements
 
@@ -139,11 +139,11 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| ABIL-FR-01..03, ABIL-OR-01 | `includes/class-gg-data-abilities-manager.php` | Registration hooks, category setup, API-availability guards |
-| ABIL-FR-05..07, ABIL-DR-01..03, ABIL-OR-02..03 | `includes/class-gg-data-abilities-manager.php` | Ability definitions, permission callbacks, schema/meta contracts |
-| ABIL-FR-08, ABIL-DR-04, ABIL-DR-06 | `includes/class-gg-data-abilities-manager.php`, `includes/rag/class-gg-data-rag-service.php` | Answer callback flow, options normalization, validation errors |
-| ABIL-FR-09, ABIL-DR-08, ABIL-DR-09 | `includes/class-gg-data-abilities-manager.php`, `includes/class-gg-data-settings-manager.php`, `includes/class-gg-data-connection-model-manager.php` | Connection listing normalization and optional embedding model context |
-| ABIL-FR-10, ABIL-DR-05, ABIL-QR-03 | `includes/class-gg-data-abilities-manager.php`, `includes/class-gg-data-model-registry.php` | Model listing/type filtering over global provider registry |
+| ABIL-FR-01..03, ABIL-OR-01 | `includes/class-gregius-data-abilities-manager.php` | Registration hooks, category setup, API-availability guards |
+| ABIL-FR-05..07, ABIL-DR-01..03, ABIL-OR-02..03 | `includes/class-gregius-data-abilities-manager.php` | Ability definitions, permission callbacks, schema/meta contracts |
+| ABIL-FR-08, ABIL-DR-04, ABIL-DR-06 | `includes/class-gregius-data-abilities-manager.php`, `includes/rag/class-gregius-data-rag-service.php` | Answer callback flow, options normalization, validation errors |
+| ABIL-FR-09, ABIL-DR-08, ABIL-DR-09 | `includes/class-gregius-data-abilities-manager.php`, `includes/class-gregius-data-settings-manager.php`, `includes/class-gregius-data-connection-model-manager.php` | Connection listing normalization and optional embedding model context |
+| ABIL-FR-10, ABIL-DR-05, ABIL-QR-03 | `includes/class-gregius-data-abilities-manager.php`, `includes/class-gregius-data-model-registry.php` | Model listing/type filtering over global provider registry |
 
 ## 6. Appendices
 

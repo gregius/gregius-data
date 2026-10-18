@@ -49,7 +49,7 @@ WordPress Plugin Lifecycle
         │  gregius-data.php
         │    register_activation_hook()
         │    ▼
-        │  GG_Data_Activator::activate()
+        │  Gregius_Data_Activator::activate()
         │    ├─ run_upgrades()
         │    ├─ create settings / sync metadata / logs tables
         │    ├─ initialize default sync settings
@@ -61,8 +61,8 @@ WordPress Plugin Lifecycle
         │    ▼
         │  admin_init
         │    ▼
-        │  GG_Data_Activator::check_version()
-        │    ├─ compare gg_data_db_version with code version
+        │  Gregius_Data_Activator::check_version()
+        │    ├─ compare gregius_data_db_version with code version
         │    ├─ run_upgrades() when outdated
         │    ├─ seed factory prompt (guarded)
         │    └─ migrate factory prompt placeholders (guarded)
@@ -71,9 +71,9 @@ WordPress Plugin Lifecycle
         │    ▼
         │  register_deactivation_hook()
         │    ▼
-        │  GG_Data_Deactivator::deactivate()
+        │  Gregius_Data_Deactivator::deactivate()
         │    ├─ clear active + deprecated cron hooks
-        │    ├─ set gg_data_clear_localstorage transient
+        │    ├─ set gregius_data_clear_localstorage transient
         │    └─ preserve plugin data
         │
         └─ Uninstall
@@ -102,28 +102,28 @@ Mapping:
    - Registers the admin-init version-check callback.
    - Registers cron schedules before event scheduling occurs.
 
-2. **Activator Component** (`GG_Data_Activator`)
+2. **Activator Component** (`Gregius_Data_Activator`)
    - Performs upgrades and version tracking.
    - Creates settings, sync metadata, and logs tables via collaborating managers.
-   - Initializes default sync options under `gg_data_sync_*` keys.
+   - Initializes default sync options under `gregius_data_sync_*` keys.
    - Schedules connection-health and daily-validation cron events.
    - Adds administrator capability.
    - Seeds and migrates factory prompt content through guarded helper methods.
 
-3. **Deactivator Component** (`GG_Data_Deactivator`)
+3. **Deactivator Component** (`Gregius_Data_Deactivator`)
    - Clears active and deprecated cron hooks.
    - Removes an administrator capability according to current implementation.
    - Sets the transient consumed by the admin-side localStorage cleanup bridge.
    - Preserves plugin state by design.
 
-4. **Cron Manager Component** (`GG_Data_Cron_Manager`)
+4. **Cron Manager Component** (`Gregius_Data_Cron_Manager`)
    - Registers custom cron schedule definitions.
    - Provides schedule metadata for runtime use and debugging.
 
-5. **Assets Cleanup Bridge** (`gg_data_clear_localstorage_script()`)
+5. **Assets Cleanup Bridge** (`gregius_data_clear_localstorage_script()`)
    - Runs on `admin_head`.
-   - Detects `gg_data_clear_localstorage` transient.
-   - Injects JavaScript to remove `gg_data_*` localStorage keys.
+   - Detects `gregius_data_clear_localstorage` transient.
+   - Injects JavaScript to remove `gregius_data_*` localStorage keys.
 
 6. **Uninstall Handler** (`uninstall.php`)
    - Executes destructive cleanup only when called through WordPress uninstall flow.
@@ -150,20 +150,20 @@ Mapping:
 Plugin activated
     │
     ▼
-register_activation_hook → GG_Data_Activator::activate()
+register_activation_hook → Gregius_Data_Activator::activate()
     │
     ├─ run_upgrades()
-    │   └─ update_option('gg_data_db_version', VERSION)
+    │   └─ update_option('gregius_data_db_version', VERSION)
     │
     ├─ create settings tables for all sites
     ├─ create sync metadata tables for all sites
     ├─ create logs tables for all sites + migrate legacy log options
     ├─ initialize search settings
     ├─ init_default_sync_settings()
-    │   └─ only update missing gg_data_sync_* options
-    ├─ schedule gg_data_check_connection_health when missing
-    ├─ schedule gg_data_daily_validation when missing
-    ├─ add_cap('manage_gg_pg') to administrator
+    │   └─ only update missing gregius_data_sync_* options
+    ├─ schedule gregius_data_check_connection_health when missing
+    ├─ schedule gregius_data_daily_validation when missing
+    ├─ add_cap('manage_gregius_data') to administrator
     └─ seed_default_prompt() (guarded by option)
 ```
 
@@ -173,9 +173,9 @@ register_activation_hook → GG_Data_Activator::activate()
 admin_init
     │
     ▼
-GG_Data_Activator::check_version()
+Gregius_Data_Activator::check_version()
     │
-    ├─ installed_version = get_option('gg_data_db_version', '0.0.0')
+    ├─ installed_version = get_option('gregius_data_db_version', '0.0.0')
     ├─ version_compare(installed_version, VERSION, '<')?
     │   ├─ YES → run_upgrades()
     │   └─ NO  → continue
@@ -189,24 +189,24 @@ GG_Data_Activator::check_version()
 Plugin deactivated
     │
     ▼
-GG_Data_Deactivator::deactivate()
+Gregius_Data_Deactivator::deactivate()
     │
     ├─ clear active cron hooks
     ├─ clear deprecated cron hooks
-    ├─ remove administrator capability (`manage_gg_pg`)
-    ├─ set_transient('gg_data_clear_localstorage', true, 1 hour)
+    ├─ remove administrator capability (`manage_gregius_data`)
+    ├─ set_transient('gregius_data_clear_localstorage', true, 1 hour)
     └─ preserve plugin options, tables, and user data
 
 Next admin request
     │
     ▼
-admin_head → gg_data_clear_localstorage_script()
+admin_head → gregius_data_clear_localstorage_script()
     │
     ├─ transient exists?
     │   ├─ NO → no-op
     │   └─ YES:
     │       ├─ delete transient
-    │       └─ inject JS to remove localStorage keys with prefix gg_data_
+    │       └─ inject JS to remove localStorage keys with prefix gregius_data_
 ```
 
 ### 4.4 Uninstall Flow
@@ -215,20 +215,20 @@ admin_head → gg_data_clear_localstorage_script()
 Plugin uninstalled via WordPress
     │
     ▼
-uninstall.php → GG_Data_Uninstaller::run()
+uninstall.php → Gregius_Data_Uninstaller::run()
     │
     ├─ read retention flag (site option on multisite, option otherwise)
     ├─ determine blog_ids (single-site => [1], multisite => all blogs)
     ├─ foreach blog_id:
     │   ├─ switch_to_blog() when multisite
     │   ├─ clear cron (Action Scheduler when available, else WP-Cron)
-    │   ├─ remove manage_gg_pg capability
-    │   ├─ delete gg_data_clear_localstorage transient
+    │   ├─ remove manage_gregius_data capability
+    │   ├─ delete gregius_data_clear_localstorage transient
     │   ├─ if retention flag enabled:
-    │   │   ├─ delete gg_data_* and gregius_data_* options
+    │   │   ├─ delete gregius_data_* and gregius_data_* options
     │   │   ├─ delete transient and site transient keys
-    │   │   ├─ drop gg_settings, gg_sync_metadata, and gg_data_logs tables
-    │   │   └─ delete gg_prompt posts, _gg_prompt_* meta, and gg_prompt_type terms
+    │   │   ├─ drop gregius_data_settings, gregius_data_sync_metadata, and gregius_data_logs tables
+    │   │   └─ delete gregius_prompt posts, _gregius_prompt_* meta, and gregius_prompt_type terms
     │   └─ restore_current_blog() when multisite
     ├─ delete retention flag
     └─ if flag enabled: delete network-level sitemeta keys; flush object cache
@@ -329,8 +329,8 @@ Linked requirements:
 ### AD-06: Opt-in Data Removal on Uninstall
 
 Decision:
-- Data removal on uninstall is governed by the `gg_data_remove_data_on_uninstall` flag, defaulting to false (preserve).
-- The flag is surfaced through the deactivation modal and writable via `POST /gg-data/v1/data-retention`.
+- Data removal on uninstall is governed by the `gregius_data_remove_data_on_uninstall` flag, defaulting to false (preserve).
+- The flag is surfaced through the deactivation modal and writable via `POST /gregius-data/v1/data-retention`.
 
 Rationale:
 - Preserve-by-default protects user data and satisfies WordPress.org data-handling expectations.

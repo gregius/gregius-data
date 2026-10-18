@@ -1,7 +1,7 @@
 # Architecture Description: REST API Subsystem
 
 Standard: ISO/IEC/IEEE 42010:2022  
-Component: REST API Subsystem (`gg-data/v1`)  
+Component: REST API Subsystem (`gregius-data/v1`)  
 Version: 1.0.0  
 Date: 2026-03-30  
 Upstream Specification: [srs.md](srs.md)
@@ -47,10 +47,10 @@ Explicitly excluded:
 │  Dashboard UI / Frontend / Integrations                               │
 │             │                                                         │
 │             ▼                                                         │
-│      /wp-json/gg-data/v1/*                                            │
+│      /wp-json/gregius-data/v1/*                                            │
 │             │                                                         │
 │             ▼                                                         │
-│   GG_Data_REST_API Route Registration Layer                           │
+│   Gregius_Data_REST_API Route Registration Layer                           │
 │             │                                                         │
 │   ┌─────────┴──────────────────────────────────────────────────────┐  │
 │   │ Domain Controllers                                             │  │
@@ -79,7 +79,7 @@ Mapping:
 ### 3.1 Component Decomposition
 
 1. **Bootstrap and Registry Component**
-   - `GG_Data_REST_API` binds `rest_api_init` and registers domain controllers.
+   - `Gregius_Data_REST_API` binds `rest_api_init` and registers domain controllers.
 
 2. **Administrative Controllers**
    - Settings, connections, connection health/models, schema, sync, sync validation, search, vectors, retry queue, models, prompts, logs.
@@ -97,7 +97,7 @@ Mapping:
 ### 3.2 Permission Model Components
 
 - **Admin capability model:** most operational controllers use admin checks (`manage_options` or equivalent wrappers).
-- **Filter-policy model:** RAG uses `gg_data_rag_endpoint_permission` and optional security hooks/settings.
+- **Filter-policy model:** RAG uses `gregius_data_rag_endpoint_permission` and optional security hooks/settings.
 - **Ownership model:** interactions endpoints allow users to access their own records (read/update/delete), while direct create is admin-governed and non-admin creation is chat-lifecycle driven.
 
 Mapping:
@@ -141,7 +141,7 @@ Structured Success/Error Response
 - **RAG flow:** route permission can be tightened via filter/security hooks and includes specialized response metadata contracts.
 - **RAG metadata flow:** optional `metadata_filter` and `metadata_manifest` request payload fields are sanitized at entry and propagated to runtime retrieval options.
 - **Interactions flow:** permission logic depends on authentication, post ownership, direct-create restriction for non-admin users, and optional super-admin multisite site context.
-- **Streaming flow:** SSE requests can be gated by `gg_data_rag_rate_limit` filter.
+- **Streaming flow:** SSE requests can be gated by `gregius_data_rag_rate_limit` filter.
 - **Logs purge flow:** `DELETE /logs/purge` delegates to logger retention purge for current site context and returns deleted row counts.
 - **Vector batch delete flow:** `POST /vectors/batch-delete` performs iterative delete-safe progress operations and preserves provider parity across PDO and PostgREST/Supabase.
 
@@ -155,7 +155,7 @@ Mapping:
 ### AD-01: Versioned Namespace as Primary Compatibility Boundary
 
 Decision:
-- Use `gg-data/v1` as the single namespace for current REST contracts.
+- Use `gregius-data/v1` as the single namespace for current REST contracts.
 
 Rationale:
 - Keeps route ownership unified.

@@ -33,7 +33,7 @@ Repository path: public/wp-content/plugins/gregius-data
 
 #### 1.3.1 System Context
 
-The retry queue subsystem sits between the sync database operations layer and PostgreSQL. When sync database operations fail at one of 5 instrumented call sites in `GG_Data_DB`, the retry queue classifies the error and either queues it for automatic retry or discards it as a permanent failure.
+The retry queue subsystem sits between the sync database operations layer and PostgreSQL. When sync database operations fail at one of 5 instrumented call sites in `Gregius_Data_DB`, the retry queue classifies the error and either queues it for automatic retry or discards it as a permanent failure.
 
 #### 1.3.2 System Functions Summary
 
@@ -76,13 +76,13 @@ The retry queue subsystem sits between the sync database operations layer and Po
 ## 2. References
 
 - docs/retry-queue/architecture.md
-- includes/class-gg-data-error-handler.php
-- includes/class-gg-data-retry-queue.php
-- includes/api/class-gg-data-rest-retry-queue-controller.php
-- includes/class-gg-data-db.php
-- includes/class-gg-data-deactivator.php
+- includes/class-gregius-data-error-handler.php
+- includes/class-gregius-data-retry-queue.php
+- includes/api/class-gregius-data-rest-retry-queue-controller.php
+- includes/class-gregius-data-db.php
+- includes/class-gregius-data-deactivator.php
 - uninstall.php
-- includes/class-gg-data-uninstaller.php
+- includes/class-gregius-data-uninstaller.php
 - assets/src/scripts/dashboard/components/sync/RetryQueueCard.js
 
 ## 3. Software Requirements
@@ -109,7 +109,7 @@ Requirement notation:
 | RQ-FR-11 | The software MUST expose a REST endpoint to clear the entire dead letter queue. | Must |
 | RQ-FR-12 | The software MUST support retry dispatch for the queued operation types: sync_meta, delete_post, and delete_meta. | Must |
 | RQ-FR-14 | The software MUST unschedule the WP-Cron retry event on plugin deactivation. | Must |
-| RQ-FR-15 | The software MUST delete queue data from wp_options on plugin uninstall when data removal is enabled via the `gg_data_remove_data_on_uninstall` option; when removal is not enabled, WordPress-side plugin data (including the retry queue) is preserved. | Must |
+| RQ-FR-15 | The software MUST delete queue data from wp_options on plugin uninstall when data removal is enabled via the `gregius_data_remove_data_on_uninstall` option; when removal is not enabled, WordPress-side plugin data (including the retry queue) is preserved. | Must |
 | RQ-FR-16 | The software MUST log all queueing, successful retry, max-retry, and manual operation events with operational context. | Must |
 
 ### 3.2 Data and Contract Requirements
@@ -118,8 +118,8 @@ Requirement notation:
 |---|---|---|
 | RQ-DR-01 | Queue items MUST carry: operation_type, entity_id, error_message, error_type, operation_data, attempt_count, first_attempt, next_retry, and last_error. | Must |
 | RQ-DR-02 | Dead letter items MUST carry all queue item fields plus a moved_to_dead_letter timestamp. | Must |
-| RQ-DR-03 | Queue items MUST be stored under the wp_options key gg_data_retry_queue as a serialized PHP array. | Must |
-| RQ-DR-04 | Dead letter items MUST be stored under the wp_options key gg_data_dead_letter_queue as a serialized PHP array. | Must |
+| RQ-DR-03 | Queue items MUST be stored under the wp_options key gregius_data_retry_queue as a serialized PHP array. | Must |
+| RQ-DR-04 | Dead letter items MUST be stored under the wp_options key gregius_data_dead_letter_queue as a serialized PHP array. | Must |
 | RQ-DR-05 | Error classification results MUST return type (transient, permanent, or unknown), retry_safe (bool), and message string. | Must |
 | RQ-DR-06 | REST queue status responses MUST include pending_retries count, failed_permanently count, items array, and dead_letter_items array. | Must |
 | RQ-DR-07 | REST responses MUST use structured success/error payloads with operator-actionable messages. | Must |
@@ -131,7 +131,7 @@ Requirement notation:
 | RQ-OR-01 | All retry queue REST endpoints MUST enforce the manage_options capability. | Must |
 | RQ-OR-02 | Queue processing MUST NOT block the WordPress request cycle; all processing MUST occur via WP-Cron callback. | Must |
 | RQ-OR-03 | The subsystem MUST preserve queue data in wp_options on plugin deactivation to allow recovery on reactivation. | Must |
-| RQ-OR-04 | The subsystem MUST clear retry-queue WP-Cron events on plugin uninstall unconditionally, and MUST delete retry-queue wp_options data when data removal is enabled via the `gg_data_remove_data_on_uninstall` option. | Must |
+| RQ-OR-04 | The subsystem MUST clear retry-queue WP-Cron events on plugin uninstall unconditionally, and MUST delete retry-queue wp_options data when data removal is enabled via the `gregius_data_remove_data_on_uninstall` option. | Must |
 | RQ-OR-05 | Sync metadata MUST NOT be updated as synced until a retry operation succeeds. | Must |
 | RQ-OR-06 | The subsystem MUST log all retry queue activity with enough context for operator diagnosis. | Must |
 
@@ -162,16 +162,16 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| RQ-FR-01, RQ-DR-05 | includes/class-gg-data-error-handler.php | Error classification patterns and classify_error() return contract |
-| RQ-FR-02 to RQ-FR-08, RQ-DR-01 to RQ-DR-04 | includes/class-gg-data-retry-queue.php | Queue item lifecycle, retry scheduling, dead letter management |
-| RQ-FR-09 to RQ-FR-11, RQ-DR-06 to RQ-DR-07 | includes/api/class-gg-data-rest-retry-queue-controller.php | REST endpoint registration and response contracts |
-| RQ-FR-12 | includes/class-gg-data-retry-queue.php (retry_operation method) | Queued operation-type dispatch |
-| RQ-FR-14 | includes/class-gg-data-deactivator.php | WP-Cron event unscheduling on deactivation |
-| RQ-FR-15, RQ-OR-04 | uninstall.php, includes/class-gg-data-uninstaller.php | wp_options cleanup on uninstall (retention-flag gated) |
-| RQ-FR-16, RQ-OR-06 | includes/class-gg-data-retry-queue.php (logging calls) | Operational log coverage |
-| RQ-FR-05, RQ-OR-02 | includes/class-gg-data-retry-queue.php (constructor, process_queue) | WP-Cron scheduling and background-only processing |
-| RQ-OR-01 | includes/api/class-gg-data-rest-retry-queue-controller.php (permission_callback) | manage_options enforcement |
-| RQ-OR-05 | includes/class-gg-data-retry-queue.php, includes/class-gg-data-db.php | Sync metadata update deferred until retry success |
+| RQ-FR-01, RQ-DR-05 | includes/class-gregius-data-error-handler.php | Error classification patterns and classify_error() return contract |
+| RQ-FR-02 to RQ-FR-08, RQ-DR-01 to RQ-DR-04 | includes/class-gregius-data-retry-queue.php | Queue item lifecycle, retry scheduling, dead letter management |
+| RQ-FR-09 to RQ-FR-11, RQ-DR-06 to RQ-DR-07 | includes/api/class-gregius-data-rest-retry-queue-controller.php | REST endpoint registration and response contracts |
+| RQ-FR-12 | includes/class-gregius-data-retry-queue.php (retry_operation method) | Queued operation-type dispatch |
+| RQ-FR-14 | includes/class-gregius-data-deactivator.php | WP-Cron event unscheduling on deactivation |
+| RQ-FR-15, RQ-OR-04 | uninstall.php, includes/class-gregius-data-uninstaller.php | wp_options cleanup on uninstall (retention-flag gated) |
+| RQ-FR-16, RQ-OR-06 | includes/class-gregius-data-retry-queue.php (logging calls) | Operational log coverage |
+| RQ-FR-05, RQ-OR-02 | includes/class-gregius-data-retry-queue.php (constructor, process_queue) | WP-Cron scheduling and background-only processing |
+| RQ-OR-01 | includes/api/class-gregius-data-rest-retry-queue-controller.php (permission_callback) | manage_options enforcement |
+| RQ-OR-05 | includes/class-gregius-data-retry-queue.php, includes/class-gregius-data-db.php | Sync metadata update deferred until retry success |
 | RQ-QR-01 to RQ-QR-05 | docs/retry-queue/architecture.md, implementation files listed in References | Quality, determinism, and boundary expectations |
 
 ## 6. Appendices

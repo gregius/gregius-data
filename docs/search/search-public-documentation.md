@@ -79,7 +79,7 @@ The search subsystem exposes REST management endpoints for operational control. 
 
 ### Check Health Status
 
-The health endpoint at `/wp-json/gg-data/v1/search/health` returns:
+The health endpoint at `/wp-json/gregius-data/v1/search/health` returns:
 
 - Total search count since tracking began
 - Success and failure counters
@@ -87,7 +87,7 @@ The health endpoint at `/wp-json/gg-data/v1/search/health` returns:
 - Latency information
 - Degradation state (active or inactive)
 
-Use `POST /wp-json/gg-data/v1/search/health/check` to trigger a fresh health probe and `POST /wp-json/gg-data/v1/search/health/reset` to clear degradation state after the root cause is resolved.
+Use `POST /wp-json/gregius-data/v1/search/health/check` to trigger a fresh health probe and `POST /wp-json/gregius-data/v1/search/health/reset` to clear degradation state after the root cause is resolved.
 
 [SRS: SEARCH-FR-09, SEARCH-OR-03]
 
@@ -97,8 +97,8 @@ Use `POST /wp-json/gg-data/v1/search/health/check` to trigger a fresh health pro
 
 Before PostgreSQL search can execute, the required SQL search functions must be provisioned on the database:
 
-1. Run `POST /wp-json/gg-data/v1/search/schema/create` to create the functions.
-2. Check readiness via `GET /wp-json/gg-data/v1/search/status`.
+1. Run `POST /wp-json/gregius-data/v1/search/schema/create` to create the functions.
+2. Check readiness via `GET /wp-json/gregius-data/v1/search/status`.
 
 [SRS: SEARCH-FR-08]
 
@@ -106,7 +106,7 @@ Before PostgreSQL search can execute, the required SQL search functions must be 
 
 Trigram matching (`pg_trgm`) powers typo tolerance for the algorithmic (hashingtf) embedding, finding results even when search terms are misspelled. Neural embeddings handle typos semantically and do not use trigram.
 
-- Check extension availability: `GET /wp-json/gg-data/v1/search/trigram-status`
+- Check extension availability: `GET /wp-json/gregius-data/v1/search/trigram-status`
 
 Short queries where every word is under 4 characters skip trigram automatically for performance and precision.
 
@@ -114,8 +114,8 @@ Short queries where every word is under 4 characters skip trigram automatically 
 
 Search language alignment with the WordPress site locale:
 
-- Check current language: `GET /wp-json/gg-data/v1/search/language-status`
-- Update to match site locale: `POST /wp-json/gg-data/v1/search/update-language`
+- Check current language: `GET /wp-json/gregius-data/v1/search/language-status`
+- Update to match site locale: `POST /wp-json/gregius-data/v1/search/update-language`
 
 [SRS: SEARCH-FR-10]
 
@@ -147,10 +147,10 @@ Search language alignment with the WordPress site locale:
 
 ### Health Status Remains Degraded
 
-1. Run `POST /wp-json/gg-data/v1/search/health/check` and inspect error details.
+1. Run `POST /wp-json/gregius-data/v1/search/health/check` and inspect error details.
 2. Validate provider-specific credentials and connectivity.
 3. Review recent error telemetry in the health payload and plugin logs.
-4. Use `POST /wp-json/gg-data/v1/search/health/reset` only after the root cause is addressed.
+4. Use `POST /wp-json/gregius-data/v1/search/health/reset` only after the root cause is addressed.
 
 [SRS: SEARCH-OR-02]
 

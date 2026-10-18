@@ -14,7 +14,7 @@ import apiFetch from '@wordpress/api-fetch';
 import { moreVertical } from '@wordpress/icons';
 import { formatRelativeTime } from '../../utils/format-time';
 
-// Global settings connection constant (must match PHP GG_DATA_SEARCH_SETTINGS_CONNECTION)
+// Global settings connection constant (must match PHP GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION)
 const SEARCH_SETTINGS_CONNECTION = '__global__';
 
 const SearchHealthCard = () => {
@@ -29,7 +29,7 @@ const SearchHealthCard = () => {
 	const loadSearchConnection = async () => {
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/connection?connection=${SEARCH_SETTINGS_CONNECTION}`,
+				path: `/gregius-data/v1/settings/search/connection?connection=${SEARCH_SETTINGS_CONNECTION}`,
 			});
 
 			if (response && response.value) {
@@ -66,7 +66,7 @@ const SearchHealthCard = () => {
 		try {
 			setLoading(true);
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/health?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/health?connection=${searchConnection}`,
 			});
 
 			if (response.success) {
@@ -112,7 +112,7 @@ const SearchHealthCard = () => {
 		try {
 			setLoading(true);
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/health/check?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/health/check?connection=${searchConnection}`,
 				method: 'POST',
 			});
 
@@ -162,7 +162,7 @@ const SearchHealthCard = () => {
 		try {
 			setLoading(true);
 			await apiFetch({
-				path: `/gg-data/v1/search/health/reset?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/health/reset?connection=${searchConnection}`,
 				method: 'POST',
 			});
 

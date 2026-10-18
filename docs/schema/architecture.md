@@ -56,9 +56,9 @@ Explicitly excluded:
 │          │                                                        │
 │          ▼                                                        │
 │  Schema Management Layer                                           │
-│  - GG_Data_Schema_Manager                                          │
-│  - GG_Data_Settings_Manager                                        │
-│  - GG_Data_Connection_Manager                                      │
+│  - Gregius_Data_Schema_Manager                                          │
+│  - Gregius_Data_Settings_Manager                                        │
+│  - Gregius_Data_Connection_Manager                                      │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
            │                                   │
@@ -82,26 +82,26 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. Schema Manager Component (`GG_Data_Schema_Manager`)
+1. Schema Manager Component (`Gregius_Data_Schema_Manager`)
 - Orchestrates create/upgrade/status logic per connection.
 - Routes by provider type (`postgresql` vs `postgrest`).
 - Persists schema version metadata through settings manager.
 - Handles legacy fallback migration for schema version values.
 
-2. Schema REST Controller Component (`GG_Data_REST_Schema_Controller`)
-- Registers `/gg-data/v1/schema/*` route family.
+2. Schema REST Controller Component (`Gregius_Data_REST_Schema_Controller`)
+- Registers `/gregius-data/v1/schema/*` route family.
 - Validates connection targeting and connection type constraints.
 - Returns normalized success/error payloads for UI clients.
 - Enforces permission checks via `manage_options`.
 
 3. Settings and Connection Components
-- `GG_Data_Settings_Manager`: source of connection and schema version state.
-- `GG_Data_Connection_Manager`: provider retrieval for non-PDO status checks.
-- `GG_Data_DB`: direct PostgreSQL connection path used by schema manager.
+- `Gregius_Data_Settings_Manager`: source of connection and schema version state.
+- `Gregius_Data_Connection_Manager`: provider retrieval for non-PDO status checks.
+- `Gregius_Data_DB`: direct PostgreSQL connection path used by schema manager.
 
 4. Provider Components
-- `GG_Data_PostgreSQL_Provider`: direct DB runtime operations.
-- `GG_Data_PostgREST_Provider`: REST-based status/verification path and schema version read.
+- `Gregius_Data_PostgreSQL_Provider`: direct DB runtime operations.
+- `Gregius_Data_PostgREST_Provider`: REST-based status/verification path and schema version read.
 
 5. SQL Artifact Component
 - `includes/sql/postgrest-schema.sql`: canonical manual setup SQL for PostgREST/Supabase flow.
@@ -123,7 +123,7 @@ Mapping:
 ### 4.1 Direct PostgreSQL Schema Create Flow
 
 ```
-POST /gg-data/v1/schema/create
+POST /gregius-data/v1/schema/create
     │
     ▼
 Permission check (manage_options)
@@ -155,7 +155,7 @@ Persist schema version in settings
 ### 4.2 PostgREST/Supabase Schema Create and Verify Flow
 
 ```
-POST /gg-data/v1/schema/create
+POST /gregius-data/v1/schema/create
     │
     ▼
 Permission check (manage_options)
@@ -166,15 +166,15 @@ Provider type = postgrest
     ├─ create WordPress-side tables only (settings + sync metadata)
     └─ return manual SQL instructions
 
-GET /gg-data/v1/schema/sql
+GET /gregius-data/v1/schema/sql
     │
     ▼
 Return postgrest-schema.sql content + operator instructions
 
-POST /gg-data/v1/schema/verify
+POST /gregius-data/v1/schema/verify
     │
     ▼
-Provider reads gg_schema_meta via PostgREST
+Provider reads gregius_data_schema_meta via PostgREST
     │
     ├─ schema found -> status=ready and metadata update
     └─ schema absent -> status=not_created
@@ -183,7 +183,7 @@ Provider reads gg_schema_meta via PostgREST
 ### 4.3 Upgrade and Status Flow
 
 ```
-POST /gg-data/v1/schema/upgrade
+POST /gregius-data/v1/schema/upgrade
     │
     ▼
 Permission check + resolve connection
@@ -199,7 +199,7 @@ Compare stored schema version with plugin version
          ├─ commit
          └─ persist new schema version
 
-GET /gg-data/v1/schema/status
+GET /gregius-data/v1/schema/status
     │
     ▼
 Provider-aware status checks
@@ -252,7 +252,7 @@ Linked requirements:
 ### AD-03: Per-Connection Version Tracking in Settings Table
 
 Decision:
-- Persist schema version per connection in `wp_gg_settings` category `schema`.
+- Persist schema version per connection in `wp_gregius_data_settings` category `schema`.
 
 Rationale:
 - Supports multi-connection operation and upgrade targeting.

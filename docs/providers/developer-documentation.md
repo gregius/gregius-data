@@ -32,12 +32,12 @@ Not covered:
 
 ### 3.1 Register a Custom Database Provider
 
-1. Implement the full `GG_Data_DB_Provider` interface.
+1. Implement the full `Gregius_Data_DB_Provider` interface.
 2. Return standardized response arrays with at least `success` and `message`.
 3. Register the provider class with the factory.
 
 ```php
-class My_Custom_DB_Provider implements GG_Data_DB_Provider {
+class My_Custom_DB_Provider implements Gregius_Data_DB_Provider {
 	public function connect( $connection_config ) { return array( 'success' => true, 'message' => 'Connected' ); }
 	public function disconnect() { return array( 'success' => true, 'message' => 'Disconnected' ); }
 	public function test_connection( $connection_config ) { return array( 'success' => true, 'message' => 'OK' ); }
@@ -51,17 +51,17 @@ class My_Custom_DB_Provider implements GG_Data_DB_Provider {
 }
 
 add_action( 'plugins_loaded', function() {
-	GG_Data_Provider_Factory::register_provider( 'mydb', 'My_Custom_DB_Provider' );
+	Gregius_Data_Provider_Factory::register_provider( 'mydb', 'My_Custom_DB_Provider' );
 } );
 ```
 
 ### 3.2 Register a Custom AI Provider
 
-1. Implement `GG_Data_AI_Provider_Interface`.
-2. Register your provider through the `gg_data_llm_providers` filter.
+1. Implement `Gregius_Data_AI_Provider_Interface`.
+2. Register your provider through the `gregius_data_llm_providers` filter.
 
 ```php
-class My_Custom_AI_Provider implements GG_Data_AI_Provider_Interface {
+class My_Custom_AI_Provider implements Gregius_Data_AI_Provider_Interface {
 	public function get_id(): string { return 'myai'; }
 	public function get_name(): string { return 'My AI'; }
 	public function get_capabilities(): array { return array( 'llm' ); }
@@ -82,7 +82,7 @@ class My_Custom_AI_Provider implements GG_Data_AI_Provider_Interface {
 	public function get_rerank_models(): array { return array(); }
 }
 
-add_filter( 'gg_data_llm_providers', function( $providers ) {
+add_filter( 'gregius_data_llm_providers', function( $providers ) {
 	$providers['myai'] = new My_Custom_AI_Provider();
 	return $providers;
 } );
@@ -92,7 +92,7 @@ add_filter( 'gg_data_llm_providers', function( $providers ) {
 
 ### 4.1 Database Provider Contract
 
-Source: [includes/providers/interface-gg-db-provider.php](../../includes/providers/interface-gg-db-provider.php)
+Source: [includes/providers/interface-gregius-data-db-provider.php](../../includes/providers/interface-gregius-data-db-provider.php)
 
 Required methods:
 - `connect( $connection_config )`
@@ -118,14 +118,14 @@ Traceability:
 
 ### 4.2 Database Provider Factory
 
-Source: [includes/providers/class-gg-provider-factory.php](../../includes/providers/class-gg-provider-factory.php)
+Source: [includes/providers/class-gregius-data-provider-factory.php](../../includes/providers/class-gregius-data-provider-factory.php)
 
 Public API:
-- `GG_Data_Provider_Factory::create_provider( $database_type, $connection_config = array(), $connection_name = null )`
-- `GG_Data_Provider_Factory::get_supported_types()`
-- `GG_Data_Provider_Factory::is_supported( $database_type )`
-- `GG_Data_Provider_Factory::get_provider_class( $database_type )`
-- `GG_Data_Provider_Factory::register_provider( $database_type, $provider_class )`
+- `Gregius_Data_Provider_Factory::create_provider( $database_type, $connection_config = array(), $connection_name = null )`
+- `Gregius_Data_Provider_Factory::get_supported_types()`
+- `Gregius_Data_Provider_Factory::is_supported( $database_type )`
+- `Gregius_Data_Provider_Factory::get_provider_class( $database_type )`
+- `Gregius_Data_Provider_Factory::register_provider( $database_type, $provider_class )`
 
 Built-in type map includes:
 - Canonical: `postgresql`, `postgrest`
@@ -134,7 +134,7 @@ Built-in type map includes:
 Registration constraints:
 - Type must be lowercase alphanumeric/underscore
 - Class must exist
-- Class must implement `GG_Data_DB_Provider`
+- Class must implement `Gregius_Data_DB_Provider`
 
 Traceability:
 - PA-FR-06 to PA-FR-08
@@ -142,7 +142,7 @@ Traceability:
 
 ### 4.3 AI Provider Contract
 
-Source: [includes/interfaces/interface-gg-data-ai-provider.php](../../includes/interfaces/interface-gg-data-ai-provider.php)
+Source: [includes/interfaces/interface-gregius-data-ai-provider.php](../../includes/interfaces/interface-gregius-data-ai-provider.php)
 
 Required methods:
 - `get_id(): string`
@@ -161,7 +161,7 @@ Optional capability method:
 - `evaluate( string $state, array $questions, array $options = array() ): array|WP_Error` and `get_evaluator_models(): array` are optional, checked via `method_exists()` — only the TypeSafe provider implements them. A provider advertises the capability via `get_capabilities()` returning `'evaluator'`.
 
 TypeSafe (Jev):
-- `includes/ai/providers/class-gg-data-typesafe-provider.php` — decision model (TypeSafe System One) that returns typed judgments, not prose.
+- `includes/ai/providers/class-gregius-data-typesafe-provider.php` — decision model (TypeSafe System One) that returns typed judgments, not prose.
 - `evaluate()` sends `POST https://api.typesafe.ai/v1/systemone` with `state` + `questions` (Noul/Choice/Score) and returns `answers` keyed by question id. The RAG service thresholds the `noul` probability into `correct | insufficient`. The provider is primitive-agnostic — it forwards `questions` verbatim — but the RAG evaluator currently issues only a `noul` question; `choice` and `score` are provider-supported yet not wired to the evaluator prompt (roadmap: let the evaluation prompt select the primitive and supply its criteria/options/levels).
 - Jev is English-primary, text-only; the versioned model `jev-1.13.0` is pinned by default.
 
@@ -172,12 +172,12 @@ Traceability:
 ### 4.4 AI Registry and Client Flow
 
 Sources:
-- [includes/ai/class-gg-data-llm-registry.php](../../includes/ai/class-gg-data-llm-registry.php)
-- [includes/ai/class-gg-data-ai-client.php](../../includes/ai/class-gg-data-ai-client.php)
-- [includes/ai/class-gg-data-ai-request.php](../../includes/ai/class-gg-data-ai-request.php)
+- [includes/ai/class-gregius-data-llm-registry.php](../../includes/ai/class-gregius-data-llm-registry.php)
+- [includes/ai/class-gregius-data-ai-client.php](../../includes/ai/class-gregius-data-ai-client.php)
+- [includes/ai/class-gregius-data-ai-request.php](../../includes/ai/class-gregius-data-ai-request.php)
 
 Flow:
-1. `GG_Data_Ai_Client::prompt( $prompt )` creates `GG_Data_Ai_Request`.
+1. `Gregius_Data_Ai_Client::prompt( $prompt )` creates `Gregius_Data_Ai_Request`.
 2. Chain request options (`setSystemMessage`, `usingProvider`, `usingModel`, `usingConnection`, `withMaxTokens`, `withMessages`).
 3. `generateText()` or `generateTextWithMetadata()` resolves provider via registry.
 4. Provider executes `generate_text()` and returns normalized output.
@@ -194,8 +194,8 @@ Traceability:
 ### 4.5 Tool Strategy Contract and Selection
 
 Sources:
-- [includes/ai/strategies/interface-gg-data-tool-calling-strategy.php](../../includes/ai/strategies/interface-gg-data-tool-calling-strategy.php)
-- [includes/ai/strategies/class-gg-data-tool-strategy-factory.php](../../includes/ai/strategies/class-gg-data-tool-strategy-factory.php)
+- [includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php](../../includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php)
+- [includes/ai/strategies/class-gregius-data-tool-strategy-factory.php](../../includes/ai/strategies/class-gregius-data-tool-strategy-factory.php)
 
 Strategy interface methods:
 - `select_tool( string $query, array $messages, array $tools, string $model_id ): array|WP_Error`
@@ -207,14 +207,14 @@ Factory behavior:
 - `create( string $provider, ?bool $supports_tools = null )`
 - `create_for_model( string $model_id )`
 - Native providers: `openai`, `deepseek`, `anthropic`, `gemini`
-- Fallback for unsupported providers/models: `GG_Data_Prompt_Tool_Strategy`
+- Fallback for unsupported providers/models: `Gregius_Data_Prompt_Tool_Strategy`
 
 Traceability:
 - PA-FR-18 to PA-FR-23
 
 ### 4.6 Connection Lifecycle
 
-Source: [includes/class-gg-data-connection-manager.php](../../includes/class-gg-data-connection-manager.php)
+Source: [includes/class-gregius-data-connection-manager.php](../../includes/class-gregius-data-connection-manager.php)
 
 Public methods:
 - `init_connections()`
@@ -244,7 +244,7 @@ Backward compatibility boundary:
 - Ingestion must normalize to canonical keys before provider runtime calls.
 
 Implementation note:
-- Shared Supabase header generation is centralized in `GG_Data_PostgREST_Provider` and should be reused by REST/controller callers instead of duplicating inline header assembly.
+- Shared Supabase header generation is centralized in `Gregius_Data_PostgREST_Provider` and should be reused by REST/controller callers instead of duplicating inline header assembly.
 
 Traceability:
 - PA-DR-09 to PA-DR-10
@@ -254,22 +254,22 @@ Traceability:
 ### 5.1 Extension Points (Hooks and Filters)
 
 Verified hook/filter surface:
-- `gg_data_llm_providers` (filter): register AI provider instances
-- `gg_data_openai_stream_request` (filter): mutate OpenAI stream payload
-- `gg_data_openai_api_base_url` (filter): override OpenAI base URL
-- `gg_data_anthropic_request` (filter): mutate Anthropic request payload
-- `gg_data_deepseek_request` (filter): mutate DeepSeek request payload
-- `gg_data_deepseek_stream_request` (filter): mutate DeepSeek stream payload
-- `gg_data_gemini_request` (filter): mutate Gemini request payload
-- `gg_data_rag_tool_selection` (filter): intercept normalized tool selection
-- `gg_data_anthropic_call` (action): observe Anthropic call telemetry
-- `gg_data_deepseek_call` (action): observe DeepSeek call telemetry
-- `gg_data_gemini_call` (action): observe Gemini call telemetry
+- `gregius_data_llm_providers` (filter): register AI provider instances
+- `gregius_data_openai_stream_request` (filter): mutate OpenAI stream payload
+- `gregius_data_openai_api_base_url` (filter): override OpenAI base URL
+- `gregius_data_anthropic_request` (filter): mutate Anthropic request payload
+- `gregius_data_deepseek_request` (filter): mutate DeepSeek request payload
+- `gregius_data_deepseek_stream_request` (filter): mutate DeepSeek stream payload
+- `gregius_data_gemini_request` (filter): mutate Gemini request payload
+- `gregius_data_rag_tool_selection` (filter): intercept normalized tool selection
+- `gregius_data_anthropic_call` (action): observe Anthropic call telemetry
+- `gregius_data_deepseek_call` (action): observe DeepSeek call telemetry
+- `gregius_data_gemini_call` (action): observe Gemini call telemetry
 
 ### 5.2 AI Client Usage Pattern
 
 ```php
-$result = GG_Data_Ai_Client::prompt( 'Summarize this post.' )
+$result = Gregius_Data_Ai_Client::prompt( 'Summarize this post.' )
 	->setSystemMessage( 'You are a precise WordPress assistant.' )
 	->usingProvider( 'openai' )
 	->usingModel( 'gpt-4o-mini' )
@@ -288,7 +288,7 @@ if ( is_wp_error( $result ) ) {
 ### 5.3 DB Provider Method Pattern
 
 ```php
-$manager  = new GG_Data_Connection_Manager();
+$manager  = new Gregius_Data_Connection_Manager();
 $provider = $manager->get_provider( 'default' );
 
 if ( ! $provider ) {
@@ -310,7 +310,7 @@ Note: semantic search and vector generation are deliberately excluded from the D
 Recipe: Override OpenAI API base URL
 
 ```php
-add_filter( 'gg_data_openai_api_base_url', function( $base_url, $model ) {
+add_filter( 'gregius_data_openai_api_base_url', function( $base_url, $model ) {
 	if ( str_starts_with( $model, 'gpt-' ) ) {
 		return 'https://proxy.example.com/openai/v1';
 	}
@@ -321,7 +321,7 @@ add_filter( 'gg_data_openai_api_base_url', function( $base_url, $model ) {
 Recipe: Add custom logging around Gemini calls
 
 ```php
-add_action( 'gg_data_gemini_call', function( $request_data, $response_data, $tokens_used, $model ) {
+add_action( 'gregius_data_gemini_call', function( $request_data, $response_data, $tokens_used, $model ) {
 	error_log( sprintf( 'Gemini call model=%s tokens=%d', $model, (int) $tokens_used ) );
 }, 10, 4 );
 ```
@@ -329,7 +329,7 @@ add_action( 'gg_data_gemini_call', function( $request_data, $response_data, $tok
 Recipe: Intercept tool selection for observability
 
 ```php
-add_filter( 'gg_data_rag_tool_selection', function( $result, $query, $messages ) {
+add_filter( 'gregius_data_rag_tool_selection', function( $result, $query, $messages ) {
 	// Add diagnostics without changing behavior.
 	$result['diagnostic'] = array(
 		'query_length' => strlen( $query ),
@@ -342,20 +342,20 @@ add_filter( 'gg_data_rag_tool_selection', function( $result, $query, $messages )
 ## 6. Troubleshooting
 
 Issue: AI provider not found
-- Symptom: `gg_data_provider_not_found` WP_Error
-- Check: ensure your provider is added through `gg_data_llm_providers`
+- Symptom: `gregius_data_provider_not_found` WP_Error
+- Check: ensure your provider is added through `gregius_data_llm_providers`
 - Check: provider key used in `usingProvider()` matches registry key exactly
 
 Issue: Factory registration fails
 - Symptom: exception during `register_provider()`
 - Check: class exists and autoload/includes executed before registration
-- Check: class implements `GG_Data_DB_Provider`
+- Check: class implements `Gregius_Data_DB_Provider`
 - Check: type string format (`^[a-z0-9_]+$`)
 
 Issue: Tool strategy unexpectedly falls back to prompt mode
 - Check: provider is one of `openai`, `deepseek`, `anthropic`, `gemini`
 - Check: model configuration `supports_tools` was not set to false
-- Check: model exists in `GG_Data_Model_Registry`
+- Check: model exists in `Gregius_Data_Model_Registry`
 
 Issue: Connection-specific AI credentials are not applied
 - Check: request uses `usingConnection( 'name' )`
@@ -380,17 +380,17 @@ When adding a new provider:
 ## 8. API Quick Lookup
 
 DB extension APIs:
-- `GG_Data_Provider_Factory::register_provider( $database_type, $provider_class )`
-- `GG_Data_Provider_Factory::create_provider( $database_type, $connection_config = array(), $connection_name = null )`
+- `Gregius_Data_Provider_Factory::register_provider( $database_type, $provider_class )`
+- `Gregius_Data_Provider_Factory::create_provider( $database_type, $connection_config = array(), $connection_name = null )`
 
 AI extension APIs:
-- `add_filter( 'gg_data_llm_providers', ... )`
-- `GG_Data_LLM_Registry::get_provider( $provider_id )`
-- `GG_Data_Ai_Client::prompt( string $prompt )`
+- `add_filter( 'gregius_data_llm_providers', ... )`
+- `Gregius_Data_LLM_Registry::get_provider( $provider_id )`
+- `Gregius_Data_Ai_Client::prompt( string $prompt )`
 
 Tool strategy APIs:
-- `GG_Data_Tool_Strategy_Factory::create_for_model( string $model_id )`
-- `GG_Data_Tool_Strategy_Factory::create( string $provider, ?bool $supports_tools = null )`
+- `Gregius_Data_Tool_Strategy_Factory::create_for_model( string $model_id )`
+- `Gregius_Data_Tool_Strategy_Factory::create( string $provider, ?bool $supports_tools = null )`
 
 ## 9. Traceability Summary
 

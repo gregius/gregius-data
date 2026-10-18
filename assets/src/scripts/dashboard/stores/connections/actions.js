@@ -44,7 +44,7 @@ export function* createConnection(connectionData) {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: '/gg-data/v1/connections',
+                path: '/gregius-data/v1/connections',
                 method: 'POST',
                 data: connectionData,
             },
@@ -67,7 +67,7 @@ export function* updateConnection(name, updates) {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: `/gg-data/v1/connections/${name}`,
+                path: `/gregius-data/v1/connections/${name}`,
                 method: 'PUT',
                 data: updates,
             },
@@ -90,7 +90,7 @@ export function* deleteConnection(name) {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: `/gg-data/v1/connections/${name}`,
+                path: `/gregius-data/v1/connections/${name}`,
                 method: 'DELETE',
             },
         };
@@ -112,7 +112,7 @@ export function* testConnection(name) {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: `/gg-data/v1/connections/${name}/test`,
+                path: `/gregius-data/v1/connections/${name}/test`,
                 method: 'POST',
             },
         };
@@ -129,7 +129,7 @@ export function* getConnectionHealth(name) {
         const response = yield {
             type: 'API_FETCH',
             request: {
-                path: `/gg-data/v1/connections/${name}/health`,
+                path: `/gregius-data/v1/connections/${name}/health`,
                 method: 'GET',
             },
         };

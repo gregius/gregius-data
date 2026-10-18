@@ -33,10 +33,10 @@ Not covered:
 ### 3.1 Validate Plugin and Schema Version State
 
 ```php
-$installed_version = get_option( GG_Data_Activator::VERSION_OPTION, '0.0.0' );
-$runtime_version   = GG_DATA_VERSION;
+$installed_version = get_option( Gregius_Data_Activator::VERSION_OPTION, '0.0.0' );
+$runtime_version   = GREGIUS_DATA_VERSION;
 
-$schema_manager = new GG_Data_Schema_Manager();
+$schema_manager = new Gregius_Data_Schema_Manager();
 $schema_version = $schema_manager->get_schema_version( 'default' );
 ```
 
@@ -45,7 +45,7 @@ $schema_version = $schema_manager->get_schema_version( 'default' );
 ### 3.2 Trigger Schema Upgrade through REST
 
 ```bash
-curl -X POST "https://example.com/wp-json/gg-data/v1/schema/upgrade?connection=default" \
+curl -X POST "https://example.com/wp-json/gregius-data/v1/schema/upgrade?connection=default" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -54,7 +54,7 @@ curl -X POST "https://example.com/wp-json/gg-data/v1/schema/upgrade?connection=d
 ### 3.3 Check Update Availability
 
 ```bash
-curl -X GET "https://example.com/wp-json/gg-data/v1/schema/status?connection=default" \
+curl -X GET "https://example.com/wp-json/gregius-data/v1/schema/status?connection=default" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -64,14 +64,14 @@ Look for `requires_update` / `update_available` in the response payload.
 
 ## 4. Core API Reference
 
-### 4.1 `GG_Data_Activator`
+### 4.1 `Gregius_Data_Activator`
 
-Source: `includes/class-gg-data-activator.php`
+Source: `includes/class-gregius-data-activator.php`
 
 Constants:
-- `VERSION_OPTION` (`gg_data_db_version`)
+- `VERSION_OPTION` (`gregius_data_db_version`)
 
-Runtime plugin version is the `GG_DATA_VERSION` constant defined in `gregius-data.php`.
+Runtime plugin version is the `GREGIUS_DATA_VERSION` constant defined in `gregius-data.php`.
 
 Key methods:
 - `activate()`
@@ -79,14 +79,14 @@ Key methods:
 - `run_upgrades()` (internal dispatcher — invoked by `activate()` / `check_version()`)
 
 Behavior notes:
-- `check_version()` compares stored plugin version with `GG_DATA_VERSION` and runs upgrades when outdated.
+- `check_version()` compares stored plugin version with `GREGIUS_DATA_VERSION` and runs upgrades when outdated.
 - `run_upgrades()` updates the plugin version option and emits admin success notice when version changes.
 
 [SRS: UPD-FR-02, UPD-FR-03, UPD-DR-01]
 
-### 4.2 `GG_Data_Schema_Manager`
+### 4.2 `Gregius_Data_Schema_Manager`
 
-Source: `includes/class-gg-data-schema-manager.php`
+Source: `includes/class-gregius-data-schema-manager.php`
 
 Key methods:
 - `get_schema_version( $connection_name )`
@@ -96,7 +96,7 @@ Key methods:
 - `upgrade_schema_to_latest( $connection_name = 'default' )`
 
 Upgrade flow internals:
-- Reads `current_version` and compares to `GG_DATA_VERSION`.
+- Reads `current_version` and compares to `GREGIUS_DATA_VERSION`.
 - Returns early with `upgraded => false` when already current.
 - Runs transaction-wrapped migration path:
   - `migrate_postmeta_table()`
@@ -106,15 +106,15 @@ Upgrade flow internals:
 - Rolls back and returns error payload on exceptions.
 
 Legacy fallback:
-- If `schema/version` is absent in settings, checks legacy option key `gg_data_schema_version_<connection>`.
+- If `schema/version` is absent in settings, checks legacy option key `gregius_data_schema_version_<connection>`.
 - Migrates legacy value into settings and deletes legacy option.
 
 [SRS: UPD-FR-04, UPD-FR-05, UPD-OR-01..03, UPD-QR-05]
 
 ## 5. REST API Contracts
 
-Controller: `GG_Data_REST_Schema_Controller`  
-Namespace: `gg-data/v1`  
+Controller: `Gregius_Data_REST_Schema_Controller`  
+Namespace: `gregius-data/v1`  
 Base route: `/schema`
 
 Permission gate:
@@ -200,11 +200,11 @@ Behavior:
 
 ### 6.1 WordPress Options
 
-- `gg_data_db_version` - plugin-version state used by activator upgrade checks.
+- `gregius_data_db_version` - plugin-version state used by activator upgrade checks.
 
 Related guarded migration/seed options used in activator upgrade-adjacent flow:
-- `gg_data_default_prompt_seeded`
-- `gg_data_factory_prompt_placeholders_migrated`
+- `gregius_data_default_prompt_seeded`
+- `gregius_data_factory_prompt_placeholders_migrated`
 
 ### 6.2 Settings Category Contracts
 
@@ -218,7 +218,7 @@ Per connection in settings category `schema`:
 
 ### 7.1 Direct PostgreSQL
 
-- Uses `GG_Data_DB` connection and transactional create/upgrade operations.
+- Uses `Gregius_Data_DB` connection and transactional create/upgrade operations.
 - Supports automatic extension checks/installation in manager flow.
 
 ### 7.2 PostgREST/Supabase
@@ -233,7 +233,7 @@ Per connection in settings category `schema`:
 
 ### 8.1 Adding a New Migration Step
 
-1. Add idempotent migration method in `GG_Data_Schema_Manager`.
+1. Add idempotent migration method in `Gregius_Data_Schema_Manager`.
 2. Insert method call into `upgrade_schema_to_latest()` transaction path.
 3. Ensure failures throw exceptions and preserve rollback semantics.
 4. Update schema status/docs when new contract fields are introduced.

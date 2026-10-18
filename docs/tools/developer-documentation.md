@@ -15,7 +15,7 @@ Use WordPress-native filter and action APIs to extend tools:
 
 ```php
 // Register a custom tool
-add_filter( 'gg_data_rag_tools', function( $tools ) {
+add_filter( 'gregius_data_rag_tools', function( $tools ) {
     $tools['my_tool'] = array(
         'name'        => 'my_tool',
         'description' => 'Does something useful',
@@ -30,7 +30,7 @@ add_filter( 'gg_data_rag_tools', function( $tools ) {
 }, 10 );
 
 // Implement the tool handler
-add_filter( 'gg_data_rag_tool_my_tool', function( $result, $tool_name, $context ) {
+add_filter( 'gregius_data_rag_tool_my_tool', function( $result, $tool_name, $context ) {
     $answer = 'Custom response for: ' . $context['query'];
     return array(
         'answer'   => $answer,
@@ -40,7 +40,7 @@ add_filter( 'gg_data_rag_tool_my_tool', function( $result, $tool_name, $context 
 }, 10, 3 );
 
 // Listen for tool execution
-add_action( 'gg_data_rag_tool_executed', function( $tool_name, $result, $context ) {
+add_action( 'gregius_data_rag_tool_executed', function( $tool_name, $result, $context ) {
     error_log( "Tool executed: $tool_name" );
 }, 10, 3 );
 ```
@@ -397,8 +397,8 @@ array(
 
 **Retrieval & Grounding:**
 - Content is fetched by direct id lookup (`wp_posts_clean` → `get_post` fallback), uncapped, with a 24,000-character overflow guardrail. No vector/embedding search.
-- The current entity is injected into the tool-selection prompt by `GG_Data_Entity_Grounding` (`gg_data_rag_tool_selection_system_prompt`).
-- `metadata.suggestions_title` (short framing heading) and `metadata.suggested_questions` (question list) are produced by the shared `GG_Data_RAG_Service::generate_suggestions()` helper (one LLM call returning `{ title, questions }`; input = content + title + user prompt).
+- The current entity is injected into the tool-selection prompt by `Gregius_Data_Entity_Grounding` (`gregius_data_rag_tool_selection_system_prompt`).
+- `metadata.suggestions_title` (short framing heading) and `metadata.suggested_questions` (question list) are produced by the shared `Gregius_Data_RAG_Service::generate_suggestions()` helper (one LLM call returning `{ title, questions }`; input = content + title + user prompt).
 
 **Parameters in Tool Selection:**
 - `query` (string, required) — The user question to answer from the current document.
@@ -407,7 +407,7 @@ array(
 
 ## 3. Tool Selection Contract
 
-All tools receive the same execution context via the `gg_data_rag_tool_{name}` filter:
+All tools receive the same execution context via the `gregius_data_rag_tool_{name}` filter:
 
 ```php
 /**
@@ -439,7 +439,7 @@ All tools receive the same execution context via the `gg_data_rag_tool_{name}` f
  * }
  * @return array|null Tool result or null to fall back to built-in handler.
  */
-apply_filters( "gg_data_rag_tool_{tool_name}", null, $tool_name, $context )
+apply_filters( "gregius_data_rag_tool_{tool_name}", null, $tool_name, $context )
 ```
 
 ### 3.1 Manifest Contract for Tool Implementers
@@ -465,7 +465,7 @@ Compact integration guidance:
 **Scenario:** Add a custom tool that searches a third-party API (e.g., internal wiki).
 
 ```php
-add_filter( 'gg_data_rag_tools', function( $tools ) {
+add_filter( 'gregius_data_rag_tools', function( $tools ) {
     $tools['wiki_search'] = array(
         'name'        => 'wiki_search',
         'description' => 'Search the internal wiki for knowledge base articles',
@@ -501,7 +501,7 @@ add_filter( 'gg_data_rag_tools', function( $tools ) {
 **Scenario:** Handle the `wiki_search` tool by querying an external API.
 
 ```php
-add_filter( 'gg_data_rag_tool_wiki_search', function( $result, $tool_name, $context ) {
+add_filter( 'gregius_data_rag_tool_wiki_search', function( $result, $tool_name, $context ) {
     if ( null !== $result ) {
         return $result; // Another filter handled it
     }
@@ -563,7 +563,7 @@ add_filter( 'gg_data_rag_tool_wiki_search', function( $result, $tool_name, $cont
 **Scenario:** Always use `search_content` for product-related queries.
 
 ```php
-add_filter( 'gg_data_rag_tool_selection', function( $result, $query, $messages ) {
+add_filter( 'gregius_data_rag_tool_selection', function( $result, $query, $messages ) {
     // Force search_content for product queries
     if ( preg_match( '/\b(product|feature|specification|pricing)\b/i', $query ) ) {
         return array(
@@ -590,7 +590,7 @@ add_filter( 'gg_data_rag_tool_selection', function( $result, $query, $messages )
 **Scenario:** Track which tools are used for analytics.
 
 ```php
-add_action( 'gg_data_rag_tool_executed', function( $tool_name, $result, $context ) {
+add_action( 'gregius_data_rag_tool_executed', function( $tool_name, $result, $context ) {
     // Log tool usage to analytics service
     wp_remote_post( 'https://analytics.example.com/api/track', array(
         'body' => wp_json_encode( array(
@@ -618,10 +618,10 @@ The strategy pattern abstracts away provider-specific tool calling. Developers t
 
 ### 5.1 Strategy Interface Overview
 
-All strategies implement `GG_Data_Tool_Calling_Strategy`:
+All strategies implement `Gregius_Data_Tool_Calling_Strategy`:
 
 ```php
-interface GG_Data_Tool_Calling_Strategy {
+interface Gregius_Data_Tool_Calling_Strategy {
 
     /**
      * Select the appropriate tool for the query.
@@ -666,22 +666,22 @@ interface GG_Data_Tool_Calling_Strategy {
 
 ### 5.2 Built-in Strategy Implementations
 
-**OpenAI Strategy** (`GG_Data_OpenAI_Tool_Strategy`)
+**OpenAI Strategy** (`Gregius_Data_OpenAI_Tool_Strategy`)
 - Used for: OpenAI (gpt-4o, gpt-4o-mini) and DeepSeek models
 - Format: OpenAI `tools` array with `type: "function"` wrapper
 - Parser: Extracts `tool_calls[0].function.name` and parses arguments
 
-**Anthropic Strategy** (`GG_Data_Anthropic_Tool_Strategy`)
+**Anthropic Strategy** (`Gregius_Data_Anthropic_Tool_Strategy`)
 - Used for: Claude models (all versions)
 - Format: Anthropic `tools` array with `input_schema` (JSON Schema)
 - Parser: Extracts `tool_use` content block with name and input
 
-**Gemini Strategy** (`GG_Data_Gemini_Tool_Strategy`)
+**Gemini Strategy** (`Gregius_Data_Gemini_Tool_Strategy`)
 - Used for: Google Gemini 2.5, 2.0 models
 - Format: Gemini `tools` with `function_declarations` array
 - Parser: Extracts `functionCall` from response parts
 
-**Prompt-Based Strategy** (`GG_Data_Prompt_Tool_Strategy`)
+**Prompt-Based Strategy** (`Gregius_Data_Prompt_Tool_Strategy`)
 - Used for: All providers (fallback)
 - Format: Tools as plain text list in system prompt with JSON response format instruction
 - Parser: Extracts JSON from response text, handles markdown code blocks
@@ -691,7 +691,7 @@ interface GG_Data_Tool_Calling_Strategy {
 Factory auto-detects provider capability:
 
 ```php
-$strategy = GG_Data_Tool_Strategy_Factory::create_for_model( $model_id );
+$strategy = Gregius_Data_Tool_Strategy_Factory::create_for_model( $model_id );
 ```
 
 Detection logic:
@@ -708,9 +708,9 @@ Detection logic:
 ### "My custom tool is not being called"
 
 **Checklist:**
-1. ✓ Is the tool registered in `gg_data_rag_tools` filter?
+1. ✓ Is the tool registered in `gregius_data_rag_tools` filter?
    ```php
-   add_filter('gg_data_rag_tools', function($tools) {
+   add_filter('gregius_data_rag_tools', function($tools) {
        if ( !isset($tools['my_tool']) ) {
            error_log('Tool not registered!');
        }
@@ -719,7 +719,7 @@ Detection logic:
    ```
 
 2. ✓ Does the agentic model (rewrite_model) exist and have provider support?
-   - Verify the model is registered in the catalog (`GG_Data_Model_Registry::get_model('gregius-data', $model_id)`)
+   - Verify the model is registered in the catalog (`Gregius_Data_Model_Registry::get_model('gregius-data', $model_id)`)
    - Provider must be in: openai, anthropic, gemini, deepseek
 
 3. ✓ Is the tool description clear enough for the LLM to select it?
@@ -727,7 +727,7 @@ Detection logic:
    - Use active, clear language: "Search for product pricing information"
 
 4. ✓ Are you checking logs for tool selection?
-   - Enable debug logging: set `GG_DATA_DEBUG_MODE` to `true` in `gregius-data.php`
+   - Enable debug logging: set `GREGIUS_DATA_DEBUG_MODE` to `true` in `gregius-data.php`
    - Check: `wp-content/debug.log` for "Tool selected: my_tool"
 
 ### "Tool selection always defaults to search_content"
@@ -749,7 +749,7 @@ Detection logic:
 
 2. Check model in registry:
    ```php
-   $registry = new GG_Data_Model_Registry();
+   $registry = new Gregius_Data_Model_Registry();
    $model = $registry->get_model('gregius-data', $options['rewrite_model']);
    if (!$model) {
        error_log('Model not found in registry');
@@ -797,7 +797,7 @@ Detection logic:
 
 ## 7. API Reference
 
-### GG_Data_RAG_Service::select_tool()
+### Gregius_Data_RAG_Service::select_tool()
 
 ```php
 /**
@@ -823,7 +823,7 @@ if (!is_wp_error($result)) {
 }
 ```
 
-### GG_Data_Tool_Strategy_Factory::create_for_model()
+### Gregius_Data_Tool_Strategy_Factory::create_for_model()
 
 ```php
 /**
@@ -831,14 +831,14 @@ if (!is_wp_error($result)) {
  *
  * @since 1.0.0
  * @param string $model_id Model ID (e.g., 'gpt-4o-mini', 'claude-opus-4-20250514').
- * @return GG_Data_Tool_Calling_Strategy Strategy instance.
+ * @return Gregius_Data_Tool_Calling_Strategy Strategy instance.
  */
-public static function create_for_model( string $model_id ): GG_Data_Tool_Calling_Strategy
+public static function create_for_model( string $model_id ): Gregius_Data_Tool_Calling_Strategy
 ```
 
 **Usage:**
 ```php
-$strategy = GG_Data_Tool_Strategy_Factory::create_for_model('gpt-4o-mini');
+$strategy = Gregius_Data_Tool_Strategy_Factory::create_for_model('gpt-4o-mini');
 $selection = $strategy->select_tool($query, $messages, $tools, 'gpt-4o-mini');
 ```
 

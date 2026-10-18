@@ -35,7 +35,7 @@ Not covered:
 Use the RAG service directly when you are inside plugin code and already know the connection and model IDs. This path implements the main subsystem flow described in the SRS. [SRS: RAG-FR-01, RAG-FR-05, RAG-FR-14, RAG-FR-17]
 
 ```php
-$rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
+$rag = new Gregius_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 
 $result = $rag->generate_answer(
 	'How do I install WordPress?',
@@ -63,7 +63,7 @@ if ( is_wp_error( $result ) ) {
 Use the REST endpoint when the caller is outside PHP plugin internals, such as a decoupled frontend or integration service. [SRS: RAG-FR-18, RAG-DR-01, RAG-DR-03]
 
 ```bash
-curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
+curl -X POST https://example.com/wp-json/gregius-data/v1/rag/chat \
 	-H 'Content-Type: application/json' \
 	-d '{
 	  "query": "How do I install WordPress?",
@@ -79,11 +79,11 @@ curl -X POST https://example.com/wp-json/gg-data/v1/rag/chat \
 RAG access is configurable and defaults to logged-in in current security hooks with fail-closed permission evaluation. Use access-level filters for stricter or intentionally broader deployment policy. [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
 
 ```php
-add_filter( 'gg_data_rag_access_level', function() {
-	return GG_Data_RAG_Security_Hooks::ACCESS_CAPABILITY;
+add_filter( 'gregius_data_rag_access_level', function() {
+	return Gregius_Data_RAG_Security_Hooks::ACCESS_CAPABILITY;
 } );
 
-add_filter( 'gg_data_rag_required_capability', function() {
+add_filter( 'gregius_data_rag_required_capability', function() {
 	return 'edit_posts';
 } );
 ```
@@ -96,7 +96,7 @@ Canonical contract reference:
 - [RAG Manifest Contract](manifest-contract.md)
 
 ```php
-$rag = new GG_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
+$rag = new Gregius_Data_RAG_Service( 'default', 'hashingtf-murmur3-1024' );
 
 $result = $rag->generate_answer(
 	'What does this page say about eligibility?',
@@ -121,12 +121,12 @@ $result = $rag->generate_answer(
 
 ## 4. Core Entry Points
 
-### 4.1 `GG_Data_RAG_Service`
+### 4.1 `Gregius_Data_RAG_Service`
 
-Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
+Source: [includes/rag/class-gregius-data-rag-service.php](../../includes/rag/class-gregius-data-rag-service.php)
 
 Public constructor:
-- `new GG_Data_RAG_Service( $connection_name, $embedding_model_key )`
+- `new Gregius_Data_RAG_Service( $connection_name, $embedding_model_key )`
 
 Primary public methods:
 - `retrieve_chunks( $query, $options = array() )`
@@ -138,16 +138,16 @@ Behavior notes:
 - Both methods depend on configured connection and model registry data.
 
 Conversation memory buffer:
-- When `generate_answer()` receives a `conversation_id`, it populates `$options['messages']` from the server transcript (`GG_Data_Interaction::get_conversation_transcript`) via `build_conversation_buffer()`, so routing and the answer share one authoritative history.
-- The buffer is a contiguous suffix starting at the consumer-confirmed `fold_index` (`gg_data_rag_conversation_fold_index` filter; default `0`). The summary covers `turns[0..fold_index)`, the buffer `turns[fold_index..]` — XOR by construction.
-- Token budget (`gg_data_rag_conversation_token_budget`, default `2000`): when exceeded, `gg_data_rag_memory_fold` fires to request summary advancement instead of dropping unsummarized turns.
+- When `generate_answer()` receives a `conversation_id`, it populates `$options['messages']` from the server transcript (`Gregius_Data_Interaction::get_conversation_transcript`) via `build_conversation_buffer()`, so routing and the answer share one authoritative history.
+- The buffer is a contiguous suffix starting at the consumer-confirmed `fold_index` (`gregius_data_rag_conversation_fold_index` filter; default `0`). The summary covers `turns[0..fold_index)`, the buffer `turns[fold_index..]` — XOR by construction.
+- Token budget (`gregius_data_rag_conversation_token_budget`, default `2000`): when exceeded, `gregius_data_rag_memory_fold` fires to request summary advancement instead of dropping unsummarized turns.
 - With no `conversation_id`, client-supplied `messages` are used as-is (stateless callers: abilities, CLI, MCP).
 
 Use this class when you need plugin-internal access to the full RAG pipeline without going through REST. [SRS: RAG-FR-05 to RAG-FR-17]
 
 ### 4.2 Coverage Gate
 
-Source: [includes/rag/class-gg-data-coverage-gate.php](../../includes/rag/class-gg-data-coverage-gate.php)
+Source: [includes/rag/class-gregius-data-coverage-gate.php](../../includes/rag/class-gregius-data-coverage-gate.php)
 
 Purpose:
 - Evaluate evidence coverage for supported intents.
@@ -157,9 +157,9 @@ This class is an internal governance component rather than the primary integrati
 
 ### 4.3 Tool Handlers
 
-Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
+Source: [includes/rag/class-gregius-data-rag-service.php](../../includes/rag/class-gregius-data-rag-service.php)
 
-`generate_answer()` dispatches to a tool handler based on tool selection or deterministic rules. The base tools are `search_content`, `compare_content`, `summarize_conversation`, `respond_directly`, and `clarify_previous`; `search_entity_content` is registered separately by `GG_Data_Entity_Content_Tool` via the `gg_data_rag_tools` filter.
+`generate_answer()` dispatches to a tool handler based on tool selection or deterministic rules. The base tools are `search_content`, `compare_content`, `summarize_conversation`, `respond_directly`, and `clarify_previous`; `search_entity_content` is registered separately by `Gregius_Data_Entity_Content_Tool` via the `gregius_data_rag_tools` filter.
 
 **`synthesize_search_content()`** (tool `search_content`)
 - Return contract: `{ answer, sources, chunks, metadata }`
@@ -173,7 +173,7 @@ Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg
   - **Abstain** (no coverage): uses `$all_chunks` — the full merged candidate set.
   - **LLM failure fallback**: uses `$synthesis_chunks` — the balanced synthesis chunk set.
   - **Success**: uses `$synthesis_chunks` — the balanced synthesis chunk set.
-- The `chunks` key feeds `format_json_output()` (via the `GG_Data_Format_Json_Output` trait), which extracts `retrieved_contexts` for evaluation dataset capture. Without it, `compare_content` tool results would record empty retrieved contexts.
+- The `chunks` key feeds `format_json_output()` (via the `Gregius_Data_Format_Json_Output` trait), which extracts `retrieved_contexts` for evaluation dataset capture. Without it, `compare_content` tool results would record empty retrieved contexts.
 
 **`handle_summarize_conversation()`** (tool `summarize_conversation`), **`handle_respond_directly()`** (tool `respond_directly`), and **`handle_clarify_previous()`** (tool `clarify_previous`) handle conversation summary, direct (no-search) responses, and clarification of the prior answer respectively.
 
@@ -181,29 +181,29 @@ Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg
 
 ### 4.4 Evaluator Model + Corrective Loop
 
-Source: [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
+Source: [includes/rag/class-gregius-data-rag-service.php](../../includes/rag/class-gregius-data-rag-service.php)
 
 An optional **evaluator model** (TypeSafe Jev, model type `evaluator`) grades whether the retrieved context is sufficient, and drives a bounded corrective step. Configure it per block via `evaluatorModelId` + `evaluationPromptId` (or per request via `evaluator_model` + `evaluation_prompt_id`).
 
 Behavior:
 
-- **Observe-only evaluator.** Jev answers a single `Noul` question ("does the context sufficiently answer the query?") returning a probability; thresholded by `gg_data_rag_evaluator_threshold` (default `0.5`) into `correct | insufficient`. The verdict is recorded in `metadata.retrieval.evaluation` (`final_verdict`, `score`, `reformulations`, `passes`) but **never gates generation** — the general-model evaluator is intentionally telemetry, not a quality gate.
-- **Model-selected corrective step.** When retrieval returns no chunks, or the evaluator grades `insufficient`, the agentic model chooses between `rewrite_query` (search again with new keywords + a reason) and `respond_directly` (stop and finalize), via a narrow tool surface. Rewrites are bounded by `gg_data_rag_evaluator_max_reformulations` (default `1`).
+- **Observe-only evaluator.** Jev answers a single `Noul` question ("does the context sufficiently answer the query?") returning a probability; thresholded by `gregius_data_rag_evaluator_threshold` (default `0.5`) into `correct | insufficient`. The verdict is recorded in `metadata.retrieval.evaluation` (`final_verdict`, `score`, `reformulations`, `passes`) but **never gates generation** — the general-model evaluator is intentionally telemetry, not a quality gate.
+- **Model-selected corrective step.** When retrieval returns no chunks, or the evaluator grades `insufficient`, the agentic model chooses between `rewrite_query` (search again with new keywords + a reason) and `respond_directly` (stop and finalize), via a narrow tool surface. Rewrites are bounded by `gregius_data_rag_evaluator_max_reformulations` (default `1`).
 - **Grounded negation terminal.** When no answer is found, the terminal response states honestly what was (and was not) found — it never invents, never asks a follow-up question. Under-specified queries still clarify at the initial routing gate (`is_under_specified_query` → `respond_directly`).
 - **Fails open.** Evaluator timeout/rate-limit/malformed response never blocks the answer.
 
-Relevant filters: `gg_data_rag_evaluator_threshold` (float, default 0.5), `gg_data_rag_evaluator_max_reformulations` (int, default 1), `gg_data_rag_evaluator_retry_attempts` (int, default 1).
+Relevant filters: `gregius_data_rag_evaluator_threshold` (float, default 0.5), `gregius_data_rag_evaluator_max_reformulations` (int, default 1), `gregius_data_rag_evaluator_retry_attempts` (int, default 1).
 
 **Disambiguation:**
 
-- **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gg-data evaluation` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation`).
+- **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gregius-data evaluation` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation`).
 - **Rerank** (a ranking model scoring candidate relevance) is distinct from the **evaluator** (a go/no-go sufficiency judgment). Both are optional and independent.
 
 ## 5. REST API Entry Points
 
-### 5.1 `POST /wp-json/gg-data/v1/rag/chat`
+### 5.1 `POST /wp-json/gregius-data/v1/rag/chat`
 
-Source: [includes/api/class-gg-data-rest-rag-controller.php](../../includes/api/class-gg-data-rest-rag-controller.php)
+Source: [includes/api/class-gregius-data-rest-rag-controller.php](../../includes/api/class-gregius-data-rest-rag-controller.php)
 
 Required request fields:
 - `query`
@@ -231,14 +231,14 @@ Key behavior:
 - `messages` are sanitized to allow only supported roles and sanitized content.
 - `metadata_filter` and `metadata_manifest` are accepted as structured arrays and normalized to array defaults when absent or invalid.
 - `manifest` is accepted as a structured payload and normalized by the canonical validator before tool handlers consume it.
-- `forced_tool` executes deterministically when it matches a registered tool (`gg_data_rag_tools`; for example `search_content`, `compare_content`, `search_entity_content`); unsupported values fall back to standard routing.
+- `forced_tool` executes deterministically when it matches a registered tool (`gregius_data_rag_tools`; for example `search_content`, `compare_content`, `search_entity_content`); unsupported values fall back to standard routing.
 - Retrieval providers must preserve empty metadata filter object semantics (`{}`) at SQL transport boundaries for JSONB containment parity.
-- Fixed-window route throttling is applied before generation and returns HTTP 429 (`gg_data_rate_limited`) when exceeded.
+- Fixed-window route throttling is applied before generation and returns HTTP 429 (`gregius_data_rate_limited`) when exceeded.
 - Successful responses return `success: true` and a `data` payload.
 
 Implements the main external contract for RAG chat. [SRS: RAG-FR-01 to RAG-FR-04, RAG-FR-18, RAG-DR-01 to RAG-DR-11]
 
-### 5.2 `POST /wp-json/gg-data/v1/rag/action`
+### 5.2 `POST /wp-json/gregius-data/v1/rag/action`
 
 Purpose:
 - Execute a user-triggerable RAG tool directly without requiring LLM tool selection.
@@ -258,12 +258,12 @@ Key behavior:
 - Uses the same tool-definition registry as agentic routing.
 - Rejects unknown actions.
 - Rejects tools that are not explicitly marked with `user_action` metadata.
-- Invokes the matching dynamic handler filter `gg_data_rag_tool_{action}`.
-- Fixed-window route throttling is applied before action execution and returns HTTP 429 (`gg_data_rate_limited`) when exceeded.
+- Invokes the matching dynamic handler filter `gregius_data_rag_tool_{action}`.
+- Fixed-window route throttling is applied before action execution and returns HTTP 429 (`gregius_data_rate_limited`) when exceeded.
 
 Use this endpoint for direct user-triggered workflows such as custom action buttons in a chat UI. [SRS: RAG-FR-19, RAG-FR-21, RAG-DR-09, RAG-DR-10]
 
-### 5.3 `GET /wp-json/gg-data/v1/rag/actions`
+### 5.3 `GET /wp-json/gregius-data/v1/rag/actions`
 
 Purpose:
 - Discover tools that are safe and intended for direct user triggering.
@@ -277,19 +277,19 @@ Response behavior:
 
 Use this endpoint to drive client-side menus or action buttons without hardcoding available actions. [SRS: RAG-FR-20, RAG-DR-09]
 
-## 5.4 Journey Continuity Endpoints (`POST /wp-json/gg-data/v1/rag/journey/...`)
+## 5.4 Journey Continuity Endpoints (`POST /wp-json/gregius-data/v1/rag/journey/...`)
 
-Source: [includes/api/class-gg-data-rest-rag-journey-controller.php](../../includes/api/class-gg-data-rest-rag-journey-controller.php)
+Source: [includes/api/class-gregius-data-rest-rag-journey-controller.php](../../includes/api/class-gregius-data-rest-rag-journey-controller.php)
 
 **Purpose:**
 Guest users without WordPress accounts can resume a conversation across page loads or block instances. The journey controller hydrates conversation history from canonical interaction storage and supports a one-time continuation token so a decoupled frontend can hand a conversation to a new page or view. All three routes are `POST`.
 
 **Guest Session Ownership:**
-- Guests are identified by a hashed session credential (`GG_Data_Interaction::get_guest_session_hash()`) derived from WordPress authentication salts and stored in a cookie.
-- Journey reads (`consume`, `history`) validate that the caller may read the interaction: an administrator always may; a logged-in user must be the interaction author; a guest must match the stored `_gg_interaction_guest_session_hash` via constant-time `hash_equals`.
+- Guests are identified by a hashed session credential (`Gregius_Data_Interaction::get_guest_session_hash()`) derived from WordPress authentication salts and stored in a cookie.
+- Journey reads (`consume`, `history`) validate that the caller may read the interaction: an administrator always may; a logged-in user must be the interaction author; a guest must match the stored `_gregius_interaction_guest_session_hash` via constant-time `hash_equals`.
 - First-claim binding: legacy guest interactions without a stored hash are claimed by the first guest to read them (the stored hash is set to the caller's hash on first read).
 
-### 5.4.1 `POST /wp-json/gg-data/v1/rag/journey/issue`
+### 5.4.1 `POST /wp-json/gregius-data/v1/rag/journey/issue`
 
 **Purpose:**
 Issue a one-time continuation token for a conversation.
@@ -311,7 +311,7 @@ Issue a one-time continuation token for a conversation.
 
 **Implements:** [SRS: RAG-FR-30, RAG-OR-09]
 
-### 5.4.2 `POST /wp-json/gg-data/v1/rag/journey/consume`
+### 5.4.2 `POST /wp-json/gregius-data/v1/rag/journey/consume`
 
 **Purpose:**
 Redeem a one-time continuation token and return the conversation hydration payload.
@@ -326,13 +326,13 @@ Redeem a one-time continuation token and return the conversation hydration paylo
 **Response:** `{ "success": true, "data": <hydration payload> }` (shape in 5.4.4).
 
 **Errors:**
-- `gg_data_rag_journey_token_invalid` (404): token missing or already consumed.
-- `gg_data_rag_journey_user_mismatch` (403): user-bound token used by a different user.
-- `gg_data_rag_journey_guest_session_mismatch` (403): guest-bound token used by a different session.
+- `gregius_data_rag_journey_token_invalid` (404): token missing or already consumed.
+- `gregius_data_rag_journey_user_mismatch` (403): user-bound token used by a different user.
+- `gregius_data_rag_journey_guest_session_mismatch` (403): guest-bound token used by a different session.
 
 **Implements:** [SRS: RAG-FR-31, RAG-DR-14, RAG-OR-09]
 
-### 5.4.3 `POST /wp-json/gg-data/v1/rag/journey/history`
+### 5.4.3 `POST /wp-json/gregius-data/v1/rag/journey/history`
 
 **Purpose:**
 Return the conversation hydration payload directly by conversation id (no token required).
@@ -346,7 +346,7 @@ Return the conversation hydration payload directly by conversation id (no token 
 **Response:** `{ "success": true, "data": <hydration payload> }` (shape in 5.4.4).
 
 **Errors:**
-- `gg_data_rag_journey_not_found` (404): conversation not found.
+- `gregius_data_rag_journey_not_found` (404): conversation not found.
 - `rest_forbidden` (401/403): caller cannot read the interaction.
 
 **Implements:** [SRS: RAG-FR-32, RAG-DR-14, RAG-OR-09]
@@ -369,34 +369,34 @@ Return the conversation hydration payload directly by conversation id (no token 
 }
 ```
 
-The payload is reconstructed from the stored interaction turns (`_gg_interaction_data.turns`), with `GG_Data_Citation_Resolver` rebuilding assistant `references`.
+The payload is reconstructed from the stored interaction turns (`_gregius_interaction_data.turns`), with `Gregius_Data_Citation_Resolver` rebuilding assistant `references`.
 
 ## 6. Extension Points
 
 ### 6.1 Request Lifecycle Hooks
 
 Verified hooks:
-- `gg_data_rag_request`
-- `gg_data_rag_complete`
-- `gg_data_rag_error`
+- `gregius_data_rag_request`
+- `gregius_data_rag_complete`
+- `gregius_data_rag_error`
 
 Use these to observe request start, success, and failure paths for analytics or logging.
 
 ### 6.2 Retrieval and Response Hooks
 
 Verified hooks and filters:
-- `gg_data_rag_search_query`
-- `gg_data_rag_chunks`
-- `gg_data_rag_context`
-- `gg_data_rag_sources`
-- `gg_data_rag_response`
+- `gregius_data_rag_search_query`
+- `gregius_data_rag_chunks`
+- `gregius_data_rag_context`
+- `gregius_data_rag_sources`
+- `gregius_data_rag_response`
 
 These are the main extension points for query rewriting, evidence shaping, prompt context customization, source filtering, and final response mutation. [SRS: RAG-FR-21]
 
 Example: override the search query before retrieval.
 
 ```php
-add_filter( 'gg_data_rag_search_query', function( $search_query, $query, $options ) {
+add_filter( 'gregius_data_rag_search_query', function( $search_query, $query, $options ) {
 	if ( false !== stripos( $query, 'wp cli' ) ) {
 		return 'WP-CLI command line';
 	}
@@ -408,20 +408,20 @@ add_filter( 'gg_data_rag_search_query', function( $search_query, $query, $option
 ### 6.3 Governance and Policy Hooks
 
 Verified hooks and filters:
-- `gg_data_rag_threshold_profile`
-- `gg_data_rag_policy_query_class`
-- `gg_data_rag_policy_retrieval_mode`
-- `gg_data_rag_retrieval_policy`
-- `gg_data_rag_rerank_policy`
-- `gg_data_rag_abstain_message`
-- `gg_data_rag_governance_decision`
+- `gregius_data_rag_threshold_profile`
+- `gregius_data_rag_policy_query_class`
+- `gregius_data_rag_policy_retrieval_mode`
+- `gregius_data_rag_retrieval_policy`
+- `gregius_data_rag_rerank_policy`
+- `gregius_data_rag_abstain_message`
+- `gregius_data_rag_governance_decision`
 
 These control or observe retrieval-mode resolution, acceptance thresholds, rerank policy, abstain messaging, and final governance outcomes. [SRS: RAG-FR-14, RAG-FR-15, RAG-FR-16, RAG-QR-04, RAG-QR-05]
 
 Example: force conceptual queries to semantic mode.
 
 ```php
-add_filter( 'gg_data_rag_policy_retrieval_mode', function( $mode, $connection_name, $intent, $options, $query, $query_class ) {
+add_filter( 'gregius_data_rag_policy_retrieval_mode', function( $mode, $connection_name, $intent, $options, $query, $query_class ) {
 	if ( 'conceptual' === $query_class ) {
 		return 'semantic';
 	}
@@ -433,16 +433,16 @@ add_filter( 'gg_data_rag_policy_retrieval_mode', function( $mode, $connection_na
 ### 6.4 Tool Registration and Custom Action Hooks
 
 Verified hooks and filters:
-- `gg_data_rag_tools`
-- `gg_data_rag_tool_{tool_name}`
-- `gg_data_rag_tool_executed`
+- `gregius_data_rag_tools`
+- `gregius_data_rag_tool_{tool_name}`
+- `gregius_data_rag_tool_executed`
 
 Use these when you need to add a new tool that can be selected by the agentic model or triggered directly by users.
 
 Example: register a user-triggerable custom tool and its handler.
 
 ```php
-add_filter( 'gg_data_rag_tools', function( $tools ) {
+add_filter( 'gregius_data_rag_tools', function( $tools ) {
 	$tools['summarize_source'] = array(
 		'name'        => 'summarize_source',
 		'description' => 'Summarize a specific source post.',
@@ -465,12 +465,12 @@ add_filter( 'gg_data_rag_tools', function( $tools ) {
 	return $tools;
 } );
 
-add_filter( 'gg_data_rag_tool_summarize_source', function( $result, $tool_name, $tool_context ) {
+add_filter( 'gregius_data_rag_tool_summarize_source', function( $result, $tool_name, $tool_context ) {
 	$post_id = absint( $tool_context['tool_selection']['post_id'] ?? 0 );
 	$post    = $post_id ? get_post( $post_id ) : null;
 
 	if ( ! $post ) {
-		return new WP_Error( 'gg_data_missing_post', 'Post not found.' );
+		return new WP_Error( 'gregius_data_missing_post', 'Post not found.' );
 	}
 
 	return array(
@@ -493,23 +493,23 @@ add_filter( 'gg_data_rag_tool_summarize_source', function( $result, $tool_name, 
 ### 6.5 Access-Control Hooks
 
 Verified hooks and filters:
-- `gg_data_rag_endpoint_permission`
-- `gg_data_rag_access_level`
-- `gg_data_rag_required_capability`
+- `gregius_data_rag_endpoint_permission`
+- `gregius_data_rag_access_level`
+- `gregius_data_rag_required_capability`
 
-Use `gg_data_rag_endpoint_permission` for request-aware allow or deny logic, and use the other two filters to customize the default security policy. Signatures and tiers are in the canonical hook catalog (docs/hooks/developer-documentation.md). [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
+Use `gregius_data_rag_endpoint_permission` for request-aware allow or deny logic, and use the other two filters to customize the default security policy. Signatures and tiers are in the canonical hook catalog (docs/hooks/developer-documentation.md). [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
 
 ### 6.6 Route Throttling Hooks
 
 Verified filters:
-- `gg_data_rag_rate_limit_anonymous`
-- `gg_data_rag_rate_limit_authenticated`
-- `gg_data_rag_rate_limit_window_seconds`
+- `gregius_data_rag_rate_limit_anonymous`
+- `gregius_data_rag_rate_limit_authenticated`
+- `gregius_data_rag_rate_limit_window_seconds`
 
 Use these filters to tune fixed-window limits used by `POST /rag/chat` and `POST /rag/action`.
 
 Verified action:
-- `gg_data_rag_rate_limit_decision`
+- `gregius_data_rag_rate_limit_decision`
 
 Fires after every rate-limit evaluation — for both allowed and blocked requests. Observational only; must not mutate enforcement decisions.
 
@@ -519,7 +519,7 @@ Use this action to implement custom telemetry, alerting, or audit logging withou
 
 ## 7. Troubleshooting
 
-### 7.1 `gg_data_missing_query` or other missing parameter errors
+### 7.1 `gregius_data_missing_query` or other missing parameter errors
 
 Cause:
 - A required REST field was omitted.
@@ -530,7 +530,7 @@ Check:
 - `embedding_model_key`
 - `llm_model_id`
 
-### 7.2 `gg_data_action_not_allowed`
+### 7.2 `gregius_data_action_not_allowed`
 
 Cause:
 - The requested action exists but does not include `user_action` metadata.
@@ -538,10 +538,10 @@ Cause:
 Fix:
 - Add the `user_action` configuration when registering the tool.
 
-### 7.3 `gg_data_action_no_handler`
+### 7.3 `gregius_data_action_no_handler`
 
 Cause:
-- A user-triggerable tool was registered, but no `gg_data_rag_tool_{tool_name}` handler returned a result.
+- A user-triggerable tool was registered, but no `gregius_data_rag_tool_{tool_name}` handler returned a result.
 
 Fix:
 - Register a matching filter that returns either a result array or `WP_Error`.
@@ -566,14 +566,14 @@ Cause:
 Fix:
 - Confirm and enforce `logged_in` or capability-gated access through settings or filters.
 
-### 7.6 `gg_data_rate_limited` (HTTP 429)
+### 7.6 `gregius_data_rate_limited` (HTTP 429)
 
 Cause:
 - Route-scoped fixed-window limit exceeded for anonymous or authenticated scope.
 
 Fix:
 - Respect `retry_after` before retrying.
-- Tune limits through `gg_data_rag_rate_limit_anonymous`, `gg_data_rag_rate_limit_authenticated`, and `gg_data_rag_rate_limit_window_seconds` where needed.
+- Tune limits through `gregius_data_rag_rate_limit_anonymous`, `gregius_data_rag_rate_limit_authenticated`, and `gregius_data_rag_rate_limit_window_seconds` where needed.
 
 ### 7.7 Metadata-Scoped Retrieval Returns Unexpected Zero Results
 
@@ -585,7 +585,7 @@ Fix:
 - Confirm provider transport keeps empty-filter object semantics for JSONB containment bypass.
 - Confirm response metadata and interaction payload include `search.metadata_filter` for diagnostics.
 
-### 7.8 `gg_data_rag_journey_guest_session_mismatch` or ownership errors on journey endpoints
+### 7.8 `gregius_data_rag_journey_guest_session_mismatch` or ownership errors on journey endpoints
 
 Cause:
 - The guest caller's current session hash does not match the stored ownership hash for the interaction, or the interaction belongs to another user.
@@ -605,10 +605,10 @@ Fix:
 ### 7.9 Journey permission denials
 
 Cause:
-- Journey endpoints are fail-closed: a request is denied unless the `gg_data_rag_endpoint_permission` filter explicitly allows it, or (for `consume`/`history`) the caller is authorized for the interaction.
+- Journey endpoints are fail-closed: a request is denied unless the `gregius_data_rag_endpoint_permission` filter explicitly allows it, or (for `consume`/`history`) the caller is authorized for the interaction.
 
 Check:
-- Verify the `gg_data_rag_endpoint_permission` filter for journey endpoints; journey surfaces default to fail-closed (deny unless explicitly allowed).
+- Verify the `gregius_data_rag_endpoint_permission` filter for journey endpoints; journey surfaces default to fail-closed (deny unless explicitly allowed).
 - For `consume`/`history`, confirm the caller is the interaction author or a matching guest session.
 
 Fix:
@@ -652,17 +652,17 @@ if ( $require_login && ! is_user_logged_in() ) {
 
 **Important:** Render behavior also honors the effective API access policy. Guests are gated when either `requireLogin=true` **or** the global RAG access level is not `public`.
 
-Access-level resolution is site-aware: render logic reads `rag_access_level` through `GG_Data_Settings_Manager` (stored in the current site's `*_gg_settings` table) and then applies the `gg_data_rag_access_level` filter. This works correctly for both single-site and multisite without hardcoding a site ID or options table.
+Access-level resolution is site-aware: render logic reads `rag_access_level` through `Gregius_Data_Settings_Manager` (stored in the current site's `*_gregius_data_settings` table) and then applies the `gregius_data_rag_access_level` filter. This works correctly for both single-site and multisite without hardcoding a site ID or options table.
 
 - `requireLogin=true` + any non-public API access level → guest sign-in prompt at render time ✅
 - `requireLogin=false` + API default `ACCESS_LOGGED_IN` → guest sign-in prompt at render time (prevents submit-then-401 flow)
-- `requireLogin=false` + API set to `public` (via `gg_data_rag_access_level` filter) → fully public block and API ✅
+- `requireLogin=false` + API set to `public` (via `gregius_data_rag_access_level` filter) → fully public block and API ✅
 
 To make a block public end-to-end, both the block attribute and the API access level must be aligned:
 
 ```php
 // Make API public for a public-facing block:
-add_filter( 'gg_data_rag_access_level', fn() => 'public' );
+add_filter( 'gregius_data_rag_access_level', fn() => 'public' );
 ```
 
 **Invalidation:** Changing `requireLogin` in the block editor takes effect immediately on the next page render. No cache flush required.
@@ -691,9 +691,9 @@ npm run build
 ## 9. Maintenance Notes
 
 When updating the RAG subsystem, recheck these files first:
-- [includes/rag/class-gg-data-rag-service.php](../../includes/rag/class-gg-data-rag-service.php)
-- [includes/api/class-gg-data-rest-rag-controller.php](../../includes/api/class-gg-data-rest-rag-controller.php)
-- [includes/rag/class-gg-data-coverage-gate.php](../../includes/rag/class-gg-data-coverage-gate.php)
-- [includes/hooks/class-gg-data-rag-security-hooks.php](../../includes/hooks/class-gg-data-rag-security-hooks.php)
+- [includes/rag/class-gregius-data-rag-service.php](../../includes/rag/class-gregius-data-rag-service.php)
+- [includes/api/class-gregius-data-rest-rag-controller.php](../../includes/api/class-gregius-data-rest-rag-controller.php)
+- [includes/rag/class-gregius-data-coverage-gate.php](../../includes/rag/class-gregius-data-coverage-gate.php)
+- [includes/hooks/class-gregius-data-rag-security-hooks.php](../../includes/hooks/class-gregius-data-rag-security-hooks.php)
 - [docs/rag/srs.md](srs.md)
 - [docs/rag/architecture.md](architecture.md)

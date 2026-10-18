@@ -72,39 +72,39 @@ Mapping:
 ### 3.1 Hook Category Components
 
 1. **Configuration and Batch Control Hooks**
-   - Examples: `gg_data_post_sync_batch_size`, `gg_data_term_sync_batch_size`, `gg_data_embedding_batch_size`, `gg_data_vector_delete_batch_size`.
+   - Examples: `gregius_data_post_sync_batch_size`, `gregius_data_term_sync_batch_size`, `gregius_data_embedding_batch_size`, `gregius_data_vector_delete_batch_size`.
    - Purpose: operational tuning and throughput controls.
 
 2. **Sync Control Hooks**
-   - Examples: `gg_data_should_sync_post`, `gg_data_skip_meta_keys`, `gg_data_metadata_manifest`, `gg_data_sync_post_types_updated`.
+   - Examples: `gregius_data_should_sync_post`, `gregius_data_skip_meta_keys`, `gregius_data_metadata_manifest`, `gregius_data_sync_post_types_updated`.
    - Purpose: post/meta inclusion control and payload enrichment before persistence.
 
 3. **Chunking Hooks**
-   - Examples: `gg_data_chunking_strategies`, `gg_data_chunking_strategy`, `gg_data_embedding_chunks`, `gg_data_chunking_strategy_resolved`.
+   - Examples: `gregius_data_chunking_strategies`, `gregius_data_chunking_strategy`, `gregius_data_embedding_chunks`, `gregius_data_chunking_strategy_resolved`.
    - Purpose: chunk strategy registration/selection and payload shaping.
 
 4. **Search Hooks**
-   - Examples: `gg_data_search_title_weight`, `gg_data_search_content_weight`, `gg_data_search_rate_limit`.
+   - Examples: `gregius_data_search_title_weight`, `gregius_data_search_content_weight`, `gregius_data_search_rate_limit`.
    - Purpose: relevance weighting and rate limiting.
 
 5. **Interaction Hooks**
-   - Examples: `gg_data_interaction_meta_fields`, `gg_data_interaction_log_context`, `gg_data_interaction_recorded`, `gg_data_interaction_feedback_received`.
+   - Examples: `gregius_interaction_meta_fields`, `gregius_interaction_log_context`, `gregius_interaction_recorded`, `gregius_interaction_feedback_received`.
    - Purpose: analytics metadata, post-record callbacks, and feedback signal collection.
 
 6. **RAG and Governance Hooks**
-   - Examples: `gg_data_rag_tools`, `gg_data_rag_tool_{name}`, `gg_data_rag_tool_executed`, `gg_data_rag_complete`, plus governance policy hooks.
+   - Examples: `gregius_data_rag_tools`, `gregius_data_rag_tool_{name}`, `gregius_data_rag_tool_executed`, `gregius_data_rag_complete`, plus governance policy hooks.
    - Purpose: tool registration/execution and policy tuning.
 
 6b. **RAG Lifecycle Extension Hooks** (added Tier 1)
-   - Examples: `gg_data_rag_system_prompt`, `gg_data_rag_tool_selection_system_prompt`, `gg_data_rag_pre_retrieval_filter`, `gg_data_rag_llm_response`.
+   - Examples: `gregius_data_rag_system_prompt`, `gregius_data_rag_tool_selection_system_prompt`, `gregius_data_rag_pre_retrieval_filter`, `gregius_data_rag_llm_response`.
    - Purpose: generic seams across the RAG lifecycle — answer/routing prompt composition, retrieval filtering, and LLM response post-processing — without feature-specific coupling.
 
 7. **Provider and Auxiliary Hooks**
-   - Examples: `gg_data_llm_providers`, provider request/call filters/actions, streaming/rate hooks.
+   - Examples: `gregius_data_llm_providers`, provider request/call filters/actions, streaming/rate hooks.
    - Purpose: provider extensibility and observability.
 
 8. **Log Governance Hooks**
-   - Examples: `gg_data_log_retention_days`, `gg_data_before_purge_logs`, `gg_data_after_purge_logs`.
+   - Examples: `gregius_data_log_retention_days`, `gregius_data_before_purge_logs`, `gregius_data_after_purge_logs`.
    - Purpose: retention policy extension, pre/post purge observability, and site-scoped governance.
 
 - **Tier 1 (Public Stable):** core extension hooks documented with explicit contracts and examples.
@@ -125,7 +125,7 @@ Mapping:
 Core Default Value
    │
    ▼
-apply_filters( 'gg_data_xxx', $default, ...$params )
+apply_filters( 'gregius_data_xxx', $default, ...$params )
    │
    ├─ 0..N extension callbacks
    │
@@ -139,7 +139,7 @@ Filtered Value Returned to Core Flow
 Core Event Occurs
    │
    ▼
-do_action( 'gg_data_xxx', ...$event_payload )
+do_action( 'gregius_data_xxx', ...$event_payload )
    │
    ├─ 0..N extension callbacks
    │
@@ -153,7 +153,7 @@ Core flow continues (no return contract)
 Runtime segment resolved
    │
    ▼
-$hook_name = 'gg_data_rag_tool_' . $tool_name
+$hook_name = 'gregius_data_rag_tool_' . $tool_name
    │
    ▼
 apply_filters( $hook_name, $payload, ... )
@@ -169,10 +169,10 @@ Mapping:
 
 ## 5. Architectural Decisions (ADRs)
 
-### AD-01: Unified `gg_data_` Namespace for Hook Contracts
+### AD-01: Unified `gregius_data_` Namespace for Hook Contracts
 
 Decision:
-- Plugin-owned hook contracts use the `gg_data_` prefix except intentionally documented dynamic variants.
+- Plugin-owned hook contracts use the `gregius_data_` prefix except intentionally documented dynamic variants.
 
 Rationale:
 - Reduces collisions and keeps extension discovery deterministic.
@@ -240,7 +240,7 @@ Consequences:
 ### AD-06: Lifecycle-Based Generic Extension Surface for Third-Party Plugins
 
 Decision:
-- New Tier 1 hooks (`gg_data_rag_pre_retrieval_filter`, `gg_data_rag_llm_response`, `gg_data_interaction_feedback_received`) are defined as generic lifecycle seams, not feature-specific hooks.
+- New Tier 1 hooks (`gregius_data_rag_pre_retrieval_filter`, `gregius_data_rag_llm_response`, `gregius_interaction_feedback_received`) are defined as generic lifecycle seams, not feature-specific hooks.
 - These hooks enable third-party plugins (conversational anchoring, feedback loops, escalation workflows) without embedding feature logic in core.
 
 Rationale:

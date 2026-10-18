@@ -73,7 +73,7 @@ Tier 3 expanded:
                      |
                 WordPress boots
                      |
-                GG_Data_Activator::activate()
+                Gregius_Data_Activator::activate()
                      |
                 PHPUnit runs WpIntegration suite
 ```
@@ -145,7 +145,7 @@ gregius-data/
 
 ```
 PHPUnit\Framework\TestCase
-├── (Tier 1 & 2 tests)     # Test_GG_Data_* extends this directly
+├── (Tier 1 & 2 tests)     # Test_Gregius_Data_* extends this directly
 │   └── Mocking via Brain Monkey + Mockery
 │
 └── ... (through polyfills) ...
@@ -155,7 +155,7 @@ PHPUnit\Framework\TestCase
 
 ### 4.3 Test File Naming Convention
 
-All test files follow `Test_GG_Data_{ClassName}.php` in the appropriate tier directory. PHPUnit 11 uses `suffix=".php"` for test discovery since classes mirror filenames.
+All test files follow `Test_Gregius_Data_{ClassName}.php` in the appropriate tier directory. PHPUnit 11 uses `suffix=".php"` for test discovery since classes mirror filenames.
 
 ---
 
@@ -227,7 +227,7 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 ### AD-04: LLM_Registry static cache reset between tests
 
-**Context:** `GG_Data_LLM_Registry::$providers` is a static property. PHPUnit runs test methods in the same process, so the cache persists across tests.
+**Context:** `Gregius_Data_LLM_Registry::$providers` is a static property. PHPUnit runs test methods in the same process, so the cache persists across tests.
 
 **Decision:** Reset `self::$providers` to an empty array via reflection in `setUp()`.
 

@@ -82,7 +82,7 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. Search Integration Component (`GG_Data_Search_Integration`)
+1. Search Integration Component (`Gregius_Data_Search_Integration`)
 - Hooks into `posts_search` and `posts_orderby`.
 - Resolves active connection and search settings.
 - Executes PostgreSQL search and composes MySQL catch-up behavior for unsynced types.
@@ -92,15 +92,15 @@ Mapping:
 - Provides RAG-oriented orchestrator `search_rag_orchestrate` with JSONB metadata containment support.
 - Provides shared scoring helpers and vector candidate generation.
 
-3. Search Schema Management Component (`GG_Data_Search_Schema`)
+3. Search Schema Management Component (`Gregius_Data_Search_Schema`)
 - Creates and verifies SQL search functions.
 - Tracks provisioning readiness and schema support status.
 
-4. Search Fallback/Health Component (`GG_Data_Search_Fallback`)
+4. Search Fallback/Health Component (`Gregius_Data_Search_Fallback`)
 - Handles runtime fallback execution boundaries.
 - Tracks success/failure/latency metrics and degradation state.
 
-5. Search REST Management Component (`GG_Data_REST_Search_Controller`)
+5. Search REST Management Component (`Gregius_Data_REST_Search_Controller`)
 - Exposes health, status, schema, language, and trigram status routes.
 - Provides operator entrypoints for maintenance and diagnostics.
 
@@ -147,7 +147,7 @@ Deduplicate + merge results
 Apply ordered post ID constraints to WP query
    │
    ▼
-Emit gg_data_search_completed action
+Emit gregius_data_search_completed action
 ```
 
 ### 4.2 SQL Orchestration Flow
@@ -202,7 +202,7 @@ Decision:
 
 Rationale:
 - Consolidates retrieval logic for lexical/trigram/vector behavior into a single parallel RRF function.
-- The legacy `gg_search_posts_fts` wrapper has been removed.
+- The legacy `gregius_data_search_posts_fts` wrapper has been removed.
 
 Consequences:
 - All callers must use `search_native_orchestrate`.

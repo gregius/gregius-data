@@ -94,7 +94,7 @@ This documentation is organized for **active development**. User-facing document
 
 - **[rest-api/](rest-api/)** - REST API subsystem documentation
   - **[rest-api/srs.md](rest-api/srs.md)** - Software Requirements Specification for the REST API subsystem
-  - **[rest-api/architecture.md](rest-api/architecture.md)** - Architecture views, decisions, constraints, and risks for `gg-data/v1`
+  - **[rest-api/architecture.md](rest-api/architecture.md)** - Architecture views, decisions, constraints, and risks for `gregius-data/v1`
   - **[rest-api/developer-documentation.md](rest-api/developer-documentation.md)** - Endpoint catalog, permissions, integration guidance, and troubleshooting
 
 - **[wpcli/](wpcli/)** - WP-CLI command interface documentation

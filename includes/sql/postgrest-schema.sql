@@ -13,20 +13,20 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Schema metadata table (tracks version)
-CREATE TABLE IF NOT EXISTS gg_schema_meta (
+CREATE TABLE IF NOT EXISTS gregius_data_schema_meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Insert schema version
-INSERT INTO gg_schema_meta (key, value) 
+INSERT INTO gregius_data_schema_meta (key, value) 
 VALUES ('version', '1.0.0')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
 -- Sync metadata entities table (individual entity modification tracking).
--- Mirrors the PHP-generated schema (GG_Data_Schema_Manager::create_sync_metadata_postgresql_table).
-CREATE TABLE IF NOT EXISTS wp_gg_sync_metadata_entities (
+-- Mirrors the PHP-generated schema (Gregius_Data_Schema_Manager::create_sync_metadata_postgresql_table).
+CREATE TABLE IF NOT EXISTS wp_gregius_data_sync_metadata_entities (
     id BIGSERIAL PRIMARY KEY,
     connection_name VARCHAR(100) NOT NULL DEFAULT 'default',
     entity_type VARCHAR(50) NOT NULL,
@@ -40,20 +40,20 @@ CREATE TABLE IF NOT EXISTS wp_gg_sync_metadata_entities (
     CONSTRAINT unique_pg_entity UNIQUE (connection_name, entity_type, entity_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pg_connection ON wp_gg_sync_metadata_entities(connection_name);
-CREATE INDEX IF NOT EXISTS idx_pg_entity_type ON wp_gg_sync_metadata_entities(entity_type);
-CREATE INDEX IF NOT EXISTS idx_pg_post_type ON wp_gg_sync_metadata_entities(post_type);
-CREATE INDEX IF NOT EXISTS idx_pg_source_id ON wp_gg_sync_metadata_entities(source_id);
-CREATE INDEX IF NOT EXISTS idx_pg_source_modified ON wp_gg_sync_metadata_entities(source_modified_at);
-CREATE INDEX IF NOT EXISTS idx_pg_synced_at ON wp_gg_sync_metadata_entities(synced_at);
-CREATE INDEX IF NOT EXISTS idx_pg_updated ON wp_gg_sync_metadata_entities(updated_at);
+CREATE INDEX IF NOT EXISTS idx_pg_connection ON wp_gregius_data_sync_metadata_entities(connection_name);
+CREATE INDEX IF NOT EXISTS idx_pg_entity_type ON wp_gregius_data_sync_metadata_entities(entity_type);
+CREATE INDEX IF NOT EXISTS idx_pg_post_type ON wp_gregius_data_sync_metadata_entities(post_type);
+CREATE INDEX IF NOT EXISTS idx_pg_source_id ON wp_gregius_data_sync_metadata_entities(source_id);
+CREATE INDEX IF NOT EXISTS idx_pg_source_modified ON wp_gregius_data_sync_metadata_entities(source_modified_at);
+CREATE INDEX IF NOT EXISTS idx_pg_synced_at ON wp_gregius_data_sync_metadata_entities(synced_at);
+CREATE INDEX IF NOT EXISTS idx_pg_updated ON wp_gregius_data_sync_metadata_entities(updated_at);
 
-COMMENT ON TABLE wp_gg_sync_metadata_entities IS 'Tracks individual entities synced from WordPress to PostgreSQL for modification detection';
-COMMENT ON COLUMN wp_gg_sync_metadata_entities.entity_type IS 'Type: post, postmeta, term, term_taxonomy, term_relationship';
-COMMENT ON COLUMN wp_gg_sync_metadata_entities.entity_id IS 'Entity ID (integer for posts/terms, composite string for term_relationships like 123-456)';
-COMMENT ON COLUMN wp_gg_sync_metadata_entities.source_id IS 'Parent entity (post_id for postmeta, term_id for term_taxonomy)';
-COMMENT ON COLUMN wp_gg_sync_metadata_entities.source_modified_at IS 'Source entity modification timestamp for change detection';
-COMMENT ON COLUMN wp_gg_sync_metadata_entities.synced_at IS 'Timestamp when entity was synced to PostgreSQL';
+COMMENT ON TABLE wp_gregius_data_sync_metadata_entities IS 'Tracks individual entities synced from WordPress to PostgreSQL for modification detection';
+COMMENT ON COLUMN wp_gregius_data_sync_metadata_entities.entity_type IS 'Type: post, postmeta, term, term_taxonomy, term_relationship';
+COMMENT ON COLUMN wp_gregius_data_sync_metadata_entities.entity_id IS 'Entity ID (integer for posts/terms, composite string for term_relationships like 123-456)';
+COMMENT ON COLUMN wp_gregius_data_sync_metadata_entities.source_id IS 'Parent entity (post_id for postmeta, term_id for term_taxonomy)';
+COMMENT ON COLUMN wp_gregius_data_sync_metadata_entities.source_modified_at IS 'Source entity modification timestamp for change detection';
+COMMENT ON COLUMN wp_gregius_data_sync_metadata_entities.synced_at IS 'Timestamp when entity was synced to PostgreSQL';
 
 -- WordPress Posts table (main content)
 CREATE TABLE IF NOT EXISTS wp_posts (
@@ -127,8 +127,8 @@ ON wp_posts_clean USING GIN (metadata_manifest jsonb_path_ops);
 
 -- Trigger to automatically update search_vector_weighted on INSERT/UPDATE
 -- NOTE: Field weights can be customized via WordPress filter hooks:
---   - apply_filters('gg_data_search_title_weight', 'A', $connection_name)
---   - apply_filters('gg_data_search_content_weight', 'B', $connection_name)
+--   - apply_filters('gregius_data_search_title_weight', 'A', $connection_name)
+--   - apply_filters('gregius_data_search_content_weight', 'B', $connection_name)
 -- PostgreSQL tsvector weights: A=1.0, B=0.4, C=0.2, D=0.1
 
 -- Drop and recreate the trigger function (PostgreSQL lacks CREATE OR REPLACE TRIGGER).
@@ -596,7 +596,7 @@ DECLARE
 BEGIN
     -- Get schema version
     SELECT value INTO v_version 
-    FROM gg_schema_meta 
+    FROM gregius_data_schema_meta 
     WHERE key = 'version';
     
     -- Get counts
@@ -648,8 +648,8 @@ ALTER TABLE wp_posts_gemini_gemini_embedding_001_3072 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_cohere_embed_v50_pro_2048 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_cohere_embed_v50_fast_2048 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wp_posts_hashingtf_murmur3_1024 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gg_schema_meta ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wp_gg_sync_metadata_entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gregius_data_schema_meta ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wp_gregius_data_sync_metadata_entities ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies (if any) before recreating
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts;
@@ -665,8 +665,8 @@ DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_gemini_ge
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v50_pro_2048;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_cohere_embed_v50_fast_2048;
 DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON gg_schema_meta;
-DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_gg_sync_metadata_entities;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON gregius_data_schema_meta;
+DROP POLICY IF EXISTS "Enable all access for service_role" ON wp_gregius_data_sync_metadata_entities;
 
 -- Create permissive policies for service_role
 CREATE POLICY "Enable all access for service_role" ON wp_posts FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -682,8 +682,8 @@ CREATE POLICY "Enable all access for service_role" ON wp_posts_gemini_gemini_emb
 CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v50_pro_2048 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_cohere_embed_v50_fast_2048 FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for service_role" ON wp_posts_hashingtf_murmur3_1024 FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON gg_schema_meta FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for service_role" ON wp_gg_sync_metadata_entities FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON gregius_data_schema_meta FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for service_role" ON wp_gregius_data_sync_metadata_entities FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Read-only policies for the anonymous role (used by the server-side search/RAG
 -- functions, which run as `anon`). Scoped to the tables those functions read.
@@ -1254,7 +1254,7 @@ $$;
 
 -- Helper function: Generate search vector using document averaging
 -- For row-per-embedding schema, averages embeddings from matching documents
-CREATE OR REPLACE FUNCTION gg_generate_search_vector(
+CREATE OR REPLACE FUNCTION gregius_data_generate_search_vector(
     search_text text,
     search_language text DEFAULT 'english',
     vector_table_name text DEFAULT 'wp_posts_hashingtf_murmur3_1024',

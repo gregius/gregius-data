@@ -55,7 +55,7 @@ Explicitly excluded:
 │          │                                                        │
 │          ▼                                                        │
 │  Vector Orchestration Layer                                        │
-│  - GG_Data_Vector_Generator                                        │
+│  - Gregius_Data_Vector_Generator                                        │
 │  - Strategy selection (Hashing TF | API embeddings)       │
 │          │                                                        │
 │          ▼                                                        │
@@ -85,22 +85,22 @@ Mapping:
 
 ### 3.1 Component Decomposition
 
-1. Vector Generator Component (`GG_Data_Vector_Generator`)
+1. Vector Generator Component (`Gregius_Data_Vector_Generator`)
 - Resolves model metadata from registry.
 - Selects first supporting strategy for the model contract.
 - Executes generation and logs operational outcomes.
 
-2. Vector Strategy Components (`GG_Data_Vector_Strategy_Interface`)
-- `GG_Data_HashingTF_Strategy` for internal stateless hashing model workflows (no vocabulary prerequisite).
-- `GG_Data_API_Embeddings_Strategy` for provider-backed embeddings.
+2. Vector Strategy Components (`Gregius_Data_Vector_Strategy_Interface`)
+- `Gregius_Data_HashingTF_Strategy` for internal stateless hashing model workflows (no vocabulary prerequisite).
+- `Gregius_Data_API_Embeddings_Strategy` for provider-backed embeddings.
 - Shared result contract (`success`, `message`, `processed`, `failed`, `total_tokens`).
 - Supports provider-path-aware execution (PDO and PostgREST/Supabase style).
 
-3. Vector REST Management Component (`GG_Data_REST_Vector_Queue_Controller`)
+3. Vector REST Management Component (`Gregius_Data_REST_Vector_Queue_Controller`)
 - Queue visibility, single item generation, batch generation, batch deletion, status, and clear operations.
 - Posts-list status endpoint for operational inspection.
 
-4. Connection-Model REST Component (`GG_Data_REST_Connection_Models_Controller`)
+4. Connection-Model REST Component (`Gregius_Data_REST_Connection_Models_Controller`)
 - Lists, adds, and removes active models per connection.
 - Masks sensitive model config data in responses.
 
@@ -126,7 +126,7 @@ Mapping:
 ### 4.1 Batch Generation Runtime Flow
 
 ```
-POST /gg-data/v1/vectors/batch-generate
+POST /gregius-data/v1/vectors/batch-generate
     │
     ▼
 Permission check (manage_options)
@@ -174,7 +174,7 @@ Return sanitized model payloads and status messaging
 ### 4.4 Batch Delete Runtime Flow
 
 ```
-POST /gg-data/v1/vectors/batch-delete
+POST /gregius-data/v1/vectors/batch-delete
     │
     ▼
 Permission check (manage_options)

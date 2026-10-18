@@ -264,10 +264,10 @@ const ConnectionForm = ({
     return (
         <form
             onSubmit={handleSubmit}
-            className="gg-data-connection-form"
+            className="gregius-data-connection-form"
         >
             <div
-                className="gg-data-form-fields"
+                className="gregius-data-form-fields"
                 style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
             >
                 {/* Submit error notice */}

@@ -19,7 +19,7 @@ Companion docs:
 ## 2. Scope
 
 Covered:
-- `GG_Data_Abilities_Manager` lifecycle and callbacks
+- `Gregius_Data_Abilities_Manager` lifecycle and callbacks
 - Registered categories and abilities
 - Input/output schemas and metadata behavior
 - Permission boundaries
@@ -34,7 +34,7 @@ Not covered:
 ### 3.1 Bootstrapping abilities manager
 
 ```php
-$abilities = new GG_Data_Abilities_Manager();
+$abilities = new Gregius_Data_Abilities_Manager();
 $abilities->init();
 ```
 
@@ -65,9 +65,9 @@ curl -X POST https://example.com/wp-json/wp-abilities/v1/gregius-data/answer/run
 
 ## 4. Core Class Reference
 
-### 4.1 `GG_Data_Abilities_Manager`
+### 4.1 `Gregius_Data_Abilities_Manager`
 
-Source: `includes/class-gg-data-abilities-manager.php`
+Source: `includes/class-gregius-data-abilities-manager.php`
 
 Lifecycle methods:
 - `init()`
@@ -109,7 +109,7 @@ Description:
 Execution summary:
 - normalizes input fields for basic and optional orchestration modes
 - validates required query and model arguments
-- delegates to `GG_Data_RAG_Service::generate_answer()`
+- delegates to `Gregius_Data_RAG_Service::generate_answer()`
 - normalizes interaction tracking context for persistence (server-generated `conversation_id` when absent/invalid; default `source.type = mcp` for ability-origin calls)
 
 Basic contract policy:
@@ -146,7 +146,7 @@ Input highlights:
 - Optional: `include_model_details` (boolean, default `false`; requires `include_embedding_models = true`)
 
 Execution summary:
-- reads connections via `GG_Data_Settings_Manager`
+- reads connections via `Gregius_Data_Settings_Manager`
 - returns normalized array: `name`, `type`, `description`, `is_active`
 - `type` identifies backend provider mode (for example `postgresql` direct/PDO or `postgrest` Supabase-style REST)
 - when requested, adds `embedding_models` per connection with `active_keys` and `active_count`
@@ -173,12 +173,12 @@ Description:
 - use this output to get valid `embedding_model`, `rerank_model`, `agentic_model`, and `answer_model` values for `answer`
 
 Execution summary:
-- reads models via `GG_Data_Model_Registry`
+- reads models via `Gregius_Data_Model_Registry`
 - input contract accepts only optional `type` filter
 - optional `type` filtering: `embeddings`, `llm`, `rerank`, `evaluator`
 - model definitions are read from a global/provider registry scope (not per-connection model storage)
 - returns normalized model objects including `id`, `type`, `provider`, `label`, `is_active`, optional `description`, optional `dimensions`
-- does not persist `gg_interaction` records (utility/discovery ability only)
+- does not persist `gregius_interaction` records (utility/discovery ability only)
 
 ## 7. Metadata Contract
 
@@ -232,7 +232,7 @@ It exposes MCP-friendly metadata so external adapter layers can present abilitie
 
 Check:
 1. `wp_register_ability` function exists in runtime.
-2. `GG_Data_Abilities_Manager::init()` is executed.
+2. `Gregius_Data_Abilities_Manager::init()` is executed.
 3. Hooks are attached to `wp_abilities_api_init` and `wp_abilities_api_categories_init`.
 
 ### Ability exists but cannot execute
@@ -249,7 +249,7 @@ Check runtime metadata in the response:
 
 Scope note:
 - Only `gregius-data/answer` is interaction-persistent.
-- `gregius-data/list-models` and `gregius-data/list-connections` do not create `gg_interaction` rows.
+- `gregius-data/list-models` and `gregius-data/list-connections` do not create `gregius_interaction` rows.
 
 ### `answer` ability returns prompt errors
 

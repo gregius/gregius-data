@@ -4,9 +4,9 @@
 
 ## Overview
 
-Gregius Data ships a full WP-CLI command surface under `wp gg-data` — seven command families covering sync, vectors, RAG answers, evaluation, listing, and logs. Every subcommand accepts a `--format` flag (table, json, or csv), producing deterministic output for scripts and CI/CD pipelines.
+Gregius Data ships a full WP-CLI command surface under `wp gregius-data` — seven command families covering sync, vectors, RAG answers, evaluation, listing, and logs. Every subcommand accepts a `--format` flag (table, json, or csv), producing deterministic output for scripts and CI/CD pipelines.
 
-Automation and scripting are a site operator's most reliable tools. Without a command-line interface, routine tasks — syncing content after a migration, rebuilding vectors after a model change, auditing logs — require dashboard clicks or REST calls that compound into brittle workflows. The `wp gg-data` namespace turns these into repeatable, versionable one-liners.
+Automation and scripting are a site operator's most reliable tools. Without a command-line interface, routine tasks — syncing content after a migration, rebuilding vectors after a model change, auditing logs — require dashboard clicks or REST calls that compound into brittle workflows. The `wp gregius-data` namespace turns these into repeatable, versionable one-liners.
 
 By the end of this page, you will know every command family, its subcommands, flags, defaults, and output formats — enough to script your entire Gregius Data operational surface.
 
@@ -24,14 +24,14 @@ By the end of this page, you will know every command family, its subcommands, fl
 Every subcommand responds to `--help` with its full flag contract. Start here before running anything:
 
 ```bash
-wp gg-data --help
-wp gg-data sync --help
-wp gg-data vectors --help
-wp gg-data answer --help
-wp gg-data evaluation --help
-wp gg-data list-connections --help
-wp gg-data list-models --help
-wp gg-data logs --help
+wp gregius-data --help
+wp gregius-data sync --help
+wp gregius-data vectors --help
+wp gregius-data answer --help
+wp gregius-data evaluation --help
+wp gregius-data list-connections --help
+wp gregius-data list-models --help
+wp gregius-data logs --help
 ```
 
 All subcommands produce output in one of three formats controlled by `--format`:
@@ -52,9 +52,9 @@ Sync commands move WordPress content into PostgreSQL. Three subcommands cover po
 
 | Subcommand | Scope |
 |---|---|
-| `wp gg-data sync posts` | Sync posts by post type |
-| `wp gg-data sync terms` | Sync all taxonomies, term taxonomies, and term relationships |
-| `wp gg-data sync all` | Run posts + terms in sequence |
+| `wp gregius-data sync posts` | Sync posts by post type |
+| `wp gregius-data sync terms` | Sync all taxonomies, term taxonomies, and term relationships |
+| `wp gregius-data sync all` | Run posts + terms in sequence |
 
 ### Flags
 
@@ -70,13 +70,13 @@ Sync commands move WordPress content into PostgreSQL. Three subcommands cover po
 
 ```bash
 # Full sync with custom batch size
-wp gg-data sync all --connection=gregius-data --batch-size=200
+wp gregius-data sync all --connection=gregius-data --batch-size=200
 
 # Sync only pages, dry-run first
-wp gg-data sync posts --post-type=page --dry-run
+wp gregius-data sync posts --post-type=page --dry-run
 
 # Sync all posts as CSV for reporting
-wp gg-data sync posts --format=csv
+wp gregius-data sync posts --format=csv
 ```
 
 ---
@@ -89,8 +89,8 @@ Vector commands generate and rebuild semantic embeddings from your synced conten
 
 | Subcommand | Scope |
 |---|---|
-| `wp gg-data vectors generate` | Generate vectors for content that needs them |
-| `wp gg-data vectors rebuild` | Rebuild all vectors for the connection |
+| `wp gregius-data vectors generate` | Generate vectors for content that needs them |
+| `wp gregius-data vectors rebuild` | Rebuild all vectors for the connection |
 
 ### Flags
 
@@ -106,10 +106,10 @@ Vector commands generate and rebuild semantic embeddings from your synced conten
 
 ```bash
 # Generate vectors with a specific model
-wp gg-data vectors generate --embedding-model=hashingtf-murmur3-1024 --batch-size=100
+wp gregius-data vectors generate --embedding-model=hashingtf-murmur3-1024 --batch-size=100
 
 # Full rebuild
-wp gg-data vectors rebuild --connection=gregius-data
+wp gregius-data vectors rebuild --connection=gregius-data
 ```
 
 ---
@@ -121,7 +121,7 @@ Ask a question through the RAG pipeline directly from the command line. Useful f
 ### Command
 
 ```
-wp gg-data answer <query>
+wp gregius-data answer <query>
 ```
 
 ### Flags
@@ -143,13 +143,13 @@ wp gg-data answer <query>
 
 ```bash
 # Basic RAG query
-wp gg-data answer "What is dementia care?"
+wp gregius-data answer "What is dementia care?"
 
 # With model overrides and JSON output
-wp gg-data answer "What is dementia care?" --embedding-model=text-embedding-3-small --answer-model=gpt-4o --format=json
+wp gregius-data answer "What is dementia care?" --embedding-model=text-embedding-3-small --answer-model=gpt-4o --format=json
 
 # Using a specific system prompt by ID
-wp gg-data answer "Summarize our privacy policy" --prompt-id=42
+wp gregius-data answer "Summarize our privacy policy" --prompt-id=42
 ```
 
 ---
@@ -162,10 +162,10 @@ Evaluation commands produce framework-ready evaluation datasets from pre-collect
 
 | Subcommand | Purpose |
 |---|---|
-| `wp gg-data evaluation run` | Execute the full prompt corpus |
-| `wp gg-data evaluation list_prompts` | List configured evaluation prompts |
-| `wp gg-data evaluation validate_config` | Validate the evaluation configuration |
-| `wp gg-data evaluation adapters` | List supported framework adapters |
+| `wp gregius-data evaluation run` | Execute the full prompt corpus |
+| `wp gregius-data evaluation list_prompts` | List configured evaluation prompts |
+| `wp gregius-data evaluation validate_config` | Validate the evaluation configuration |
+| `wp gregius-data evaluation adapters` | List supported framework adapters |
 
 ### Flags
 
@@ -180,14 +180,14 @@ Evaluation commands produce framework-ready evaluation datasets from pre-collect
 
 ```bash
 # List supported framework adapters
-wp gg-data evaluation adapters
+wp gregius-data evaluation adapters
 
 # Validate config, then run
-wp gg-data evaluation validate_config
-wp gg-data evaluation run --framework=ragas
+wp gregius-data evaluation validate_config
+wp gregius-data evaluation run --framework=ragas
 
 # Single prompt for targeted validation
-wp gg-data evaluation run --only=P1 --framework=ragas
+wp gregius-data evaluation run --only=P1 --framework=ragas
 ```
 
 ---
@@ -200,8 +200,8 @@ Listing commands discover the configured data connections and registered AI mode
 
 | Command | Purpose |
 |---|---|
-| `wp gg-data list-connections` | List configured data connections |
-| `wp gg-data list-models` | List registered AI models |
+| `wp gregius-data list-connections` | List configured data connections |
+| `wp gregius-data list-models` | List registered AI models |
 
 ### Flags
 
@@ -217,10 +217,10 @@ Listing commands discover the configured data connections and registered AI mode
 
 ```bash
 # Discover connection names
-wp gg-data list-connections --format=json
+wp gregius-data list-connections --format=json
 
 # List embedding models only
-wp gg-data list-models --type=embeddings --format=table
+wp gregius-data list-models --type=embeddings --format=table
 ```
 
 ---
@@ -233,10 +233,10 @@ Logs commands browse, export, purge, and summarize plugin operational logs. Desi
 
 | Subcommand | Purpose |
 |---|---|
-| `wp gg-data logs list` | View log entries with filters |
-| `wp gg-data logs export` | Export filtered logs to CSV or JSON |
-| `wp gg-data logs purge` | Delete logs older than N days |
-| `wp gg-data logs stats` | Summary statistics |
+| `wp gregius-data logs list` | View log entries with filters |
+| `wp gregius-data logs export` | Export filtered logs to CSV or JSON |
+| `wp gregius-data logs purge` | Delete logs older than N days |
+| `wp gregius-data logs stats` | Summary statistics |
 
 ### Flags
 
@@ -254,16 +254,16 @@ Logs commands browse, export, purge, and summarize plugin operational logs. Desi
 
 ```bash
 # View recent error logs
-wp gg-data logs list --level=error --limit=20
+wp gregius-data logs list --level=error --limit=20
 
 # Export sync component logs as CSV
-wp gg-data logs export --component=sync --format=csv
+wp gregius-data logs export --component=sync --format=csv
 
 # Purge logs older than 90 days
-wp gg-data logs purge --days=90 --yes
+wp gregius-data logs purge --days=90 --yes
 
 # Quick stats overview
-wp gg-data logs stats --format=json
+wp gregius-data logs stats --format=json
 ```
 
 ---

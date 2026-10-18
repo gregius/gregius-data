@@ -42,7 +42,7 @@ const RetryQueueCard = ({ selectedConnectionId }) => {
 	const fetchQueueStatus = async () => {
 		try {
 			const response = await apiFetch({
-				path: '/gg-data/v1/sync/retry-queue',
+				path: '/gregius-data/v1/sync/retry-queue',
 				method: 'GET',
 			});
 
@@ -63,7 +63,7 @@ const RetryQueueCard = ({ selectedConnectionId }) => {
 	const handleManualRetry = async (index) => {
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/sync/retry-queue/retry/${index}`,
+				path: `/gregius-data/v1/sync/retry-queue/retry/${index}`,
 				method: 'POST',
 			});
 
@@ -86,7 +86,7 @@ const RetryQueueCard = ({ selectedConnectionId }) => {
 
 		try {
 			const response = await apiFetch({
-				path: '/gg-data/v1/sync/retry-queue/clear',
+				path: '/gregius-data/v1/sync/retry-queue/clear',
 				method: 'DELETE',
 			});
 

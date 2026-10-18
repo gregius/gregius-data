@@ -61,10 +61,10 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
             setLoading(true);
             // Fetch all post types, configuration, validation, and models in parallel
             const [postTypesRes, configRes, validationRes, modelsRes] = await Promise.all([
-                apiFetch({ path: `/gg-data/v1/sync/post-types?connection=${selectedConnectionId}` }),
-                apiFetch({ path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}` }),
-                apiFetch({ path: `/gg-data/v1/sync/validation/fast?connection=${selectedConnectionId}` }),
-                apiFetch({ path: '/gg-data/v1/models' })
+                apiFetch({ path: `/gregius-data/v1/sync/post-types?connection=${selectedConnectionId}` }),
+                apiFetch({ path: `/gregius-data/v1/sync/configuration?connection=${selectedConnectionId}` }),
+                apiFetch({ path: `/gregius-data/v1/sync/validation/fast?connection=${selectedConnectionId}` }),
+                apiFetch({ path: '/gregius-data/v1/models' })
             ]);
 
             const allPostTypes = postTypesRes.post_types || [];
@@ -116,7 +116,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
         try {
             // Only refresh validation data, keep existing post type toggles
             const validationRes = await apiFetch({ 
-                path: `/gg-data/v1/sync/validation/fast?connection=${selectedConnectionId}` 
+                path: `/gregius-data/v1/sync/validation/fast?connection=${selectedConnectionId}` 
             });
 
             const validationData = validationRes.data?.posts || {};
@@ -140,11 +140,11 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
     const handleDocumentModelChange = async (value) => {
         try {
             const latestConfigRes = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`
+                path: `/gregius-data/v1/sync/configuration?connection=${selectedConnectionId}`
             });
 
             const response = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`,
+                path: `/gregius-data/v1/sync/configuration?connection=${selectedConnectionId}`,
                 method: 'POST',
                 data: {
                     ...latestConfigRes.configuration,
@@ -180,7 +180,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
             
             // Fetch latest config to avoid overwriting other components' changes
             const latestConfigRes = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`
+                path: `/gregius-data/v1/sync/configuration?connection=${selectedConnectionId}`
             });
             
             // Preserve ALL config settings from latest fetch
@@ -190,7 +190,7 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
             };
             
             const response = await apiFetch({
-                path: `/gg-data/v1/sync/configuration?connection=${selectedConnectionId}`,
+                path: `/gregius-data/v1/sync/configuration?connection=${selectedConnectionId}`,
                 method: 'POST',
                 data: updatePayload
             });
@@ -226,11 +226,11 @@ const ContentSyncTable = ({ selectedConnectionId, refreshTrigger, onPostTypeChan
         let method = 'POST';
         
         if (type === 'sync') {
-            endpoint = `/gg-data/v1/sync/batch-sync-post-type/${postType}`;
+            endpoint = `/gregius-data/v1/sync/batch-sync-post-type/${postType}`;
         } else if (type === 'clean') {
-            endpoint = `/gg-data/v1/sync/post-type/${postType}/clean`;
+            endpoint = `/gregius-data/v1/sync/post-type/${postType}/clean`;
         } else if (type === 'remove') {
-            endpoint = `/gg-data/v1/sync/post-type/${postType}/orphans?connection=${selectedConnectionId}&batch_size=100`;
+            endpoint = `/gregius-data/v1/sync/post-type/${postType}/orphans?connection=${selectedConnectionId}&batch_size=100`;
             method = 'DELETE';
         }
 

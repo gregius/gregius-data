@@ -13,8 +13,8 @@ import { registerStore } from '@wordpress/data';
  * Factory function to create a connection selection store
  * 
  * @param {Object} config - Store configuration
- * @param {string} config.storeName - WordPress data store name (e.g., 'gg-data/rag-connection')
- * @param {string} config.storageKey - localStorage key (e.g., 'gg_data_rag_connection')
+ * @param {string} config.storeName - WordPress data store name (e.g., 'gregius-data/rag-connection')
+ * @param {string} config.storageKey - localStorage key (e.g., 'gregius_data_rag_connection')
  * @param {string} config.actionPrefix - Action type prefix (e.g., 'RAG')
  * @returns {string} Store name
  */

@@ -24,35 +24,35 @@ Scope:
 
 ### 2.1 Prompt post type
 
-Prompt records are stored as WordPress posts of type `gg_prompt`.
+Prompt records are stored as WordPress posts of type `gregius_prompt`.
 
 Source:
-- `includes/class-gg-data-prompt.php`
+- `includes/class-gregius-data-prompt.php`
 
 [SRS: PROMPT-FR-01, PROMPT-DR-01]
 
 ### 2.2 Prompt metadata keys
 
-Prompt metadata is namespaced under `_gg_prompt_*` keys.
+Prompt metadata is namespaced under `_gregius_prompt_*` keys.
 
 Core keys used by subsystem behavior:
-- `_gg_prompt_version`
-- `_gg_prompt_status`
-- `_gg_prompt_hash`
-- `_gg_prompt_notes`
-- `_gg_prompt_selected`
-- `_gg_prompt_is_factory`
+- `_gregius_prompt_version`
+- `_gregius_prompt_status`
+- `_gregius_prompt_hash`
+- `_gregius_prompt_notes`
+- `_gregius_prompt_selected`
+- `_gregius_prompt_is_factory`
 
 Source:
-- `includes/class-gg-data-prompt.php`
-- `includes/class-gg-data-prompt-resolver.php`
-- `includes/api/class-gg-data-rest-prompts-controller.php`
+- `includes/class-gregius-data-prompt.php`
+- `includes/class-gregius-data-prompt-resolver.php`
+- `includes/api/class-gregius-data-rest-prompts-controller.php`
 
 [SRS: PROMPT-FR-02, PROMPT-DR-02]
 
 ### 2.3 Prompt type taxonomy
 
-Prompt types are classified using the `gg_prompt_type` hierarchical taxonomy.
+Prompt types are classified using the `gregius_prompt_type` hierarchical taxonomy.
 
 Terms (fixed):
 - `system` — Prompts used for answer generation in RAG pipeline
@@ -64,22 +64,22 @@ Every prompt post MUST be assigned exactly one type term via `wp_set_object_term
 Usage:
 ```php
 // Get current prompt type
-$terms = wp_get_object_terms( $prompt_id, 'gg_prompt_type', array( 'fields' => 'slugs' ) );
+$terms = wp_get_object_terms( $prompt_id, 'gregius_prompt_type', array( 'fields' => 'slugs' ) );
 
 // Assign prompt type
-wp_set_object_terms( $prompt_id, array( 'system' ), 'gg_prompt_type', false );
+wp_set_object_terms( $prompt_id, array( 'system' ), 'gregius_prompt_type', false );
 ```
 
 Source:
-- `includes/class-gg-data-prompt.php` (registration via `register_prompt_type_taxonomy()`)
-- `includes/class-gg-data-activator.php` (seeding via `ensure_prompt_type_terms()`)
+- `includes/class-gregius-data-prompt.php` (registration via `register_prompt_type_taxonomy()`)
+- `includes/class-gregius-data-activator.php` (seeding via `ensure_prompt_type_terms()`)
 
 [SRS: PROMPT-FR-03, PROMPT-DR-03]
 
 ## 3. Type-Scoped Resolver Contract
 
 Source:
-- `includes/class-gg-data-prompt-resolver.php`
+- `includes/class-gregius-data-prompt-resolver.php`
 
 Primary API:
 - `resolve_prompt( $prompt_id = 0, $prompt_type = 'system' )`
@@ -96,7 +96,7 @@ Return contract:
   - `metadata.hash`
   - `metadata.source` (`explicit` | `selected` | `factory`)
   - `metadata.prompt_type` ('system' or 'security')
-- failure: `WP_Error( 'gg_data_prompt_not_found', ... )` or type mismatch error
+- failure: `WP_Error( 'gregius_prompt_not_found', ... )` or type mismatch error
 
 **Important**: Each type maintains independent selected/factory state. Resolving 'system' will never return a 'security' prompt, and vice versa.
 
@@ -106,13 +106,13 @@ Return contract:
 
 Fallback order is deterministic within the requested type:
 1. Explicit prompt ID (if provided; must match requested type)
-2. Selected prompt (`_gg_prompt_selected=1`, published, and of requested type)
-3. Factory prompt (`_gg_prompt_is_factory=1`, published, and of requested type)
+2. Selected prompt (`_gregius_prompt_selected=1`, published, and of requested type)
+3. Factory prompt (`_gregius_prompt_is_factory=1`, published, and of requested type)
 
 Resolver skips invalid candidates:
-- wrong post type (`gg_prompt`)
+- wrong post type (`gregius_prompt`)
 - empty post content
-- draft `_gg_prompt_status`
+- draft `_gregius_prompt_status`
 - **missing requested type term assignment**
 
 [SRS: PROMPT-FR-04, PROMPT-FR-05, PROMPT-QR-01]
@@ -141,9 +141,9 @@ If hash metadata is missing, resolver computes and persists it.
 ## 4. REST Management Contract
 
 Source:
-- `includes/api/class-gg-data-rest-prompts-controller.php`
+- `includes/api/class-gregius-data-rest-prompts-controller.php`
 
-Routes are registered under `/wp-json/gg-data/v1/prompts` with support for list/get/create/update/delete plus activation operations.
+Routes are registered under `/wp-json/gregius-data/v1/prompts` with support for list/get/create/update/delete plus activation operations.
 
 Permission model:
 - Administrative capability checks are required for prompt management operations.
@@ -153,7 +153,7 @@ Permission model:
 Create/Update endpoints (`POST /prompts`, `PUT /prompts/<id>`):
 - Accept `prompt_type` parameter ('system' or 'security')
 - Validate `prompt_type` to enum; reject invalid values
-- Store type via `wp_set_object_terms()` under `gg_prompt_type` taxonomy
+- Store type via `wp_set_object_terms()` under `gregius_prompt_type` taxonomy
 - Return `prompt_type` in response payload
 
 Activation endpoint (`POST /prompts/<id>/activate`):
@@ -198,7 +198,7 @@ Operational notes:
 ## 5. Security Gatekeeper Contract
 
 Source:
-- `includes/rag/class-gg-data-rag-service.php`
+- `includes/rag/class-gregius-data-rag-service.php`
 
 The security gatekeeper is an optional pre-retrieval LLM-based query classifier that prevents unsafe/policy-violating queries from reaching the RAG retrieval and generation phases.
 
@@ -240,7 +240,7 @@ RAG service invokes gatekeeper pre-retrieval in `generate_answer()` flow:
 If check returns unsafe status:
 - Build short-circuit response: 'I can\'t help with that request'
 - Include full security_check metadata in interaction log
-- Fire `gg_data_rag_error` action
+- Fire `gregius_data_rag_error` action
 - Return early without executing retrieval or generation
 
 If check returns safe status or fails with error:
@@ -252,7 +252,7 @@ If check returns safe status or fails with error:
 ## 6. Lifecycle Seed and Migration
 
 Source:
-- `includes/class-gg-data-activator.php`
+- `includes/class-gregius-data-activator.php`
 
 ### 6.1 Prompt type term seeding
 
@@ -260,7 +260,7 @@ Activation creates taxonomy terms via `ensure_prompt_type_terms()`:
 - Creates 'system' term if not present
 - Creates 'security' term if not present
 - Creates 'evaluation' term if not present
-- Idempotent via `gg_data_prompt_type_terms_seeded` option guard
+- Idempotent via `gregius_prompt_type_terms_seeded` option guard
 
 [SRS: PROMPT-FR-03]
 
@@ -274,7 +274,7 @@ Activation seeds THREE factory prompts via `seed_default_prompts()`:
 - Status: 'published'
 - Selected: true (active by default)
 - Content: Standard helpful assistant prompt with date/time placeholders
-- Guard option: `gg_data_default_prompt_seeded`
+- Guard option: `gregius_data_default_prompt_seeded`
 
 **Security Default** (security type):
 - Title: 'Security Default'
@@ -282,7 +282,7 @@ Activation seeds THREE factory prompts via `seed_default_prompts()`:
 - Status: 'published'
 - Selected: true (active by default)
 - Content: Prompt to classify queries as safe/unsafe
-- Guard option: `gg_data_security_prompt_seeded`
+- Guard option: `gregius_data_security_prompt_seeded`
 
 **Evaluation Default** (evaluation type):
 - Title: 'Evaluation Default'
@@ -290,14 +290,14 @@ Activation seeds THREE factory prompts via `seed_default_prompts()`:
 - Status: 'published'
 - Selected: true (active by default)
 - Content: Prompt judging whether the retrieved context is sufficient for the query
-- Guard option: `gg_data_evaluation_prompt_seeded`
+- Guard option: `gregius_data_evaluation_prompt_seeded`
 
-All are marked as factory prompts (`_gg_prompt_is_factory=1`) for identification.
+All are marked as factory prompts (`_gregius_prompt_is_factory=1`) for identification.
 
 ### 6.3 Legacy migration
 
 `migrate_prompt_types()` assigns 'system' type to any prompt without type:
-- Guards with `gg_data_prompt_type_migrated` option
+- Guards with `gregius_prompt_type_migrated` option
 - Preserves backward compatibility
 
 ### 6.4 Placeholder migration
@@ -313,11 +313,11 @@ Both routines are idempotent through option guards.
 ### 7.1 RAG service integration
 
 Source:
-- `includes/rag/class-gg-data-rag-service.php`
+- `includes/rag/class-gregius-data-rag-service.php`
 
 System prompt resolution:
-- Resolves system prompt via `GG_Data_Prompt_Resolver::resolve_prompt( 0, 'system' )` before invoking answer model
-- Exposed to filter `gg_data_rag_system_prompt`
+- Resolves system prompt via `Gregius_Data_Prompt_Resolver::resolve_prompt( 0, 'system' )` before invoking answer model
+- Exposed to filter `gregius_data_rag_system_prompt`
 
 Security gatekeeper check:
 - Invokes `run_security_gatekeeper_check()` before tool selection and retrieval
@@ -330,7 +330,7 @@ Security gatekeeper check:
 ### 7.2 WP-CLI answer integration
 
 Source:
-- `includes/cli/class-gg-data-cli-answer.php`
+- `includes/cli/class-gregius-data-cli-answer.php`
 
 CLI supports prompt overrides:
 - `--prompt-id=<id>`
@@ -346,7 +346,7 @@ Validation behavior:
 ### 7.3 Abilities integration
 
 Source:
-- `includes/class-gg-data-abilities-manager.php`
+- `includes/class-gregius-data-abilities-manager.php`
 
 Abilities answer path supports:
 - `prompt_id`
@@ -364,8 +364,8 @@ Validation behavior:
 Prompt subsystem behavior can be influenced by integration-facing hooks and filters in consuming subsystems, especially RAG service layers.
 
 Primary integration hooks:
-- `gg_data_rag_system_prompt` — Filter system prompt before model invocation
-- `gg_data_rag_error` — Action fired when security gatekeeper blocks query
+- `gregius_data_rag_system_prompt` — Filter system prompt before model invocation
+- `gregius_data_rag_error` — Action fired when security gatekeeper blocks query
 
 Guidance:
 - Prefer prompt-content mutation through the documented filter in consumer context.
@@ -377,9 +377,9 @@ Guidance:
 ### Prompt not resolving
 
 Check:
-1. Prompt exists and is `gg_prompt` post type.
+1. Prompt exists and is `gregius_prompt` post type.
 2. Prompt has non-empty content.
-3. `_gg_prompt_status` is not `draft`.
+3. `_gregius_prompt_status` is not `draft`.
 4. Selected/factory marker metadata is set correctly when relying on fallback behavior.
 
 ### Ambiguous or invalid prompt override

@@ -19,7 +19,7 @@ This architecture describes how Gregius Data exposes operator workflows through 
 - Command-handler decomposition by command family
 - Validation, batching, and output orchestration patterns
 - Runtime flows for sync, vectors, answer, evaluation, listing, and logs operations
-- Shipped evaluation command families under `wp gg-data` with site-local config and uploads-based artifact storage
+- Shipped evaluation command families under `wp gregius-data` with site-local config and uploads-based artifact storage
 
 **Explicitly Excluded:**
 - Service-manager internal implementations
@@ -45,10 +45,10 @@ This architecture describes how Gregius Data exposes operator workflows through 
 Operator / Automation Script
             |
             v
-      wp gg-data <command>
+      wp gregius-data <command>
             |
             v
-   GG_Data_CLI bootstrap + command classes
+   Gregius_Data_CLI bootstrap + command classes
             |
    +--------+---------+---------+------------+--------+---------+
    |        |         |         |            |        |         |
@@ -77,37 +77,37 @@ CLI acts as an orchestration shell that validates inputs, invokes manager APIs, 
 
 ### 3.1 Major Components
 
-1. **CLI Bootstrap (`GG_Data_CLI`)**
+1. **CLI Bootstrap (`Gregius_Data_CLI`)**
 - Loads command classes
-- Registers `gg-data` namespace and subcommands
+- Registers `gregius-data` namespace and subcommands
 - Guards registration when `WP_CLI` runtime is not active
 
-2. **Sync Commands (`GG_Data_CLI_Sync`)**
+2. **Sync Commands (`Gregius_Data_CLI_Sync`)**
 - Routes `posts`, `terms`, `all`
 - Validates connection and batch controls
 - Coordinates batched post/taxonomy sync and progress output
 
-3. **Vectors Commands (`GG_Data_CLI_Vectors`)**
+3. **Vectors Commands (`Gregius_Data_CLI_Vectors`)**
 - Routes `generate`, `rebuild`
 - Applies vector-specific batch bounds
 - Coordinates batch generation loops
 
-4. **Answer Command (`GG_Data_CLI_Answer`)**
+4. **Answer Command (`Gregius_Data_CLI_Answer`)**
 - Handles required `<query>` and model options
 - Resolves prompt overrides and conflict errors
 - Delegates answer execution to abilities manager
 
-5. **Evaluation Commands (`GG_Data_CLI_Evaluation`)**
+5. **Evaluation Commands (`Gregius_Data_CLI_Evaluation`)**
 - Routes `run`, `list_prompts`, `validate_config`, `adapters`
 - Delegates evaluation execution to the evaluation service
 - Resolves uploads-based config and artifact paths
 
-6. **List Commands (`GG_Data_CLI_List_Connections`, `GG_Data_CLI_List_Models`)**
+6. **List Commands (`Gregius_Data_CLI_List_Connections`, `Gregius_Data_CLI_List_Models`)**
 - Delegates inventory retrieval to abilities manager
 - Applies output formatting and optional model-type filtering
 - Supports optional list-connections enrichment flags for per-connection embedding model context
 
-7. **Logs Commands (`GG_Data_CLI_Logs`)**
+7. **Logs Commands (`Gregius_Data_CLI_Logs`)**
 - Routes `list`, `export`, `purge`, `stats`
 - Validates level/component filters
 - Delegates to logger APIs for management operations

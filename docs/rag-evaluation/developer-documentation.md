@@ -9,7 +9,7 @@ This guide documents developer-facing usage and extension details for the RAG ev
 Primary references:
 - SRS: [SRS reference](srs.md)
 - Architecture: [Architecture reference](architecture.md)
-- Command family: `wp gg-data evaluation`
+- Command family: `wp gregius-data evaluation`
 
 Scope:
 1. Runner execution contract
@@ -33,25 +33,25 @@ Scope:
    - `prompts[]` with at least one entry containing `id` and `user_input`
 
 3. Run evaluation (full corpus):
-   `wp gg-data evaluation run`
+   `wp gregius-data evaluation run`
 
 4. Run single prompt:
-   `wp gg-data evaluation run --only=P1`
+   `wp gregius-data evaluation run --only=P1`
 
 5. Override output directory:
-   `wp gg-data evaluation run --output-dir=/tmp/rag-eval`
+   `wp gregius-data evaluation run --output-dir=/tmp/rag-eval`
 
 6. Show usage:
-   `wp help gg-data evaluation`
+   `wp help gregius-data evaluation`
 
 7. Validate config:
-   `wp gg-data evaluation validate-config`
+   `wp gregius-data evaluation validate-config`
 
 8. List supported adapters:
-   `wp gg-data evaluation adapters`
+   `wp gregius-data evaluation adapters`
 
 9. List configured prompts:
-   `wp gg-data evaluation list-prompts`
+   `wp gregius-data evaluation list-prompts`
 
 [SRS: RE-FR-01, RE-FR-04, RE-FR-05, RE-FR-10]
 
@@ -234,8 +234,8 @@ dataset = EvaluationDataset.from_jsonl("frameworks/ragas/dataset.jsonl")
 
 When a new evaluation framework is ready to be supported:
 
-1. Add the framework name to the supported values in `includes/class-gg-data-evaluation-service.php`.
-2. Add the adapter writer branch via the `gg_data_rag_evaluation_framework_adapter` filter (see `dispatch_framework()` in the service class).
+1. Add the framework name to the supported values in `includes/class-gregius-data-evaluation-service.php`.
+2. Add the adapter writer branch via the `gregius_data_rag_evaluation_framework_adapter` filter (see `dispatch_framework()` in the service class).
 3. Update `docs/rag-evaluation/developer-documentation.md` sections 4, 6, and 7.
 4. Extend the SRS `RE-DR` requirements if the framework introduces new schema requirements.
 

@@ -20,14 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Search is a site-wide feature, so settings are stored under the plugin name
  * rather than a specific database connection.
  */
-define( 'GG_DATA_SEARCH_SETTINGS_CONNECTION', '__global__' );
+define( 'GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION', '__global__' );
 
 /**
  * Get default search settings
  *
  * @return array Default settings.
  */
-function gg_data_get_default_search_settings() {
+function gregius_data_get_default_search_settings() {
 	// phpcs:disable WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned -- Keep defaults readable with long semantic threshold key.
 	return array(
 		'enabled'                         => false, // Disabled by default - user must opt-in.
@@ -42,27 +42,27 @@ function gg_data_get_default_search_settings() {
 /**
  * Initialize search settings on plugin activation
  */
-function gg_data_init_search_settings() {
-	$settings = new GG_Data_Settings_Manager();
+function gregius_data_init_search_settings() {
+	$settings = new Gregius_Data_Settings_Manager();
 
 	// Migrate legacy search scope rows before reading defaults.
-	gg_data_migrate_search_settings_scope();
+	gregius_data_migrate_search_settings_scope();
 
 	// Check if search settings already exist (using global connection name).
-	$enabled = $settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', null );
+	$enabled = $settings->get_with_category( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', null );
 
 	// Only set defaults if not already configured.
 	if ( null === $enabled ) {
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', false );
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'connection', '' );
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
+		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', false );
+		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'connection', '' );
+		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
+		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 	}
 
 	// Backfill retrieval mode for existing installs that predate this setting.
-	$retrieval_mode = $settings->get_with_category( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', null );
+	$retrieval_mode = $settings->get_with_category( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', null );
 	if ( null === $retrieval_mode ) {
-		$settings->set_with_category_public( 'search', GG_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
+		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'retrieval_mode', 'hybrid_default' );
 	}
 
 	// Backfill persisted per-connection capability keys.
@@ -84,25 +84,25 @@ function gg_data_init_search_settings() {
  * Migrate legacy search settings scope rows to the canonical global scope.
  *
  * Moves category=search rows from non-global scopes (legacy 'gregius-data'
- * and accidental per-connection rows) into GG_DATA_SEARCH_SETTINGS_CONNECTION.
+ * and accidental per-connection rows) into GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION.
  * Existing global keys take precedence; missing keys are filled from legacy rows.
  *
  * @return void
  */
-function gg_data_migrate_search_settings_scope() {
-	if ( get_option( 'gg_data_search_scope_migrated' ) ) {
+function gregius_data_migrate_search_settings_scope() {
+	if ( get_option( 'gregius_data_search_scope_migrated' ) ) {
 		return;
 	}
 
-	$settings_manager = new GG_Data_Settings_Manager();
+	$settings_manager = new Gregius_Data_Settings_Manager();
 	$rows             = $settings_manager->get_by_category( 'search' );
 
 	if ( empty( $rows ) ) {
-		update_option( 'gg_data_search_scope_migrated', true );
+		update_option( 'gregius_data_search_scope_migrated', true );
 		return;
 	}
 
-	$global_scope = GG_DATA_SEARCH_SETTINGS_CONNECTION;
+	$global_scope = GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION;
 	$global_keys  = array();
 
 	foreach ( $rows as $row ) {
@@ -137,5 +137,5 @@ function gg_data_migrate_search_settings_scope() {
 		$settings_manager->delete_with_category( 'search', $source_scope, $key );
 	}
 
-	update_option( 'gg_data_search_scope_migrated', true );
+	update_option( 'gregius_data_search_scope_migrated', true );
 }

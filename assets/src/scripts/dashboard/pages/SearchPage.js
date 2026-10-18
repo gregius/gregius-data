@@ -18,11 +18,11 @@ import SearchHealthCard from '../components/search/SearchHealthCard';
 const SearchPage = () => {
 	// Get connections list for the settings card dropdown
 	const { connections } = useSelect((select) => ({
-		connections: select('gg-data/connections').getConnectionsList(),
+		connections: select('gregius-data/connections').getConnectionsList(),
 	}), []);
 
 	return (
-		<div className="gg-data-page">
+		<div className="gregius-data-page">
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2rem 1.5rem 0', borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
 				<div style={{
 					display: 'flex',

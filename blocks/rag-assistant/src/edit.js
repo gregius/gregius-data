@@ -82,11 +82,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     const loadInitialData = async () => {
         try {
             const [connectionsResponse, llmModelsResponse, rerankModelsResponse, evaluatorModelsResponse, promptsResponse] = await Promise.all([
-                apiFetch({ path: '/gg-data/v1/connections', method: 'GET' }),
-                apiFetch({ path: '/gg-data/v1/models?type=llm', method: 'GET' }),
-                apiFetch({ path: '/gg-data/v1/models?type=rerank', method: 'GET' }),
-                apiFetch({ path: '/gg-data/v1/models?type=evaluator', method: 'GET' }),
-                apiFetch({ path: '/gg-data/v1/prompts', method: 'GET' })
+                apiFetch({ path: '/gregius-data/v1/connections', method: 'GET' }),
+                apiFetch({ path: '/gregius-data/v1/models?type=llm', method: 'GET' }),
+                apiFetch({ path: '/gregius-data/v1/models?type=rerank', method: 'GET' }),
+                apiFetch({ path: '/gregius-data/v1/models?type=evaluator', method: 'GET' }),
+                apiFetch({ path: '/gregius-data/v1/prompts', method: 'GET' })
             ]);
 
             if (connectionsResponse && connectionsResponse.success && connectionsResponse.data) {
@@ -151,7 +151,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
         setLoadingEmbeddings(true);
         try {
             const response = await apiFetch({
-                path: `/gg-data/v1/connections/${connection}/vectors/models`,
+                path: `/gregius-data/v1/connections/${connection}/vectors/models`,
                 method: 'GET'
             });
 

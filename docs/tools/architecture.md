@@ -66,15 +66,15 @@ RAG Service (generate_answer)
     │    ├─ clarify_previous → elaboration
     │    ├─ compare_content → comparison analysis
     │    ├─ search_entity_content → entity-grounded answer
-    │    └─ gg_data_rag_tool_{name} → developer extension
+    │    └─ gregius_data_rag_tool_{name} → developer extension
     │
     └─ Step 3: Response assembly (answer + sources + metadata)
 
 Hook/Filter Layers
-├─ gg_data_rag_tools (register/modify tool definitions)
-├─ gg_data_rag_tool_selection (override selection logic)
-├─ gg_data_rag_tool_{name} (custom handler per tool)
-└─ gg_data_rag_tool_executed (tool execution notification)
+├─ gregius_data_rag_tools (register/modify tool definitions)
+├─ gregius_data_rag_tool_selection (override selection logic)
+├─ gregius_data_rag_tool_{name} (custom handler per tool)
+└─ gregius_data_rag_tool_executed (tool execution notification)
 
 Canonical Contracts
 ├─ docs/tools/srs.md
@@ -93,13 +93,13 @@ Canonical Contracts
 ### 3.1 Tool Selection Layer
 
 **Components:**
-1. `GG_Data_Tool_Strategy_Factory` — Creates appropriate strategy based on provider and model capabilities
-2. `GG_Data_Tool_Calling_Strategy` (interface) — Defines contract for all strategies
+1. `Gregius_Data_Tool_Strategy_Factory` — Creates appropriate strategy based on provider and model capabilities
+2. `Gregius_Data_Tool_Calling_Strategy` (interface) — Defines contract for all strategies
 3. Provider-specific strategy implementations:
-   - `GG_Data_OpenAI_Tool_Strategy` — OpenAI and DeepSeek function calling
-   - `GG_Data_Anthropic_Tool_Strategy` — Claude tool use blocks
-   - `GG_Data_Gemini_Tool_Strategy` — Gemini function declarations
-   - `GG_Data_Prompt_Tool_Strategy` — Prompt-based fallback (any provider)
+   - `Gregius_Data_OpenAI_Tool_Strategy` — OpenAI and DeepSeek function calling
+   - `Gregius_Data_Anthropic_Tool_Strategy` — Claude tool use blocks
+   - `Gregius_Data_Gemini_Tool_Strategy` — Gemini function declarations
+   - `Gregius_Data_Prompt_Tool_Strategy` — Prompt-based fallback (any provider)
 
 **Responsibilities:**
 - Auto-detect provider capability (native tool calling support)
@@ -146,9 +146,9 @@ Canonical Contracts
 ### 3.3 Tool Execution Layer
 
 **Components:**
-1. Tool handler methods in `GG_Data_RAG_Service` (built-in tools)
-2. Filter hook `gg_data_rag_tool_{name}` (custom tools)
-3. Action hook `gg_data_rag_tool_executed` (execution notification)
+1. Tool handler methods in `Gregius_Data_RAG_Service` (built-in tools)
+2. Filter hook `gregius_data_rag_tool_{name}` (custom tools)
+3. Action hook `gregius_data_rag_tool_executed` (execution notification)
 
 **Contract:**
 All tool handlers return:
@@ -166,12 +166,12 @@ array(
 To enable premium tool providers (e.g., gregius-intelligence) to extend RAG tools without hardcoding into foundation, we define a stable v1 handler capability surface.
 
 **Contract Methods:**
-1. `GG_Data_RAG_Service::stream_llm($prompt, $llm_model_id, $system_prompt, $progress_callback, $options)`
+1. `Gregius_Data_RAG_Service::stream_llm($prompt, $llm_model_id, $system_prompt, $progress_callback, $options)`
    - Purpose: Generate LLM response with optional token-by-token streaming
    - Visibility: public
    - Returns: array with `{text, reasoning_content, usage, provider, model, execution_time_ms}`
 
-2. `GG_Data_RAG_Service::append_manifest_metadata($result, $options)`
+2. `Gregius_Data_RAG_Service::append_manifest_metadata($result, $options)`
    - Purpose: Normalize response metadata with manifest tracking
    - Visibility: public
    - Returns: array with manifest metadata appended to `$result['metadata']`
@@ -185,39 +185,39 @@ To enable premium tool providers (e.g., gregius-intelligence) to extend RAG tool
 - All custom handlers execute in same execution context (connection, embedding model, LLM registry)
 
 **Premium Tool Registration:**
-- Tool definitions registered via `gg_data_rag_tools` filter
-- Tool handlers hooked via `gg_data_rag_tool_{name}` filter
-- No hardcoded cases for premium/custom tools; the five core tools (search_content, summarize_conversation, respond_directly, clarify_previous, compare_content) remain hardcoded, while premium/custom tools route through the generic `gg_data_rag_tool_{name}` filter
+- Tool definitions registered via `gregius_data_rag_tools` filter
+- Tool handlers hooked via `gregius_data_rag_tool_{name}` filter
+- No hardcoded cases for premium/custom tools; the five core tools (search_content, summarize_conversation, respond_directly, clarify_previous, compare_content) remain hardcoded, while premium/custom tools route through the generic `gregius_data_rag_tool_{name}` filter
 
 **Migration Example (gregius-intelligence):**
 ```
-Phase E: Premium tool provider initializes on gg_intelligence_init hook
-├─ Hooks filter 'gg_data_rag_tools' → register summarize_current_entity + recommend_related_content
-├─ Hooks filter 'gg_data_rag_tool_summarize_current_entity' → handler method
-├─ Hooks filter 'gg_data_rag_tool_recommend_related_content' → handler method
+Phase E: Premium tool provider initializes on gregius_data_intelligence_init hook
+├─ Hooks filter 'gregius_data_rag_tools' → register summarize_current_entity + recommend_related_content
+├─ Hooks filter 'gregius_data_rag_tool_summarize_current_entity' → handler method
+├─ Hooks filter 'gregius_data_rag_tool_recommend_related_content' → handler method
 └─ Handlers use contract methods: stream_llm(), append_manifest_metadata()
 ```
 
 ### 3.5 Extensibility Layer
 
-**Hook: `gg_data_rag_tools`**
+**Hook: `gregius_data_rag_tools`**
 - Purpose: Register/modify tool definitions before selection
-- Signature: `apply_filters('gg_data_rag_tools', array $tools): array`
+- Signature: `apply_filters('gregius_data_rag_tools', array $tools): array`
 - Use case: add custom tools, modify built-in descriptions, remove tools
 
-**Hook: `gg_data_rag_tool_selection`**
+**Hook: `gregius_data_rag_tool_selection`**
 - Purpose: Override tool selection logic
-- Signature: `apply_filters('gg_data_rag_tool_selection', array $result, string $query, array $messages): array`
+- Signature: `apply_filters('gregius_data_rag_tool_selection', array $result, string $query, array $messages): array`
 - Use case: force search for product queries, ban tools under conditions, custom routing
 
-**Hook: `gg_data_rag_tool_{name}`**
+**Hook: `gregius_data_rag_tool_{name}`**
 - Purpose: Implement handler for custom tool
-- Signature: `apply_filters("gg_data_rag_tool_{tool_name}", null, string $tool_name, array $context): ?array`
+- Signature: `apply_filters("gregius_data_rag_tool_{tool_name}", null, string $tool_name, array $context): ?array`
 - Use case: custom tool logic without modifying core
 
-**Hook: `gg_data_rag_tool_executed`**
+**Hook: `gregius_data_rag_tool_executed`**
 - Purpose: Notify listeners of tool execution
-- Signature: `do_action('gg_data_rag_tool_executed', string $tool_name, array $result, array $context): void`
+- Signature: `do_action('gregius_data_rag_tool_executed', string $tool_name, array $result, array $context): void`
 - Use case: analytics, logging, metrics collection
 
 ---
@@ -238,14 +238,14 @@ generate_answer(query, llm_model_id, options)
   │  │   │   └─ Detect native tool calling support → Select strategy
   │  │   │
   │  │   ├─ Build tool definitions
-  │  │   │   └─ apply_filters('gg_data_rag_tools', $default_tools)
+  │  │   │   └─ apply_filters('gregius_data_rag_tools', $default_tools)
   │  │   │
   │  │   ├─ Invoke strategy→select_tool(query, messages, tools, model_id)
   │  │   │   └─ Provider API call (native or prompt-based)
   │  │   │
   │  │   ├─ Parse response → tool_selection array
   │  │   │
-  │  │   ├─ apply_filters('gg_data_rag_tool_selection', result, query, messages)
+  │  │   ├─ apply_filters('gregius_data_rag_tool_selection', result, query, messages)
   │  │   │
   │  │   └─ Route to tool handler (search_content, summarize, etc.)
   │  │
@@ -269,10 +269,10 @@ Factory::create_for_model(model_id)
   │  └─ other → NO (fallback)
   │
   └─ Return strategy instance
-     ├─ GG_Data_OpenAI_Tool_Strategy
-     ├─ GG_Data_Anthropic_Tool_Strategy
-     ├─ GG_Data_Gemini_Tool_Strategy
-     └─ GG_Data_Prompt_Tool_Strategy (fallback)
+     ├─ Gregius_Data_OpenAI_Tool_Strategy
+     ├─ Gregius_Data_Anthropic_Tool_Strategy
+     ├─ Gregius_Data_Gemini_Tool_Strategy
+     └─ Gregius_Data_Prompt_Tool_Strategy (fallback)
 ```
 
 ---
@@ -360,11 +360,11 @@ Deployment is transparent to developers:
 **Implications:**
 - Contract methods must remain stable across minor versions (backward compatible)
 - Premium tool providers depend on foundation v1.0+; foundation changes require careful versioning
-- All premium tools follow same registration pattern (gg_data_rag_tools filter + gg_data_rag_tool_{name} filter)
+- All premium tools follow same registration pattern (gregius_data_rag_tools filter + gregius_data_rag_tool_{name} filter)
 - Foundation tool definitions are removed from defaults; now registered via filter by premium plugins
 
 **Related Architectural Decisions:**
-- AD-T02 (Hook-Based Tool Registration) — uses gg_data_rag_tools filter
+- AD-T02 (Hook-Based Tool Registration) — uses gregius_data_rag_tools filter
 - AD-T04 (Prompt-Based Fallback) — custom tools fall through to handler filter like foundation tools
 
 ---

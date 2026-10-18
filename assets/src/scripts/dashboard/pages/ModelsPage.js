@@ -64,8 +64,8 @@ const ModelsPage = () => {
     try {
       setIsLoading(true);
       const [modelsData, providersData] = await Promise.all([
-        apiFetch({ path: "/gg-data/v1/models" }),
-        apiFetch({ path: "/gg-data/v1/models/providers" }),
+        apiFetch({ path: "/gregius-data/v1/models" }),
+        apiFetch({ path: "/gregius-data/v1/models/providers" }),
       ]);
 
       // Convert object to array if needed (PHP associative array comes as object)
@@ -93,7 +93,7 @@ const ModelsPage = () => {
   const refreshLifecycles = async () => {
     try {
       const res = await apiFetch({
-        path: "/gg-data/v1/models/refresh",
+        path: "/gregius-data/v1/models/refresh",
         method: "POST",
       });
       const lifecycle = res && res.lifecycle;
@@ -280,7 +280,7 @@ const ModelsPage = () => {
       }
 
       const response = await apiFetch({
-        path: "/gg-data/v1/models/test",
+        path: "/gregius-data/v1/models/test",
         method: "POST",
         data: requestData,
       });
@@ -309,8 +309,8 @@ const ModelsPage = () => {
         ? encodeURIComponent(editingId)
         : null;
       const path = encodedId
-        ? `/gg-data/v1/models/${encodedId}`
-        : "/gg-data/v1/models";
+        ? `/gregius-data/v1/models/${encodedId}`
+        : "/gregius-data/v1/models";
 
       const method = editingId ? "PUT" : "POST";
 
@@ -378,7 +378,7 @@ const ModelsPage = () => {
       // Encode the model id for the URL path.
       const encodedId = encodeURIComponent(id);
       await apiFetch({
-        path: `/gg-data/v1/models/${encodedId}`,
+        path: `/gregius-data/v1/models/${encodedId}`,
         method: "DELETE",
       });
       fetchData();
@@ -485,7 +485,7 @@ const ModelsPage = () => {
       // Encode the model id for the URL path.
       const encodedId = encodeURIComponent(id);
       await apiFetch({
-        path: `/gg-data/v1/models/${encodedId}/reset-usage`,
+        path: `/gregius-data/v1/models/${encodedId}/reset-usage`,
         method: "POST",
       });
       fetchData();
@@ -498,7 +498,7 @@ const ModelsPage = () => {
   if (isLoading && !models.length) {
     return (
       <>
-        <div className="gg-data-page">
+        <div className="gregius-data-page">
           <div
             style={{
               display: "flex",
@@ -521,7 +521,7 @@ const ModelsPage = () => {
   }
 
   return (
-    <div className="gg-data-page">
+    <div className="gregius-data-page">
       <div
         style={{
           display: "flex",
@@ -557,7 +557,7 @@ const ModelsPage = () => {
       )}
 
       <div
-        className="gg-data-model-cards"
+        className="gregius-data-model-cards"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",

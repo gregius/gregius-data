@@ -74,10 +74,10 @@ WordPress remains the source of truth. PostgreSQL runs alongside as a secondary 
 
 Core command examples:
 
-* `wp gg-data list-connections`
-* `wp gg-data answer "What is dementia care?" --format=json`
-* `wp gg-data evaluation validate-config`
-* `wp gg-data evaluation run --framework=ragas`
+* `wp gregius-data list-connections`
+* `wp gregius-data answer "What is dementia care?" --format=json`
+* `wp gregius-data evaluation validate-config`
+* `wp gregius-data evaluation run --framework=ragas`
 
 Evaluation config templates are shipped inside the plugin under:
 

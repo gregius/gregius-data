@@ -34,14 +34,14 @@ Not covered:
 ### 3.1 Check Registered Command Surface
 
 ```bash
-wp gg-data --help
-wp gg-data sync --help
-wp gg-data vectors --help
-wp gg-data answer --help
-wp gg-data evaluation --help
-wp gg-data list-connections --help
-wp gg-data list-models --help
-wp gg-data logs --help
+wp gregius-data --help
+wp gregius-data sync --help
+wp gregius-data vectors --help
+wp gregius-data answer --help
+wp gregius-data evaluation --help
+wp gregius-data list-connections --help
+wp gregius-data list-models --help
+wp gregius-data logs --help
 ```
 
 [SRS: CLI-FR-01]
@@ -50,53 +50,53 @@ wp gg-data logs --help
 
 ```bash
 # Full sync
-wp gg-data sync all --connection=gregius-data --batch-size=200
+wp gregius-data sync all --connection=gregius-data --batch-size=200
 
 # Generate vectors for pending items
-wp gg-data vectors generate --connection=gregius-data --embedding-model=hashingtf-murmur3-1024
+wp gregius-data vectors generate --connection=gregius-data --embedding-model=hashingtf-murmur3-1024
 
 # RAG answer
-wp gg-data answer "What is dementia care?" --format=json
+wp gregius-data answer "What is dementia care?" --format=json
 
 # Evaluation validation and adapter-targeted execution
-wp gg-data evaluation validate_config
-wp gg-data evaluation run --framework=ragas --only=P1
+wp gregius-data evaluation validate_config
+wp gregius-data evaluation run --framework=ragas --only=P1
 
 # Logs maintenance
-wp gg-data logs list --level=error --limit=20
-wp gg-data logs purge --days=30 --yes
+wp gregius-data logs list --level=error --limit=20
+wp gregius-data logs purge --days=30 --yes
 ```
 
 [SRS: CLI-FR-02, CLI-FR-03, CLI-FR-04, CLI-FR-06]
 
 ## 4. Command Registration and Entry Points
 
-Bootstrap source: `includes/cli/class-gg-data-cli.php`
+Bootstrap source: `includes/cli/class-gregius-data-cli.php`
 
 Registered commands:
-- `wp gg-data sync`
-- `wp gg-data vectors`
-- `wp gg-data answer`
-- `wp gg-data evaluation`
-- `wp gg-data list-connections`
-- `wp gg-data list-models`
-- `wp gg-data logs`
+- `wp gregius-data sync`
+- `wp gregius-data vectors`
+- `wp gregius-data answer`
+- `wp gregius-data evaluation`
+- `wp gregius-data list-connections`
+- `wp gregius-data list-models`
+- `wp gregius-data logs`
 
 Registration behavior:
-- `GG_Data_CLI::register_commands()` returns early when `WP_CLI` runtime is unavailable.
+- `Gregius_Data_CLI::register_commands()` returns early when `WP_CLI` runtime is unavailable.
 
 [SRS: CLI-FR-01, CLI-QR-05]
 
 ## 5. Command Reference
 
-### 5.1 Sync Commands (`GG_Data_CLI_Sync`)
+### 5.1 Sync Commands (`Gregius_Data_CLI_Sync`)
 
-Source: `includes/cli/class-gg-data-cli-sync.php`
+Source: `includes/cli/class-gregius-data-cli-sync.php`
 
 Subcommands:
-- `wp gg-data sync posts`
-- `wp gg-data sync terms`
-- `wp gg-data sync all`
+- `wp gregius-data sync posts`
+- `wp gregius-data sync terms`
+- `wp gregius-data sync all`
 
 Options:
 - `--connection=<name>` (default `gregius-data`)
@@ -106,24 +106,24 @@ Options:
 - `--format=table|json|csv` (default `table`)
 
 Implementation notes:
-- Connection validation: `validate_connection()` against `GG_Data_Settings_Manager`.
-- Batch validation: `validate_batch_size()` with `gg_data_cli_max_batch_size` (default max `1000`).
+- Connection validation: `validate_connection()` against `Gregius_Data_Settings_Manager`.
+- Batch validation: `validate_batch_size()` with `gregius_data_cli_max_batch_size` (default max `1000`).
 - Delegation:
-  - Posts: `GG_Data_Post_Sync::batch_sync_post_type()`
-  - Terms: `GG_Data_Taxonomy_Sync::batch_sync_terms()`, `batch_sync_term_taxonomies()`, `batch_sync_term_relationships()`
+  - Posts: `Gregius_Data_Post_Sync::batch_sync_post_type()`
+  - Terms: `Gregius_Data_Taxonomy_Sync::batch_sync_terms()`, `batch_sync_term_taxonomies()`, `batch_sync_term_relationships()`
 - Workload helpers: `get_post_types_to_sync()`, `get_post_count()`.
 - Output helper: `output_sync_results()`.
 - Memory cleanup helper: `maybe_cleanup_memory()`.
 
 [SRS: CLI-FR-02, CLI-DR-01, CLI-OR-01..04]
 
-### 5.2 Vectors Commands (`GG_Data_CLI_Vectors`)
+### 5.2 Vectors Commands (`Gregius_Data_CLI_Vectors`)
 
-Source: `includes/cli/class-gg-data-cli-vectors.php`
+Source: `includes/cli/class-gregius-data-cli-vectors.php`
 
 Subcommands:
-- `wp gg-data vectors generate`
-- `wp gg-data vectors rebuild`
+- `wp gregius-data vectors generate`
+- `wp gregius-data vectors rebuild`
 
 Options:
 - `--connection=<name>` (default `gregius-data`)
@@ -133,19 +133,19 @@ Options:
 - `--format=table|json|csv` (default `table`)
 
 Implementation notes:
-- Batch validation uses `gg_data_cli_vectors_max_batch_size` (default max `200`).
+- Batch validation uses `gregius_data_cli_vectors_max_batch_size` (default max `200`).
 - `run_vector_generation()` orchestrates batching and summary output.
-- Generation delegates to `GG_Data_Vector_Generator::generate_batch()`.
+- Generation delegates to `Gregius_Data_Vector_Generator::generate_batch()`.
 - Post counting uses `get_posts_for_vectors()` with rebuild/non-rebuild query paths.
 
 [SRS: CLI-FR-03, CLI-DR-02, CLI-OR-01..04]
 
-### 5.3 Answer Command (`GG_Data_CLI_Answer`)
+### 5.3 Answer Command (`Gregius_Data_CLI_Answer`)
 
-Source: `includes/cli/class-gg-data-cli-answer.php`
+Source: `includes/cli/class-gregius-data-cli-answer.php`
 
 Command:
-- `wp gg-data answer <query>`
+- `wp gregius-data answer <query>`
 
 Options:
 - `--connection=<name>` (default `gregius-data`)
@@ -165,20 +165,20 @@ Implementation notes:
   - conflict error when both `--prompt-id` and `--prompt` are provided
   - numeric ID validation
   - slug lookup and exact-title disambiguation
-- Delegation to `GG_Data_Abilities_Manager::execute_rag_answer()`.
+- Delegation to `Gregius_Data_Abilities_Manager::execute_rag_answer()`.
 - Output handled by `output_result()` with answer/sources/metadata sections or JSON envelope.
 
 [SRS: CLI-FR-04, CLI-DR-03, CLI-OR-05, CLI-QR-04]
 
-### 5.4 List Commands (`GG_Data_CLI_List_Connections`, `GG_Data_CLI_List_Models`)
+### 5.4 List Commands (`Gregius_Data_CLI_List_Connections`, `Gregius_Data_CLI_List_Models`)
 
 Sources:
-- `includes/cli/class-gg-data-cli-list-connections.php`
-- `includes/cli/class-gg-data-cli-list-models.php`
+- `includes/cli/class-gregius-data-cli-list-connections.php`
+- `includes/cli/class-gregius-data-cli-list-models.php`
 
 Commands:
-- `wp gg-data list-connections`
-- `wp gg-data list-models`
+- `wp gregius-data list-connections`
+- `wp gregius-data list-models`
 
 Options:
 - `list-connections`:
@@ -203,15 +203,15 @@ Implementation notes:
 
 [SRS: CLI-FR-05, CLI-DR-04]
 
-### 5.5 Evaluation Commands (`GG_Data_CLI_Evaluation`)
+### 5.5 Evaluation Commands (`Gregius_Data_CLI_Evaluation`)
 
-Source: `includes/cli/class-gg-data-cli-evaluation.php`
+Source: `includes/cli/class-gregius-data-cli-evaluation.php`
 
 Subcommands:
-- `wp gg-data evaluation run`
-- `wp gg-data evaluation list_prompts`
-- `wp gg-data evaluation validate_config`
-- `wp gg-data evaluation adapters`
+- `wp gregius-data evaluation run`
+- `wp gregius-data evaluation list_prompts`
+- `wp gregius-data evaluation validate_config`
+- `wp gregius-data evaluation adapters`
 
 Options:
 - `run`:
@@ -228,22 +228,22 @@ Options:
   - no command-specific options
 
 Implementation notes:
-- Delegates to `GG_Data_Evaluation_Service`.
+- Delegates to `Gregius_Data_Evaluation_Service`.
 - Default writable config path resolves from `wp_upload_dir()['basedir']` to `wp-content/uploads/gregius-data/config/rag-evaluation-config.json` on single-site, or the site-specific uploads base on multisite.
 - Default artifact root resolves from `wp_upload_dir()['basedir']` to `wp-content/uploads/gregius-data/artifacts/evaluation/` on single-site, or the site-specific uploads base on multisite.
 - Shipped template path remains inside the plugin at `includes/cli/resources/evaluation/rag-evaluation-config.example.json`.
 - `run` writes raw artifacts, canonical `prompts.jsonl`, framework adapter output, and `manifest.json`.
 - Supported framework discovery is exposed through `adapters`; current supported framework is `ragas`.
 
-### 5.6 Logs Commands (`GG_Data_CLI_Logs`)
+### 5.6 Logs Commands (`Gregius_Data_CLI_Logs`)
 
-Source: `includes/cli/class-gg-data-cli-logs.php`
+Source: `includes/cli/class-gregius-data-cli-logs.php`
 
 Subcommands:
-- `wp gg-data logs list`
-- `wp gg-data logs export`
-- `wp gg-data logs purge`
-- `wp gg-data logs stats`
+- `wp gregius-data logs list`
+- `wp gregius-data logs export`
+- `wp gregius-data logs purge`
+- `wp gregius-data logs stats`
 
 Options:
 - `logs list`:
@@ -262,7 +262,7 @@ Options:
   - `--format=table|json` (default `table`)
 
 Implementation notes:
-- Level and component values are validated against `GG_Data_Logger` enumerations.
+- Level and component values are validated against `Gregius_Data_Logger` enumerations.
 - Delegation:
   - `get_logs()`
   - `export_logs()`
@@ -277,20 +277,20 @@ Implementation notes:
 CLI classes intentionally avoid embedding core domain logic.
 
 Delegated managers/services:
-- `GG_Data_Post_Sync`
-- `GG_Data_Taxonomy_Sync`
-- `GG_Data_Vector_Generator`
-- `GG_Data_Abilities_Manager`
-- `GG_Data_Logger`
-- `GG_Data_Settings_Manager`
+- `Gregius_Data_Post_Sync`
+- `Gregius_Data_Taxonomy_Sync`
+- `Gregius_Data_Vector_Generator`
+- `Gregius_Data_Abilities_Manager`
+- `Gregius_Data_Logger`
+- `Gregius_Data_Settings_Manager`
 
 [SRS: CLI-QR-02]
 
 ## 7. Extension Points
 
 Filter hooks used by CLI handlers:
-- `gg_data_cli_max_batch_size` (sync max batch bound, default `1000`)
-- `gg_data_cli_vectors_max_batch_size` (vectors max batch bound, default `200`)
+- `gregius_data_cli_max_batch_size` (sync max batch bound, default `1000`)
+- `gregius_data_cli_vectors_max_batch_size` (vectors max batch bound, default `200`)
 
 Extension guidance:
 - Prefer extending manager behavior behind existing delegation boundaries.
@@ -304,7 +304,7 @@ Extension guidance:
 Check:
 1. WP-CLI is installed and using the correct WordPress root.
 2. Plugin is active in the target site.
-3. `GG_Data_CLI::register_commands()` executed in WP-CLI runtime.
+3. `Gregius_Data_CLI::register_commands()` executed in WP-CLI runtime.
 
 ### Invalid connection errors
 
@@ -312,7 +312,7 @@ Cause:
 - Connection name is not present in plugin settings.
 
 Resolution:
-- Run `wp gg-data list-connections` and use one of the returned names.
+- Run `wp gregius-data list-connections` and use one of the returned names.
 
 ### Batch-size warnings and clamping
 
@@ -326,7 +326,7 @@ Resolution:
 
 Common cases:
 - Both `--prompt-id` and `--prompt` used together.
-- Prompt ID does not exist or is not `gg_prompt` type.
+- Prompt ID does not exist or is not `gregius_prompt` type.
 - Prompt title matches multiple posts.
 
 Resolution:

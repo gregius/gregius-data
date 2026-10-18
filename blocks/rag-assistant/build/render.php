@@ -29,7 +29,7 @@ $enable_streaming     = isset( $attributes['enableStreaming'] ) ? (bool) $attrib
 $require_login        = isset( $attributes['requireLogin'] ) ? wp_validate_boolean( $attributes['requireLogin'] ) : true;
 
 // Site-wide policy is filter-driven and fail-closed by default (logged_in).
-$access_level = (string) apply_filters( 'gg_data_rag_access_level', 'logged_in' );
+$access_level = (string) apply_filters( 'gregius_data_rag_access_level', 'logged_in' );
 
 // Guests may use a block that opts in (requireLogin = false), unless the
 // site-wide policy is `capability` (the only hard ceiling for guests).
@@ -43,7 +43,7 @@ if ( ! is_user_logged_in() && ! $guest_allowed ) {
 }
 
 $guest_post_id      = get_queried_object_id();
-$guest_access_nonce = $guest_allowed ? wp_create_nonce( 'gg_rag_guest_access:' . $block_id . ':' . $guest_post_id ) : '';
+$guest_access_nonce = $guest_allowed ? wp_create_nonce( 'gregius_data_rag_guest_access:' . $block_id . ':' . $guest_post_id ) : '';
 ?>
 
 <div

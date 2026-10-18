@@ -23,7 +23,7 @@ This SRS defines what the Prompt subsystem must do to manage, resolve, and suppl
 
 ### 1.2 System Scope
 
-The Prompt subsystem includes prompt storage in `gg_prompt` posts with type taxonomy, metadata contracts, type-scoped prompt resolution fallback behavior, token expansion, deterministic hashing, REST prompt management endpoints with type support, security gatekeeper LLM-based pre-retrieval query classification, and lifecycle seeding/migration support.
+The Prompt subsystem includes prompt storage in `gregius_prompt` posts with type taxonomy, metadata contracts, type-scoped prompt resolution fallback behavior, token expansion, deterministic hashing, REST prompt management endpoints with type support, security gatekeeper LLM-based pre-retrieval query classification, and lifecycle seeding/migration support.
 
 Software identifier: gregius-data-prompt-subsystem
 
@@ -37,7 +37,7 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 
 #### 1.3.2 System Functions Summary
 
-- Register and persist prompt definitions as `gg_prompt` posts with type classification via `gg_prompt_type` taxonomy.
+- Register and persist prompt definitions as `gregius_prompt` posts with type classification via `gregius_prompt_type` taxonomy.
 - Store prompt control metadata (`status`, `version`, `hash`, `selected`, `factory`).
 - Resolve effective prompt content by deterministic fallback order, type-scoped to ('system', 'security', or 'evaluation').
 - Expand date/time tokens at runtime.
@@ -60,12 +60,12 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 
 | Term | Definition |
 |---|---|
-| Prompt | A `gg_prompt` post assigned to a prompt type (system, security, or evaluation) |
-| Prompt type | Classification of a prompt into ('system' for answer generation, 'security' for query classification, or 'evaluation' for retrieval-sufficiency evaluation) via `gg_prompt_type` taxonomy |
+| Prompt | A `gregius_prompt` post assigned to a prompt type (system, security, or evaluation) |
+| Prompt type | Classification of a prompt into ('system' for answer generation, 'security' for query classification, or 'evaluation' for retrieval-sufficiency evaluation) via `gregius_prompt_type` taxonomy |
 | Effective prompt | The final prompt content returned by resolver after type filtering, fallback, and token expansion |
 | Explicit prompt | Prompt chosen by a provided prompt ID override (must match requested type) |
-| Selected prompt | Prompt marked by `_gg_prompt_selected=1` and `_gg_prompt_status=published` within a type |
-| Factory prompt | Activation-seeded prompt marked by `_gg_prompt_is_factory=1` (one per type: System Default for system, Security Default for security, Evaluation Default for evaluation) |
+| Selected prompt | Prompt marked by `_gregius_prompt_selected=1` and `_gregius_prompt_status=published` within a type |
+| Factory prompt | Activation-seeded prompt marked by `_gregius_prompt_is_factory=1` (one per type: System Default for system, Security Default for security, Evaluation Default for evaluation) |
 | Prompt hash | SHA256 hash of normalized prompt content |
 | Security gatekeeper | LLM-based pre-retrieval query classifier using 'security' type prompt; classifies query as safe or unsafe |
 | Security check | The execution of the security gatekeeper LLM call; returns status (safe/unsafe), reason, and LLM usage metadata |
@@ -80,13 +80,13 @@ The Prompt subsystem is consumed by RAG generation, WP-CLI answer flows, and Abi
 
 ## 2. References
 
-- `includes/class-gg-data-prompt.php`
-- `includes/class-gg-data-prompt-resolver.php`
-- `includes/api/class-gg-data-rest-prompts-controller.php`
-- `includes/class-gg-data-activator.php`
-- `includes/rag/class-gg-data-rag-service.php`
-- `includes/cli/class-gg-data-cli-answer.php`
-- `includes/class-gg-data-abilities-manager.php`
+- `includes/class-gregius-data-prompt.php`
+- `includes/class-gregius-data-prompt-resolver.php`
+- `includes/api/class-gregius-data-rest-prompts-controller.php`
+- `includes/class-gregius-data-activator.php`
+- `includes/rag/class-gregius-data-rag-service.php`
+- `includes/cli/class-gregius-data-cli-answer.php`
+- `includes/class-gregius-data-abilities-manager.php`
 
 ## 3. Software Requirements
 
@@ -99,9 +99,9 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| PROMPT-FR-01 | The software MUST register and persist prompts as WordPress posts of type `gg_prompt`. | Must |
+| PROMPT-FR-01 | The software MUST register and persist prompts as WordPress posts of type `gregius_prompt`. | Must |
 | PROMPT-FR-02 | The software MUST register prompt metadata fields for version, status, hash, notes, selected marker, and factory marker. | Must |
-| PROMPT-FR-03 | The software MUST register a `gg_prompt_type` taxonomy with 'system', 'security', and 'evaluation' terms to classify prompts by purpose. | Must |
+| PROMPT-FR-03 | The software MUST register a `gregius_prompt_type` taxonomy with 'system', 'security', and 'evaluation' terms to classify prompts by purpose. | Must |
 | PROMPT-FR-04 | The software MUST resolve an effective prompt using type-scoped fallback order: explicit prompt (of requested type), then selected prompt (of requested type), then factory prompt (of requested type). | Must |
 | PROMPT-FR-05 | The software MUST reject prompt candidates that are missing, empty, wrong post type, marked draft status, or do not have the requested type assigned. | Must |
 | PROMPT-FR-06 | The software MUST expand `{{date}}`, `{{time}}`, and `{{datetime}}` tokens in resolved prompt content at runtime. | Must |
@@ -121,9 +121,9 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| PROMPT-DR-01 | Prompt post type contract MUST use `gg_prompt`. | Must |
-| PROMPT-DR-02 | Prompt metadata contract MUST use `_gg_prompt_*` prefixed keys. | Must |
-| PROMPT-DR-03 | Prompt type taxonomy MUST be registered as `gg_prompt_type` with terms 'system', 'security', and 'evaluation'. | Must |
+| PROMPT-DR-01 | Prompt post type contract MUST use `gregius_prompt`. | Must |
+| PROMPT-DR-02 | Prompt metadata contract MUST use `_gregius_prompt_*` prefixed keys. | Must |
+| PROMPT-DR-03 | Prompt type taxonomy MUST be registered as `gregius_prompt_type` with terms 'system', 'security', and 'evaluation'. | Must |
 | PROMPT-DR-04 | Effective prompt result MUST return content and metadata including prompt ID, version, hash, resolution source, and prompt type. | Must |
 | PROMPT-DR-05 | Prompt hashing MUST normalize line endings and trim content before SHA256 computation. | Must |
 | PROMPT-DR-06 | Resolution source metadata SHOULD indicate one of `explicit`, `selected`, or `factory`. | Should |
@@ -156,14 +156,14 @@ Requirement notation:
 
 | Requirement | Primary Implementation Anchor |
 |---|---|
-| PROMPT-FR-01, PROMPT-DR-01 | `includes/class-gg-data-prompt.php` |
-| PROMPT-FR-02, PROMPT-DR-02 | `includes/class-gg-data-prompt.php` |
-| PROMPT-FR-03, PROMPT-DR-03 | `includes/class-gg-data-prompt.php` (taxonomy registration) |
-| PROMPT-FR-04, PROMPT-FR-05, PROMPT-DR-04 | `includes/class-gg-data-prompt-resolver.php` (type-scoped resolution) |
-| PROMPT-FR-06, PROMPT-FR-07, PROMPT-FR-16, PROMPT-OR-01 | `includes/api/class-gg-data-rest-prompts-controller.php` |
-| PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-OR-04 | `includes/class-gg-data-activator.php` |
-| PROMPT-FR-12 | `includes/rag/class-gg-data-rag-service.php` (system prompt resolution) |
-| PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15, PROMPT-OR-05, PROMPT-OR-06 | `includes/rag/class-gg-data-rag-service.php` (security gatekeeper check) |
-| PROMPT-DR-08, PROMPT-DR-09 | `includes/class-gg-data-interaction.php` (security_check metadata storage) |
-| PROMPT-FR-17 | `includes/cli/class-gg-data-cli-answer.php`, `includes/class-gg-data-abilities-manager.php` |
-| PROMPT-DR-06, PROMPT-QR-02 | `includes/class-gg-data-prompt-resolver.php` |
+| PROMPT-FR-01, PROMPT-DR-01 | `includes/class-gregius-data-prompt.php` |
+| PROMPT-FR-02, PROMPT-DR-02 | `includes/class-gregius-data-prompt.php` |
+| PROMPT-FR-03, PROMPT-DR-03 | `includes/class-gregius-data-prompt.php` (taxonomy registration) |
+| PROMPT-FR-04, PROMPT-FR-05, PROMPT-DR-04 | `includes/class-gregius-data-prompt-resolver.php` (type-scoped resolution) |
+| PROMPT-FR-06, PROMPT-FR-07, PROMPT-FR-16, PROMPT-OR-01 | `includes/api/class-gregius-data-rest-prompts-controller.php` |
+| PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-OR-04 | `includes/class-gregius-data-activator.php` |
+| PROMPT-FR-12 | `includes/rag/class-gregius-data-rag-service.php` (system prompt resolution) |
+| PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15, PROMPT-OR-05, PROMPT-OR-06 | `includes/rag/class-gregius-data-rag-service.php` (security gatekeeper check) |
+| PROMPT-DR-08, PROMPT-DR-09 | `includes/class-gregius-data-interaction.php` (security_check metadata storage) |
+| PROMPT-FR-17 | `includes/cli/class-gregius-data-cli-answer.php`, `includes/class-gregius-data-abilities-manager.php` |
+| PROMPT-DR-06, PROMPT-QR-02 | `includes/class-gregius-data-prompt-resolver.php` |

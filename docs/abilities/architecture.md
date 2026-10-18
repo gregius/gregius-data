@@ -57,7 +57,7 @@ WordPress Runtime
                           Clients via Abilities REST / MCP adapters
                                               |
                                               v
-                           Execute callbacks in GG_Data_Abilities_Manager
+                           Execute callbacks in Gregius_Data_Abilities_Manager
                                               |
                    +--------------------------+-------------------------+
                    |                          |                         |
@@ -79,7 +79,7 @@ The subsystem decouples discovery contracts from implementation services by usin
 
 ### 3.1 Major Components
 
-1. **Abilities Manager (`GG_Data_Abilities_Manager`)**
+1. **Abilities Manager (`Gregius_Data_Abilities_Manager`)**
 - Registers categories and abilities via Abilities hooks
 - Defines schemas, metadata, and permission callbacks
 - Executes ability callbacks and input normalization
@@ -110,7 +110,7 @@ The subsystem decouples discovery contracts from implementation services by usin
 ### 4.1 Registration Flow
 
 ```
-Plugin init -> GG_Data_Abilities_Manager::init()
+Plugin init -> Gregius_Data_Abilities_Manager::init()
    |
    +--> hook categories callback on wp_abilities_api_categories_init
    +--> hook abilities callback on wp_abilities_api_init

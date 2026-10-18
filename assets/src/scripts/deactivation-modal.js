@@ -13,7 +13,7 @@ import { useState, useEffect, createRoot } from '@wordpress/element';
 import { Modal, RadioControl, Button } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 
-const { deactivateId, removeData } = window.ggDataDeactivation || {};
+const { deactivateId, removeData } = window.gregiusDataDeactivation || {};
 
 function DeactivationModal() {
 	const [ isOpen, setIsOpen ] = useState( false );
@@ -51,7 +51,7 @@ function DeactivationModal() {
 
 		try {
 			await apiFetch( {
-				path: '/gg-data/v1/data-retention',
+				path: '/gregius-data/v1/data-retention',
 				method: 'POST',
 				data: { remove_data: choice === 'remove' },
 			} );

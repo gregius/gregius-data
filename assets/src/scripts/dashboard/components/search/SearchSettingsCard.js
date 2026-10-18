@@ -78,10 +78,10 @@ const SearchSettingsCard = ({ connections = [] }) => {
 
 			// Load global search settings in parallel.
 			const [enabledRes, connectionRes, modelRes, retrievalModeRes] = await Promise.all([
-				apiFetch({ path: `/gg-data/v1/settings/search/enabled?connection=${SEARCH_SETTINGS_CONNECTION}` }),
-				apiFetch({ path: `/gg-data/v1/settings/search/connection?connection=${SEARCH_SETTINGS_CONNECTION}` }),
-				apiFetch({ path: `/gg-data/v1/settings/search/embedding_model?connection=${SEARCH_SETTINGS_CONNECTION}` }),
-				apiFetch({ path: `/gg-data/v1/settings/search/retrieval_mode?connection=${SEARCH_SETTINGS_CONNECTION}` }),
+				apiFetch({ path: `/gregius-data/v1/settings/search/enabled?connection=${SEARCH_SETTINGS_CONNECTION}` }),
+				apiFetch({ path: `/gregius-data/v1/settings/search/connection?connection=${SEARCH_SETTINGS_CONNECTION}` }),
+				apiFetch({ path: `/gregius-data/v1/settings/search/embedding_model?connection=${SEARCH_SETTINGS_CONNECTION}` }),
+				apiFetch({ path: `/gregius-data/v1/settings/search/retrieval_mode?connection=${SEARCH_SETTINGS_CONNECTION}` }),
 			]);
 
 			if (enabledRes) {
@@ -111,7 +111,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/status?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/status?connection=${searchConnection}`,
 			});
 
 			if (response && response.success) {
@@ -138,7 +138,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 		try {
 			setIsCheckingLanguage(true);
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/language-status?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/language-status?connection=${searchConnection}`,
 			});
 
 			if (response && response.success) {
@@ -160,7 +160,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setSuccess(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/update-language`,
+				path: `/gregius-data/v1/search/update-language`,
 				method: 'POST',
 				data: {
 					connection: searchConnection,
@@ -188,7 +188,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 
 		try {
 			const response = await apiFetch({
-				path: `/gg-data/v1/search/trigram-status?connection=${searchConnection}`,
+				path: `/gregius-data/v1/search/trigram-status?connection=${searchConnection}`,
 			});
 
 			if (response && response.success) {
@@ -211,7 +211,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setSuccess(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/retrieval_mode`,
+				path: `/gregius-data/v1/settings/search/retrieval_mode`,
 				method: 'POST',
 				data: {
 					connection: SEARCH_SETTINGS_CONNECTION,
@@ -243,9 +243,9 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			// plus the global model list so retired models can be excluded.
 			const [ response, modelsResponse ] = await Promise.all( [
 				apiFetch( {
-					path: `/gg-data/v1/settings/vectors/active_models?connection=${ searchConnection }`,
+					path: `/gregius-data/v1/settings/vectors/active_models?connection=${ searchConnection }`,
 				} ),
-				apiFetch( { path: '/gg-data/v1/models?type=embeddings' } ),
+				apiFetch( { path: '/gregius-data/v1/models?type=embeddings' } ),
 			] );
 
 			const retiredKeys = new Set(
@@ -296,7 +296,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setSuccess(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/embedding_model`,
+				path: `/gregius-data/v1/settings/search/embedding_model`,
 				method: 'POST',
 				data: {
 					connection: SEARCH_SETTINGS_CONNECTION,
@@ -322,7 +322,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setError(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/connection`,
+				path: `/gregius-data/v1/settings/search/connection`,
 				method: 'POST',
 				data: {
 					connection: SEARCH_SETTINGS_CONNECTION,
@@ -348,7 +348,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 			setSuccess(null);
 
 			const response = await apiFetch({
-				path: `/gg-data/v1/settings/search/enabled`,
+				path: `/gregius-data/v1/settings/search/enabled`,
 				method: 'POST',
 				data: {
 					connection: SEARCH_SETTINGS_CONNECTION,
@@ -364,7 +364,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 				if (newValue) {
 					if (embeddingModel) {
 						await apiFetch({
-							path: `/gg-data/v1/settings/search/embedding_model`,
+							path: `/gregius-data/v1/settings/search/embedding_model`,
 							method: 'POST',
 							data: {
 								connection: SEARCH_SETTINGS_CONNECTION,
@@ -374,7 +374,7 @@ const SearchSettingsCard = ({ connections = [] }) => {
 					}
 					if (searchConnection) {
 						await apiFetch({
-							path: `/gg-data/v1/settings/search/connection`,
+							path: `/gregius-data/v1/settings/search/connection`,
 							method: 'POST',
 							data: {
 								connection: SEARCH_SETTINGS_CONNECTION,

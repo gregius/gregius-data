@@ -46,18 +46,18 @@ WordPress Plugin Lifecycle
         +--> Activation/admin_init version checks
         |         |
         |         v
-        |    GG_Data_Activator
+        |    Gregius_Data_Activator
         |         |
         |         v
-        |    Plugin version option state (gg_data_db_version)
+        |    Plugin version option state (gregius_data_db_version)
         |
 Dashboard / REST Client
         |
         v
-GG_Data_REST_Schema_Controller (gg-data/v1/schema/*)
+Gregius_Data_REST_Schema_Controller (gregius-data/v1/schema/*)
         |
         v
-GG_Data_Schema_Manager
+Gregius_Data_Schema_Manager
         |
    +----+---------------------+
    |                          |
@@ -82,30 +82,30 @@ Mapping:
 1. **Plugin Bootstrap (`gregius-data.php`)**
 - Registers activation/deactivation hooks.
 - Registers admin-init version check callback.
-- Provides `GG_DATA_VERSION` constant consumed by upgrade/status comparisons.
+- Provides `GREGIUS_DATA_VERSION` constant consumed by upgrade/status comparisons.
 
-2. **Activator (`GG_Data_Activator`)**
+2. **Activator (`Gregius_Data_Activator`)**
 - Runs upgrade dispatcher during activation and version mismatch checks.
-- Persists plugin version option (`gg_data_db_version`).
+- Persists plugin version option (`gregius_data_db_version`).
 - Emits admin success notices after version updates.
 - Executes guarded prompt-seeding/migration helper routines on admin-init.
 
-3. **Schema Manager (`GG_Data_Schema_Manager`)**
+3. **Schema Manager (`Gregius_Data_Schema_Manager`)**
 - Retrieves and sets per-connection schema versions.
 - Migrates legacy option-backed schema versions to settings-backed storage.
 - Executes create and upgrade operations.
 - Calculates schema status contracts and update flags.
 - Applies provider-aware routing (direct PostgreSQL vs postgrest).
 
-4. **Schema REST Controller (`GG_Data_REST_Schema_Controller`)**
+4. **Schema REST Controller (`Gregius_Data_REST_Schema_Controller`)**
 - Registers `/schema/status`, `/schema/create`, `/schema/upgrade`, `/schema/verify`, `/schema/sql`.
 - Enforces administrative permissions (`manage_options`).
 - Translates manager outcomes into REST response/error contracts.
 
 5. **Settings + Provider Dependencies**
-- `GG_Data_Settings_Manager`: connection inventory and schema category persistence.
-- `GG_Data_DB` and `GG_Data_Connection_Manager`: connection resolution.
-- `GG_Data_PostgREST_Provider`: schema version retrieval for Supabase/PostgREST flow.
+- `Gregius_Data_Settings_Manager`: connection inventory and schema category persistence.
+- `Gregius_Data_DB` and `Gregius_Data_Connection_Manager`: connection resolution.
+- `Gregius_Data_PostgREST_Provider`: schema version retrieval for Supabase/PostgREST flow.
 
 ### 3.2 Responsibility Mapping
 
@@ -125,9 +125,9 @@ Mapping:
 
 ```
 Activation or admin_init
-   -> GG_Data_Activator::check_version()
-   -> read installed version (gg_data_db_version)
-   -> compare against GG_DATA_VERSION
+   -> Gregius_Data_Activator::check_version()
+   -> read installed version (gregius_data_db_version)
+   -> compare against GREGIUS_DATA_VERSION
    -> run_upgrades() when installed < runtime version
    -> update plugin version option
    -> emit success notice on version change
@@ -136,7 +136,7 @@ Activation or admin_init
 ### 4.2 Direct PostgreSQL Schema Upgrade Flow
 
 ```
-POST /gg-data/v1/schema/upgrade
+POST /gregius-data/v1/schema/upgrade
    -> permission check (manage_options)
    -> Schema_Manager::upgrade_schema_to_latest(connection)
    -> read current schema version
@@ -152,14 +152,14 @@ POST /gg-data/v1/schema/upgrade
 ### 4.3 Supabase/PostgREST Schema Flow
 
 ```
-POST /gg-data/v1/schema/create
+POST /gregius-data/v1/schema/create
    -> postgrest path does not execute arbitrary schema SQL
    -> return manual SQL guidance and keep WordPress-side setup
 
-GET /gg-data/v1/schema/sql
+GET /gregius-data/v1/schema/sql
    -> return postgrest-schema.sql content + operator instructions
 
-POST /gg-data/v1/schema/verify
+POST /gregius-data/v1/schema/verify
    -> query provider schema version
    -> return ready/not_created status and version
 ```
@@ -167,7 +167,7 @@ POST /gg-data/v1/schema/verify
 ### 4.4 Schema Status and Update Banner Flow
 
 ```
-GET /gg-data/v1/schema/status
+GET /gregius-data/v1/schema/status
    -> resolve provider path
    -> compute schema completeness and schema_version
    -> compare with plugin_version
