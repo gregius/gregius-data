@@ -8,7 +8,6 @@
 import { createElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { SelectControl } from '@wordpress/components';
-import PropTypes from 'prop-types';
 
 /**
  * DatabaseSelector Component
@@ -73,9 +72,3 @@ export default function DatabaseSelector({ connections, selectedConnectionId, on
     __nextHasNoMarginBottom: true
   });
 }
-
-DatabaseSelector.propTypes = {
-  connections: PropTypes.array.isRequired,
-  selectedConnectionId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  onSelect: PropTypes.func.isRequired,
-};

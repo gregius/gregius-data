@@ -184,17 +184,9 @@ const App = () => {
                             <GregiusLogo />
                             <svg
                                 className="gregius-data-logo-svg"
-                                version="1.1"
-                                id="Layer_1"
-                                xmlns="http://www.w3.org/2000/svg"
-                                xmlnsXlink="http://www.w3.org/1999/xlink"
-                                x="0px"
-                                y="0px"
                                 width="28px"
                                 height="28px"
                                 viewBox="0 0 32 32"
-                                enableBackground="new 0 0 32 32"
-                                xmlSpace="preserve"
                                 aria-hidden="true"
                                 focusable="false"
                             >

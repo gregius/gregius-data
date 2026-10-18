@@ -212,22 +212,17 @@
       &::before {
         content: "";
         display: inline-block;
-        width: 20px;
-        height: 20px;
-        background: currentColor;
-        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E")
-          no-repeat center;
-        mask-size: contain;
-        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E")
-          no-repeat center;
-        -webkit-mask-size: contain;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
         transition: transform 0.2s ease;
-        transform: rotate(90deg);
+        transform: rotate(45deg);
       }
     }
 
     &[open] summary::before {
-      transform: rotate(-90deg);
+      transform: rotate(-135deg);
     }
 
     &__content {

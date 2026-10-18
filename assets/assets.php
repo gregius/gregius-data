@@ -81,18 +81,12 @@ function gregius_data_dashboard_scripts_support() {
 	// Ensure WordPress REST API is initialized.
 	wp_enqueue_script( 'wp-api' );
 
-	// Enqueue the dashboard stylesheet.
+	// Enqueue the dashboard stylesheet. The @wordpress/components styles are
+	// provided by WordPress core via the wp-components handle (dependency below).
 	$css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/dashboard.min.*.css' );
 	if ( ! empty( $css_file_path ) && file_exists( $css_file_path[0] ) ) {
 		$css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $css_file_path[0] );
-		wp_enqueue_style( 'gregius-data-dashboard-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
-	}
-
-	// Enqueue WordPress Components styles.
-	$style_css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/style-dashboard.min.*.css' );
-	if ( ! empty( $style_css_file_path ) && file_exists( $style_css_file_path[0] ) ) {
-		$style_css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $style_css_file_path[0] );
-		wp_enqueue_style( 'gregius-data-dashboard-components', $style_css_file_uri, array(), filemtime( $style_css_file_path[0] ), 'all' );
+		wp_enqueue_style( 'gregius-data-dashboard-style', $css_file_uri, array( 'wp-components' ), filemtime( $css_file_path[0] ), 'all' );
 	}
 
 	// Get the asset file for dependencies.

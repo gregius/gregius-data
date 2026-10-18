@@ -5,9 +5,6 @@
  * Follows WordPress admin design patterns and accessibility guidelines.
  */
 
-/* Import WordPress Components styles */
-@import '@wordpress/components/build-style/style.css';
-
 /* Hide PHP loading placeholder when React loads */
 #gregius-data-react-dashboard .gregius-data-loading-placeholder {
   display: none;

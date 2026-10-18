@@ -193,10 +193,11 @@ This plugin syncs publicly visible WordPress content (posts, pages, custom post 
 This plugin connects to services you configure:
 
 1. PostgreSQL database provider (required):
-- You provide and control this database connection (self-hosted or managed provider).
+- You provide and control this database connection (self-hosted or managed provider). When using Supabase, the plugin connects to your project's servers (e.g. `*.supabase.co` for the REST API and `*.supabase.io` for authentication).
 
 2. AI provider APIs (optional):
-- OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe are used only if you configure them.
+- OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe are used only if you configure them. An account and API key are required for each provider.
+- Servers called: OpenAI (`api.openai.com`), Anthropic (`api.anthropic.com`), Google Gemini (`generativelanguage.googleapis.com`), DeepSeek (`api.deepseek.com`), Cohere (`api.cohere.com`), and TypeSafe (`api.typesafe.ai`).
 - Requests to generation/embedding/rerank workflows send request data to the provider you selected. Data is sent only when a workflow runs (a query, sync, embedding, or rerank operation) and only after you have configured that provider.
 - OpenAI Terms: https://openai.com/policies/terms-of-use/ | Privacy: https://openai.com/policies/privacy-policy/
 - Anthropic Terms: https://www.anthropic.com/legal/consumer-terms | Privacy: https://www.anthropic.com/privacy

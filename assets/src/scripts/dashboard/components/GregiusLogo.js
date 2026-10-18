@@ -1,7 +1,6 @@
 const GregiusLogo = ({ className = 'gregius-data-logo-clean' }) => (
     <svg
         className={className}
-        xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 300 300"
         width="28"
         height="28"
