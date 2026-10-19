@@ -301,7 +301,7 @@ A post qualifies if its `metadata_manifest.taxonomy_manifest` array contains **a
 
 PostgREST file path: [`includes/sql/postgrest-schema.sql`](../../includes/sql/postgrest-schema.sql) — must be manually copied to Supabase SQL editor; no auto-deploy.
 
-**Wire format — PHP (`GG_Intelligence_RAG_Tools::resolve_nba_filter`):**
+**Wire format — PHP (`Gregius_Intelligence_RAG_Tools::resolve_nba_filter`):**
 
 ```php
 [

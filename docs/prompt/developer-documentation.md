@@ -86,7 +86,7 @@ Primary API:
 
 Parameters:
 - `$prompt_id` (int, optional): Explicit prompt ID to attempt first. If provided, must be of requested type or resolution fails.
-- `$prompt_type` (string): 'system' or 'security'. Filters candidates by type term assignment.
+- `$prompt_type` (string): 'system', 'security', or 'evaluation'. Filters candidates by type term assignment.
 
 Return contract:
 - success: array with
@@ -95,10 +95,10 @@ Return contract:
   - `metadata.version`
   - `metadata.hash`
   - `metadata.source` (`explicit` | `selected` | `factory`)
-  - `metadata.prompt_type` ('system' or 'security')
+  - `metadata.prompt_type` ('system', 'security', or 'evaluation')
 - failure: `WP_Error( 'gregius_prompt_not_found', ... )` or type mismatch error
 
-**Important**: Each type maintains independent selected/factory state. Resolving 'system' will never return a 'security' prompt, and vice versa.
+**Important**: Each type maintains independent selected/factory state. Resolving one type (system, security, or evaluation) never returns a prompt of another type.
 
 [SRS: PROMPT-FR-04, PROMPT-FR-05, PROMPT-DR-04, PROMPT-DR-07, PROMPT-OR-02]
 
@@ -151,7 +151,7 @@ Permission model:
 ### 4.1 Type-aware parameters and operations
 
 Create/Update endpoints (`POST /prompts`, `PUT /prompts/<id>`):
-- Accept `prompt_type` parameter ('system' or 'security')
+- Accept `prompt_type` parameter ('system', 'security', or 'evaluation')
 - Validate `prompt_type` to enum; reject invalid values
 - Store type via `wp_set_object_terms()` under `gregius_prompt_type` taxonomy
 - Return `prompt_type` in response payload
@@ -160,7 +160,7 @@ Activation endpoint (`POST /prompts/<id>/activate`):
 - Retrieves current prompt type
 - Passes type to `deselect_other_prompts()` for type-scoped deactivation
 - Only deselects OTHER prompts of SAME type; leaves opposite type unaffected
-- Example: Activating a 'system' prompt will deactivate other 'system' prompts but leave 'security' selection unchanged
+- Example: Activating a 'system' prompt will deactivate other 'system' prompts but leave 'security' and 'evaluation' selections unchanged
 
 Payload example:
 ```json
@@ -249,12 +249,30 @@ If check returns safe status or fails with error:
 
 [SRS: PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15, PROMPT-OR-05, PROMPT-OR-06]
 
-## 6. Lifecycle Seed and Migration
+## 6. Evaluation Contract
+
+Source:
+- `includes/rag/class-gregius-data-rag-service.php`
+- `includes/ai/providers/class-gregius-data-typesafe-provider.php`
+
+The evaluation prompt instructs the optional **evaluator model** (TypeSafe Jev, model type `evaluator`) to judge whether the retrieved context sufficiently answers a query. The RAG service resolves it with `resolve_prompt( 0, 'evaluation' )` and runs the retrieval-sufficiency evaluation.
+
+Behavior:
+- The evaluator answers a single `noul` question; the returned probability is thresholded by `gregius_data_rag_evaluator_threshold` (default `0.5`) into `correct | insufficient`.
+- The verdict is recorded in `metadata.retrieval.evaluation` (`final_verdict`, `score`, `reformulations`, `passes`) but is **observe-only** — it never gates answer generation.
+- On `insufficient` (or empty retrieval), the agentic model selects a corrective step (`rewrite_query` or `respond_directly`), bounded by `gregius_data_rag_evaluator_max_reformulations` (default `1`).
+- The evaluator fails open: timeout, rate-limit, or malformed responses never block the answer.
+
+The runtime evaluator decision model is detailed in `docs/rag/developer-documentation.md` §4.4 and is distinct from the offline `wp gregius-data evaluation` runner (see `docs/rag-evaluation/`).
+
+[SRS: PROMPT-FR-03, PROMPT-FR-04, PROMPT-OR-07]
+
+## 7. Lifecycle Seed and Migration
 
 Source:
 - `includes/class-gregius-data-activator.php`
 
-### 6.1 Prompt type term seeding
+### 7.1 Prompt type term seeding
 
 Activation creates taxonomy terms via `ensure_prompt_type_terms()`:
 - Creates 'system' term if not present
@@ -264,7 +282,7 @@ Activation creates taxonomy terms via `ensure_prompt_type_terms()`:
 
 [SRS: PROMPT-FR-03]
 
-### 6.2 Factory prompt seeding
+### 7.2 Factory prompt seeding
 
 Activation seeds THREE factory prompts via `seed_default_prompts()`:
 
@@ -294,13 +312,13 @@ Activation seeds THREE factory prompts via `seed_default_prompts()`:
 
 All are marked as factory prompts (`_gregius_prompt_is_factory=1`) for identification.
 
-### 6.3 Legacy migration
+### 7.3 Legacy migration
 
 `migrate_prompt_types()` assigns 'system' type to any prompt without type:
 - Guards with `gregius_prompt_type_migrated` option
 - Preserves backward compatibility
 
-### 6.4 Placeholder migration
+### 7.4 Placeholder migration
 
 Lifecycle migration rewrites legacy baked date/time text in factory prompt content into:
 - `Current date: {{date}}.`
@@ -308,9 +326,9 @@ Lifecycle migration rewrites legacy baked date/time text in factory prompt conte
 
 Both routines are idempotent through option guards.
 
-## 7. Integration with RAG, CLI, and Abilities
+## 8. Integration with RAG, CLI, and Abilities
 
-### 7.1 RAG service integration
+### 8.1 RAG service integration
 
 Source:
 - `includes/rag/class-gregius-data-rag-service.php`
@@ -327,7 +345,7 @@ Security gatekeeper check:
 
 [SRS: PROMPT-FR-12, PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15]
 
-### 7.2 WP-CLI answer integration
+### 8.2 WP-CLI answer integration
 
 Source:
 - `includes/cli/class-gregius-data-cli-answer.php`
@@ -343,7 +361,7 @@ Validation behavior:
 
 [SRS: PROMPT-FR-17, PROMPT-OR-03]
 
-### 7.3 Abilities integration
+### 8.3 Abilities integration
 
 Source:
 - `includes/class-gregius-data-abilities-manager.php`
@@ -359,7 +377,7 @@ Validation behavior:
 
 [SRS: PROMPT-FR-17, PROMPT-OR-03]
 
-## 8. Extension Points
+## 9. Extension Points
 
 Prompt subsystem behavior can be influenced by integration-facing hooks and filters in consuming subsystems, especially RAG service layers.
 
@@ -372,7 +390,7 @@ Guidance:
 - Avoid direct mutation of resolver internals unless changing subsystem contract intentionally.
 - For security gatekeeper customization, update the active 'security' type prompt in admin UI.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### Prompt not resolving
 
@@ -401,7 +419,7 @@ Check:
 1. Resolver path has run at least once to backfill missing hash.
 2. Content normalization assumptions match subsystem hash contract.
 
-## 10. Parity Coverage Snapshot
+## 11. Parity Coverage Snapshot
 
 Documented and code-backed:
 - Prompt CPT + metadata contract
