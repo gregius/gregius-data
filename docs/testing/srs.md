@@ -85,7 +85,7 @@ Requirement notation:
 | TEST-FR-04 | The software MUST provide a single-command test runner (`./bin/test`) that executes all available test tiers without manual configuration. | Must |
 | TEST-FR-05 | The software MUST support running individual test suites via PHPUnit CLI (`--testsuite unit`, `--testsuite integration`). | Must |
 | TEST-FR-06 | The software MUST support environment variable overrides for Docker container names (`TEST_WP_CONTAINER`, `TEST_DB_CONTAINER`). | Must |
-| TEST-FR-07 | The software MUST auto-create the test database (`gregius_test`) and grant privileges before WpIntegration execution. | Must |
+| TEST-FR-07 | The software MUST auto-create the test database (default `wp_tests`, overridable via `TEST_DB_NAME`) and grant privileges before WpIntegration execution. | Must |
 | TEST-FR-08 | The software MUST generate container-compatible test configuration (`wp-tests-config.php`) at runtime for WpIntegration tests. | Must |
 
 ### 3.2 Data and Contract Requirements

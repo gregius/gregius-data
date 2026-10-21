@@ -53,7 +53,7 @@ This architecture describes how the Gregius Data plugin implements automated tes
     Tier 1 (Unit)      Tier 2 (Integration)   Tier 3 (WpIntegration)
           |                    |                    |
     PHPUnit alone       PHPUnit + Brain        WordPress Docker
-    No WordPress         Monkey + Mockery       Container (gregius-wordpress)
+    No WordPress         Monkey + Mockery       Container (wordpress-wordpress)
           |                    |                    |
    tests/Unit/         tests/Integration/    tests/WpIntegration/
 ```
@@ -65,7 +65,7 @@ Tier 3 expanded:
    +------+------+
    |             |
   Docker        Docker
-  gregius-db    gregius-wordpress
+  wordpress-db    wordpress-wordpress
    |             |
   CREATE DB     wp-tests-config.php (generated)
   GRANT PRIV     |
@@ -112,11 +112,11 @@ phpunit.xml.dist loads:
 | Full stack | `./bin/test --wp` | WpIntegration | ~5s | Required |
 
 `--wp` mode:
-1. Creates `gregius_test` database via `docker exec gregius-db`
-2. Writes container-compatible `wp-tests-config.php` via `docker exec gregius-wordpress tee`
+1. Creates the test database (default `wp_tests`) via `docker exec <TEST_DB_CONTAINER>`
+2. Writes container-compatible `wp-tests-config.php` via `docker exec <TEST_WP_CONTAINER> tee`
 3. Runs `vendor/bin/phpunit --configuration phpunit-wp.xml.dist` inside the container
 
-Container names are configurable via `TEST_WP_CONTAINER` and `TEST_DB_CONTAINER` environment variables.
+Container names are configurable via `TEST_WP_CONTAINER` and `TEST_DB_CONTAINER` environment variables; database credentials (`TEST_DB_USER`, `TEST_DB_PASSWORD`, `TEST_DB_ROOT_PASSWORD`) are required and intentionally have no committed defaults. See the `./bin/test` header for the full list.
 
 ---
 
@@ -261,10 +261,10 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 | ID | Constraint | Affected View |
 |---|---|---|
-| C-01 | MySQL must be accessible for Tier 3 (Docker container `gregius-db` running) | AV-02 |
+| C-01 | MySQL must be accessible for Tier 3 (Docker container `wordpress-db` running) | AV-02 |
 | C-02 | PHP `mysqli` extension required in the test runner environment | AV-02 |
 | C-03 | `svn` command-line tool required for wp-phpunit setup | AV-04 |
-| C-04 | Docker must be running for Tier 3 tests (`gregius-wordpress`, `gregius-db`) | AV-02 |
+| C-04 | Docker must be running for Tier 3 tests (`wordpress-wordpress`, `wordpress-db`) | AV-02 |
 | C-05 | PHPUnit 11 requires composer autoload and `yoast/phpunit-polyfills` ^3.0 | AV-04 |
 
 ---

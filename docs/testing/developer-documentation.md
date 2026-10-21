@@ -56,7 +56,7 @@ php vendor/bin/phpunit --testsuite unit
 php vendor/bin/phpunit --testsuite integration
 
 # WpIntegration (inside Docker, requires containers running)
-docker exec -e WP_TESTS_RUN=1 gregius-wordpress php \
+docker exec -e WP_TESTS_RUN=1 wordpress-wordpress php \
   /var/www/html/wp-content/plugins/gregius-data/vendor/bin/phpunit \
   --configuration /var/www/html/wp-content/plugins/gregius-data/phpunit-wp.xml.dist
 ```
@@ -72,14 +72,14 @@ Two execution modes:
 | Mode | Command | Tiers | Prerequisites |
 |---|---|---|---|
 | Local | `./bin/test` | Unit + Integration | PHP 8.2 + composer install --dev |
-| Full stack | `./bin/test --wp` | WpIntegration | Docker (gregius-wordpress + gregius-db) |
+| Full stack | `./bin/test --wp` | WpIntegration | Docker (wordpress-wordpress + wordpress-db) |
 
 Environment variable overrides for `--wp` mode:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `TEST_WP_CONTAINER` | `gregius-wordpress` | WordPress container name |
-| `TEST_DB_CONTAINER` | `gregius-db` | MySQL container name |
+| `TEST_WP_CONTAINER` | `wordpress-wordpress` | WordPress container name |
+| `TEST_DB_CONTAINER` | `wordpress-db` | MySQL container name |
 
 ### 4.2 PHPUnit Configuration
 
@@ -344,7 +344,7 @@ if ( method_exists( $this, 'getAnnotations' ) ) {
 }
 ```
 
-### Issue: `Cannot select database` / `gregius_test database could not be selected`
+### Issue: `Cannot select database` / `wp_tests database could not be selected`
 
 **Symptom:** WordPress boots but fails with a database selection error.
 
@@ -352,8 +352,8 @@ if ( method_exists( $this, 'getAnnotations' ) ) {
 
 **Solution:** The `./bin/test --wp` script creates the database automatically. If running manually, create it:
 ```sql
-CREATE DATABASE IF NOT EXISTS gregius_test;
-GRANT ALL PRIVILEGES ON gregius_test.* TO 'gregius-admin'@'%';
+CREATE DATABASE IF NOT EXISTS wp_tests;
+GRANT ALL PRIVILEGES ON wp_tests.* TO '<db-user>'@'%';
 ```
 
 ### Issue: `Class "WP_UnitTestCase" not found`
@@ -377,7 +377,7 @@ if ( ! $running_wp_tests ) {
 }
 ```
 
-### Issue: `Table 'gregius_test.wptests_gregius_data_logs' doesn't exist`
+### Issue: `Table 'wp_tests.wptests_gregius_data_logs' doesn't exist`
 
 **Symptom:** WpIntegration tests fail with missing table errors.
 
