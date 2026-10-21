@@ -60,13 +60,6 @@ if ( ! class_exists( 'Gregius_Data_Activator' ) ) {
 			// Add scheduled event for daily log retention purge (site-scoped in multisite).
 			self::schedule_log_retention_events();
 
-			// Add capabilities to administrator.
-			$admin_role = get_role( 'administrator' );
-
-			if ( $admin_role ) {
-				$admin_role->add_cap( 'manage_gregius_data' );
-			}
-
 			// Seed factory prompt terms and defaults.
 			self::ensure_prompt_infrastructure();
 			self::ensure_prompt_type_terms();

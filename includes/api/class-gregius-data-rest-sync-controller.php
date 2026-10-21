@@ -2088,6 +2088,7 @@ class Gregius_Data_REST_Sync_Controller extends WP_REST_Controller {
 				foreach ( $delete_sequence as $table_config ) {
 					$current_table    = $table_config['table'];
 					$id_key           = $table_config['id_key'];
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook names are defined with the gregius_data_ prefix in the $delete_sequence array above.
 					$table_batch_size = apply_filters( $table_config['hook'], $batch_size, $connection_name );
 					$table_batch_size = absint( $table_batch_size );
 					if ( $table_batch_size <= 0 ) {
@@ -2175,6 +2176,7 @@ class Gregius_Data_REST_Sync_Controller extends WP_REST_Controller {
 				foreach ( $delete_sequence as $table_config ) {
 					$current_table    = $table_config['table'];
 					$id_key           = $table_config['id_key'];
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook names are defined with the gregius_data_ prefix in the $delete_sequence array above.
 					$table_batch_size = apply_filters( $table_config['hook'], $batch_size, $connection_name );
 					$table_batch_size = absint( $table_batch_size );
 					if ( $table_batch_size <= 0 ) {

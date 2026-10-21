@@ -85,7 +85,6 @@ class Gregius_Data_Uninstaller {
 			}
 
 			self::clear_cron();
-			self::remove_capability();
 			delete_transient( 'gregius_data_clear_localstorage' );
 
 			if ( $remove ) {
@@ -159,18 +158,6 @@ class Gregius_Data_Uninstaller {
 
 		foreach ( $hooks as $hook ) {
 			wp_clear_scheduled_hook( $hook );
-		}
-	}
-
-	/**
-	 * Remove the plugin capability from the administrator role.
-	 *
-	 * @return void
-	 */
-	private static function remove_capability() {
-		$admin_role = get_role( 'administrator' );
-		if ( $admin_role ) {
-			$admin_role->remove_cap( 'manage_gregius_data' );
 		}
 	}
 

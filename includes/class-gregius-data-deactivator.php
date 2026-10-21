@@ -36,13 +36,6 @@ if ( ! class_exists( 'Gregius_Data_Deactivator' ) ) {
 			wp_clear_scheduled_hook( 'gregius_data_process_batch' );         // Batch processor.
 			wp_clear_scheduled_hook( 'gregius_data_retry_failed' );          // Old sync retry.
 
-			// Remove administrator capabilities.
-			$admin_role = get_role( 'administrator' );
-
-			if ( $admin_role ) {
-				$admin_role->remove_cap( 'manage_gregius_data' );
-			}
-
 			// Clear localStorage on next admin page load.
 			set_transient( 'gregius_data_clear_localstorage', true, HOUR_IN_SECONDS );
 

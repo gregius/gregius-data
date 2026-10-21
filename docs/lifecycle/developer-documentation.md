@@ -53,7 +53,6 @@ Activation behavior summary:
 - initializes search settings,
 - writes default `gregius_data_sync_*` options only when absent,
 - schedules connection health and daily validation cron jobs,
-- adds the administrator capability `manage_gregius_data`,
 - seeds the factory prompt when missing.
 
 Version-check behavior summary:
@@ -73,9 +72,7 @@ Deactivation behavior summary:
 - sets `gregius_data_clear_localstorage` transient for one hour,
 - preserves plugin options and tables.
 
-Capability lifecycle note:
-- activation adds `manage_gregius_data`, and deactivation removes `manage_gregius_data`.
-- runtime admin and REST authorization remains based on `manage_options`.
+Runtime admin and REST authorization is based on `manage_options`.
 
 ### `Gregius_Data_Cron_Manager`
 
@@ -106,7 +103,7 @@ Retention flag storage: a site option on multisite (`get_site_option` / `update_
 
 Uninstall behavior summary:
 - `run()` preserves all plugin data by default (flag unset),
-- always clears cron (Action Scheduler + WP-Cron), removes `manage_gregius_data`, and deletes the `gregius_data_clear_localstorage` transient,
+- always clears cron (Action Scheduler + WP-Cron) and deletes the `gregius_data_clear_localstorage` transient,
 - when the flag is set: deletes `gregius_data_*`/`gregius_data_*` options and transients, drops `gregius_data_settings`, `gregius_data_sync_metadata`, and `gregius_data_logs`, deletes `gregius_prompt` posts/terms/meta, and (multisite) `sitemeta` keys,
 - never touches the external PostgreSQL/Supabase mirror.
 
@@ -184,8 +181,7 @@ Fallback when Action Scheduler is unavailable:
 
 Always (flag on or off):
 1. Clear cron (Action Scheduler actions, or WP-Cron fallbacks).
-2. Remove the `manage_gregius_data` capability from the administrator role.
-3. Delete the `gregius_data_clear_localstorage` transient.
+2. Delete the `gregius_data_clear_localstorage` transient.
 
 When the flag is enabled (opt-in removal):
 1. Delete `gregius_data_*` and `gregius_data_*` options.

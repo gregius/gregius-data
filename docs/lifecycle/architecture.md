@@ -163,7 +163,6 @@ register_activation_hook → Gregius_Data_Activator::activate()
     │   └─ only update missing gregius_data_sync_* options
     ├─ schedule gregius_data_check_connection_health when missing
     ├─ schedule gregius_data_daily_validation when missing
-    ├─ add_cap('manage_gregius_data') to administrator
     └─ seed_default_prompt() (guarded by option)
 ```
 
@@ -193,7 +192,6 @@ Gregius_Data_Deactivator::deactivate()
     │
     ├─ clear active cron hooks
     ├─ clear deprecated cron hooks
-    ├─ remove administrator capability (`manage_gregius_data`)
     ├─ set_transient('gregius_data_clear_localstorage', true, 1 hour)
     └─ preserve plugin options, tables, and user data
 
@@ -222,7 +220,6 @@ uninstall.php → Gregius_Data_Uninstaller::run()
     ├─ foreach blog_id:
     │   ├─ switch_to_blog() when multisite
     │   ├─ clear cron (Action Scheduler when available, else WP-Cron)
-    │   ├─ remove manage_gregius_data capability
     │   ├─ delete gregius_data_clear_localstorage transient
     │   ├─ if retention flag enabled:
     │   │   ├─ delete gregius_data_* and gregius_data_* options

@@ -182,12 +182,12 @@ $gregius_data_files = array(
 	GREGIUS_DATA_PLUGIN_DIR . 'blocks/rag-assistant/rag-assistant.php',
 );
 
-foreach ( $gregius_data_files as $file ) {
-	if ( file_exists( $file ) ) {
-		require_once $file;
+foreach ( $gregius_data_files as $gregius_data_file ) {
+	if ( file_exists( $gregius_data_file ) ) {
+		require_once $gregius_data_file;
 	} else {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Critical: Log missing required files for production debugging
-		error_log( 'Gregius PostgreSQL plugin error: Missing required file ' . $file );
+		error_log( 'Gregius PostgreSQL plugin error: Missing required file ' . $gregius_data_file );
 	}
 }
 
