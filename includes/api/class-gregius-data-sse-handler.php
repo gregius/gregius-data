@@ -245,39 +245,25 @@ class Gregius_Data_SSE_Handler {
 		$source_turn_index = isset( $_POST['source_turn_index'] ) ? absint( wp_unslash( $_POST['source_turn_index'] ) ) : 0;
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$conversation_id = isset( $_POST['conversation_id'] ) ? sanitize_text_field( wp_unslash( $_POST['conversation_id'] ) ) : '';
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and validated below.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and sanitized below.
 		$messages_json = isset( $_POST['messages'] ) ? wp_unslash( $_POST['messages'] ) : '[]';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and sanitized below.
 		$source_json = isset( $_POST['source'] ) ? wp_unslash( $_POST['source'] ) : '';
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and validated below.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and sanitized below.
 		$metadata_filter_json = isset( $_POST['metadata_filter'] ) ? wp_unslash( $_POST['metadata_filter'] ) : '{}';
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and validated below.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and sanitized below.
 		$metadata_manifest_json = isset( $_POST['metadata_manifest'] ) ? wp_unslash( $_POST['metadata_manifest'] ) : '[]';
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and validated below.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON decoded and sanitized below.
 		$manifest_json = isset( $_POST['manifest'] ) ? wp_unslash( $_POST['manifest'] ) : '{}';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
 		$forced_tool = isset( $_POST['forced_tool'] ) ? sanitize_key( wp_unslash( $_POST['forced_tool'] ) ) : '';
 
-		// Decode messages JSON.
-		$messages = json_decode( $messages_json, true );
-		if ( ! is_array( $messages ) ) {
-			$messages = array();
-		}
-
-		// Sanitize conversation messages to prevent prompt injection vectors.
-		$messages = array_map(
-			function ( $msg ) {
-				if ( ! is_array( $msg ) ) {
-					return null;
-				}
-				return array(
-					'role'    => isset( $msg['role'] ) ? sanitize_text_field( $msg['role'] ) : '',
-					'content' => isset( $msg['content'] ) ? wp_kses_post( $msg['content'] ) : '',
-				);
-			},
-			$messages
+		// Decode and sanitize JSON payloads (keys and values). JSON cannot be
+		// sanitized pre-decode, so each payload is size-guarded, depth-capped,
+		// and recursively sanitized immediately after decoding.
+		$messages = Gregius_Data_Sanitizer::sanitize_messages(
+			Gregius_Data_Sanitizer::decode_json( $messages_json, Gregius_Data_Sanitizer::MAX_BYTES_MESSAGES )
 		);
-		$messages = array_filter( $messages ); // Remove null entries.
 
 		$source_payload = $this->sanitize_source_payload( $source_json );
 		$source_payload = array_merge(
@@ -285,23 +271,17 @@ class Gregius_Data_SSE_Handler {
 			$source_payload
 		);
 
-		$metadata_filter = json_decode( (string) $metadata_filter_json, true );
-		if ( ! is_array( $metadata_filter ) ) {
-			$metadata_filter = array();
-		}
-		$metadata_filter = $this->sanitize_rag_payload( $metadata_filter );
+		$metadata_filter = Gregius_Data_Sanitizer::sanitize_metadata_filter(
+			Gregius_Data_Sanitizer::decode_json( $metadata_filter_json, Gregius_Data_Sanitizer::MAX_BYTES_METADATA )
+		);
 
-		$metadata_manifest = json_decode( (string) $metadata_manifest_json, true );
-		if ( ! is_array( $metadata_manifest ) ) {
-			$metadata_manifest = array();
-		}
-		$metadata_manifest = $this->sanitize_rag_payload( $metadata_manifest );
+		$metadata_manifest = Gregius_Data_Sanitizer::sanitize(
+			Gregius_Data_Sanitizer::decode_json( $metadata_manifest_json, Gregius_Data_Sanitizer::MAX_BYTES_METADATA )
+		);
 
-		$manifest = json_decode( (string) $manifest_json, true );
-		if ( ! is_array( $manifest ) ) {
-			$manifest = array();
-		}
-		$manifest = $this->sanitize_rag_payload( $manifest );
+		$manifest = Gregius_Data_Sanitizer::sanitize(
+			Gregius_Data_Sanitizer::decode_json( $manifest_json, Gregius_Data_Sanitizer::MAX_BYTES_MANIFEST )
+		);
 
 		// Validate required parameters.
 		if ( empty( $query ) ) {
@@ -589,10 +569,7 @@ class Gregius_Data_SSE_Handler {
 			return array();
 		}
 
-		$decoded = json_decode( $source_json, true );
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
-			return array();
-		}
+		$decoded = Gregius_Data_Sanitizer::decode_json( $source_json, Gregius_Data_Sanitizer::MAX_BYTES_SOURCE );
 
 		$sanitized = array();
 
@@ -605,30 +582,6 @@ class Gregius_Data_SSE_Handler {
 		}
 
 		return $sanitized;
-	}
-
-	/**
-	 * Recursively sanitize a decoded RAG payload (metadata filter / manifest).
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param mixed $value Decoded JSON value.
-	 * @return mixed Sanitized value.
-	 */
-	private function sanitize_rag_payload( $value ) {
-		if ( is_array( $value ) ) {
-			return array_map( array( $this, 'sanitize_rag_payload' ), $value );
-		}
-		if ( is_string( $value ) ) {
-			return sanitize_text_field( $value );
-		}
-		if ( is_int( $value ) ) {
-			return absint( $value );
-		}
-		if ( is_float( $value ) ) {
-			return (float) $value;
-		}
-		return $value;
 	}
 
 	/**

@@ -513,7 +513,7 @@ class Gregius_Data_RAG_Service {
 			'enable_vector'   => ! (bool) $options['disable_vector'],
 			'vector_table'    => $vector_config['table_name'],
 			'vector_column'   => $vector_config['embedding_column'],
-			'metadata_filter' => ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass(),
+			'metadata_filter' => ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? Gregius_Data_Sanitizer::sanitize_metadata_filter( $options['metadata_filter'] ) : new stdClass(),
 		);
 
 		// Pass a directly-hashed/embedded query vector when the active model supports it.
@@ -678,7 +678,7 @@ class Gregius_Data_RAG_Service {
 					':enable_vector'            => $enable_vector ? 'true' : 'false',
 					':vector_table'             => $vector_config['table_name'] ?? '',
 					':vector_column'            => $vector_config['embedding_column'] ?? 'embedding',
-					':metadata_filter'          => wp_json_encode( ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? $options['metadata_filter'] : new stdClass() ),
+					':metadata_filter'          => wp_json_encode( ( is_array( $options['metadata_filter'] ) && ! empty( $options['metadata_filter'] ) ) ? Gregius_Data_Sanitizer::sanitize_metadata_filter( $options['metadata_filter'] ) : new stdClass() ),
 					':rrf_k'                    => 60,
 					':precomputed_query_vector' => $this->generate_query_vector_literal( $query ),
 				)
@@ -1432,7 +1432,7 @@ class Gregius_Data_RAG_Service {
 					}
 
 					if ( isset( $tool_selection['metadata_filter'] ) && is_array( $tool_selection['metadata_filter'] ) ) {
-						$options['metadata_filter'] = $tool_selection['metadata_filter'];
+						$options['metadata_filter'] = Gregius_Data_Sanitizer::sanitize_metadata_filter( $tool_selection['metadata_filter'] );
 					}
 				}
 

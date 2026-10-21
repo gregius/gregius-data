@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *     "dates":  { "created_gmt": "", "modified_gmt": "" },
  *     "author": { "id": 0, "name": "" },
  *     "taxonomies": {},                // Keyed by taxonomy label, value = array of term objects.
- *     "meta":   {},                    // Post meta, pre-sanitized by client.
+ *     "meta":   {},                    // Post meta, sanitized server-side.
  *     "raw_context": {}
  *   },
  *   "search_capabilities": {           // Optional. Client-advertised retrieval capabilities.
@@ -178,7 +178,7 @@ class Gregius_Data_Manifest_Validator {
 			'is_historical_resume'     => isset( $state['is_historical_resume'] ) ? (bool) $state['is_historical_resume'] : false,
 			'active_mode'              => isset( $state['active_mode'] ) ? sanitize_key( (string) $state['active_mode'] ) : 'default',
 			'recent_mixed_initiatives' => isset( $state['recent_mixed_initiatives'] ) && is_array( $state['recent_mixed_initiatives'] )
-				? array_values( $state['recent_mixed_initiatives'] )
+				? array_values( Gregius_Data_Sanitizer::sanitize( $state['recent_mixed_initiatives'] ) )
 				: array(),
 		);
 	}
@@ -204,7 +204,7 @@ class Gregius_Data_Manifest_Validator {
 		// Title.
 		if ( isset( $entity['title'] ) && is_array( $entity['title'] ) ) {
 			$normalized['title'] = array(
-				'raw'      => isset( $entity['title']['raw'] ) ? (string) $entity['title']['raw'] : '',
+				'raw'      => isset( $entity['title']['raw'] ) ? sanitize_text_field( (string) $entity['title']['raw'] ) : '',
 				'rendered' => isset( $entity['title']['rendered'] ) ? wp_strip_all_tags( (string) $entity['title']['rendered'] ) : '',
 			);
 		}
@@ -225,19 +225,19 @@ class Gregius_Data_Manifest_Validator {
 			);
 		}
 
-		// Taxonomies — pass through as-is (client-sourced, array of term objects).
+		// Taxonomies — sanitized recursively (keys and values).
 		if ( isset( $entity['taxonomies'] ) && is_array( $entity['taxonomies'] ) ) {
-			$normalized['taxonomies'] = $entity['taxonomies'];
+			$normalized['taxonomies'] = Gregius_Data_Sanitizer::sanitize( $entity['taxonomies'] );
 		}
 
-		// Meta — pass through as-is (client-sourced, already sanitized by render.php).
+		// Meta — sanitized recursively (keys and values).
 		if ( isset( $entity['meta'] ) && is_array( $entity['meta'] ) ) {
-			$normalized['meta'] = $entity['meta'];
+			$normalized['meta'] = Gregius_Data_Sanitizer::sanitize( $entity['meta'] );
 		}
 
-		// Raw context — pass through as-is.
+		// Raw context — sanitized recursively (keys and values).
 		if ( isset( $entity['raw_context'] ) && is_array( $entity['raw_context'] ) ) {
-			$normalized['raw_context'] = $entity['raw_context'];
+			$normalized['raw_context'] = Gregius_Data_Sanitizer::sanitize( $entity['raw_context'] );
 		}
 
 		return $normalized;

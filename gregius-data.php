@@ -63,6 +63,7 @@ define( 'GREGIUS_DATA_DEBUG_MODE', false ); // Set to true to enable debug loggi
 // Include necessary files safely.
 $gregius_data_files = array(
 	GREGIUS_DATA_PLUGIN_DIR . 'includes/class-gregius-data.php',
+	GREGIUS_DATA_PLUGIN_DIR . 'includes/class-gregius-data-sanitizer.php', // Shared recursive input sanitizer.
 	GREGIUS_DATA_PLUGIN_DIR . 'includes/class-gregius-data-logger.php',
 	GREGIUS_DATA_PLUGIN_DIR . 'includes/class-gregius-data-log-retention.php',
 	GREGIUS_DATA_PLUGIN_DIR . 'includes/class-gregius-data-debug.php',

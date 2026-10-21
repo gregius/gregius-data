@@ -368,31 +368,7 @@ class Gregius_Data_REST_RAG_Controller extends WP_REST_Controller {
 	 * @return array Sanitized messages array.
 	 */
 	public function sanitize_messages( $messages ) {
-		if ( ! is_array( $messages ) ) {
-			return array();
-		}
-
-		return array_values(
-			array_filter(
-				array_map(
-					function ( $msg ) {
-						if ( ! is_array( $msg ) ) {
-							return null;
-						}
-						$role = isset( $msg['role'] ) ? sanitize_text_field( $msg['role'] ) : '';
-						// Only allow valid roles.
-						if ( ! in_array( $role, array( 'user', 'assistant' ), true ) ) {
-							return null;
-						}
-						return array(
-							'role'    => $role,
-							'content' => isset( $msg['content'] ) ? wp_kses_post( $msg['content'] ) : '',
-						);
-					},
-					$messages
-				)
-			)
-		);
+		return Gregius_Data_Sanitizer::sanitize_messages( $messages );
 	}
 
 	/**
@@ -430,11 +406,7 @@ class Gregius_Data_REST_RAG_Controller extends WP_REST_Controller {
 	 * @return array Sanitized metadata filter.
 	 */
 	public function sanitize_metadata_filter( $metadata_filter ) {
-		if ( ! is_array( $metadata_filter ) ) {
-			return array();
-		}
-
-		return $metadata_filter;
+		return Gregius_Data_Sanitizer::sanitize_metadata_filter( $metadata_filter );
 	}
 
 	/**
@@ -449,7 +421,7 @@ class Gregius_Data_REST_RAG_Controller extends WP_REST_Controller {
 			return array();
 		}
 
-		return $metadata_manifest;
+		return Gregius_Data_Sanitizer::sanitize( $metadata_manifest );
 	}
 
 	/**
@@ -464,7 +436,7 @@ class Gregius_Data_REST_RAG_Controller extends WP_REST_Controller {
 			return array();
 		}
 
-		return $manifest;
+		return Gregius_Data_Sanitizer::sanitize( $manifest );
 	}
 
 	/**
