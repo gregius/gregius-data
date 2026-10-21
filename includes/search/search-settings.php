@@ -49,10 +49,11 @@ function gregius_data_init_search_settings() {
 	gregius_data_migrate_search_settings_scope();
 
 	// Check if search settings already exist (using global connection name).
-	$enabled = $settings->get_with_category( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', null );
+	$search_rows = $settings->get_by_category( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION );
+	$search_keys = wp_list_pluck( (array) $search_rows, 'setting_key' );
 
 	// Only set defaults if not already configured.
-	if ( null === $enabled ) {
+	if ( ! in_array( 'enabled', $search_keys, true ) ) {
 		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'enabled', false );
 		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'connection', '' );
 		$settings->set_with_category_public( 'search', GREGIUS_DATA_SEARCH_SETTINGS_CONNECTION, 'embedding_model', 'hashingtf-murmur3-1024' );
