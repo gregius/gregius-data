@@ -40,9 +40,31 @@ function gregius_data_get_default_search_settings() {
 }
 
 /**
- * Initialize search settings on plugin activation
+ * Initialize search settings on plugin activation.
+ *
+ * On multisite, network activation fires the activation hook once in the
+ * primary site context, so each site is seeded explicitly here.
  */
 function gregius_data_init_search_settings() {
+	if ( is_multisite() ) {
+		$sites = get_sites( array( 'number' => 0 ) );
+
+		foreach ( $sites as $site ) {
+			switch_to_blog( (int) $site->blog_id );
+			gregius_data_init_search_settings_for_current_site();
+			restore_current_blog();
+		}
+
+		return;
+	}
+
+	gregius_data_init_search_settings_for_current_site();
+}
+
+/**
+ * Initialize search settings for the current site.
+ */
+function gregius_data_init_search_settings_for_current_site() {
 	$settings = new Gregius_Data_Settings_Manager();
 
 	// Migrate legacy search scope rows before reading defaults.

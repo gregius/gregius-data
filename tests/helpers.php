@@ -61,6 +61,7 @@ function gregius_data_test_setup_wpdb() {
  */
 function gregius_data_test_stub_common_functions() {
 	Brain\Monkey\Functions\when( 'get_current_blog_id' )->justReturn( 1 );
+	Brain\Monkey\Functions\when( 'is_multisite' )->justReturn( false );
 	Brain\Monkey\Functions\when( 'current_time' )->justReturn( '2025-01-01 00:00:00' );
 	Brain\Monkey\Functions\when( '__' )->alias(
 		function ( $text ) {

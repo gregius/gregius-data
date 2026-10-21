@@ -918,12 +918,36 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 		}
 
 		/**
-		 * Initialize default sync settings for all connections
-		 * Starts with empty defaults to force user selection
+		 * Initialize default sync settings for all sites.
+		 *
+		 * Starts with empty defaults to force user selection. On multisite, network
+		 * activation fires the activation hook once in the primary site context,
+		 * so each site is initialized explicitly here.
 		 *
 		 * @since 1.0.0
 		 */
 		private static function init_default_sync_settings() {
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::init_default_sync_settings_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::init_default_sync_settings_for_current_site();
+		}
+
+		/**
+		 * Initialize default sync settings for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function init_default_sync_settings_for_current_site() {
 			// Empty defaults - user must explicitly choose what to sync.
 			$defaults = array(
 				'enabled_post_types' => array(),
