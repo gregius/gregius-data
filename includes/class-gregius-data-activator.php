@@ -54,15 +54,8 @@ if ( ! class_exists( 'Gregius_Data_Activator' ) ) {
 			// Initialize default content sync settings.
 			self::init_default_sync_settings();
 
-			// Add scheduled event for connection health checks.
-			if ( ! wp_next_scheduled( 'gregius_data_check_connection_health' ) ) {
-				wp_schedule_event( time(), 'gregius_data_every_five_minutes', 'gregius_data_check_connection_health' );
-			}
-
-			// Add scheduled event for sync validation.
-			if ( ! wp_next_scheduled( 'gregius_data_daily_validation' ) ) {
-				wp_schedule_event( strtotime( 'tomorrow 3:00 AM' ), 'daily', 'gregius_data_daily_validation' );
-			}
+			// Add scheduled events for connection health checks and sync validation.
+			self::schedule_monitoring_events();
 
 			// Add scheduled event for daily log retention purge (site-scoped in multisite).
 			self::schedule_log_retention_events();
@@ -989,6 +982,42 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 			}
 
 			Gregius_Data_Log_Retention::schedule_for_current_site();
+		}
+
+		/**
+		 * Schedule monitoring cron events for each site context.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function schedule_monitoring_events() {
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::schedule_monitoring_events_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::schedule_monitoring_events_for_current_site();
+		}
+
+		/**
+		 * Schedule monitoring cron events for the current site.
+		 *
+		 * @since 1.0.0
+		 */
+		private static function schedule_monitoring_events_for_current_site() {
+			if ( ! wp_next_scheduled( 'gregius_data_check_connection_health' ) ) {
+				wp_schedule_event( time(), 'gregius_data_every_five_minutes', 'gregius_data_check_connection_health' );
+			}
+
+			if ( ! wp_next_scheduled( 'gregius_data_daily_validation' ) ) {
+				wp_schedule_event( strtotime( 'tomorrow 3:00 AM' ), 'daily', 'gregius_data_daily_validation' );
+			}
 		}
 	}
 }
