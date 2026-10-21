@@ -619,7 +619,7 @@ if ( ! class_exists( 'Gregius_Data_Logger' ) ) {
 				connection_id varchar(100) DEFAULT NULL,
 				message text NOT NULL,
 				context longtext DEFAULT NULL,
-				PRIMARY KEY (id),
+				PRIMARY KEY  (id),
 				KEY idx_logged_at (logged_at),
 				KEY idx_level (level),
 				KEY idx_component (component),

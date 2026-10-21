@@ -162,7 +162,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			}           try {
 				// 1. Create plugin settings table FIRST (in WordPress MySQL, not PostgreSQL).
 				// This must be created before PostgreSQL schema because create_search_function needs it.
-				$this->create_settings_table( $conn );
+				( new Gregius_Data_Settings_Manager() )->create_settings_table();
 				$this->logger->log( 'Created wp_gregius_data_settings table in MySQL', 'info', 'system', $connection_name );
 
 				// 2. Create sync metadata tracking tables in both MySQL and PostgreSQL
@@ -293,7 +293,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			// Create WordPress-side tables (settings, sync metadata).
 			try {
 				// Create plugin settings table in WordPress MySQL.
-				$this->create_settings_table( null );
+				( new Gregius_Data_Settings_Manager() )->create_settings_table();
 				$this->logger->log( 'Created wp_gregius_data_settings table in MySQL', 'info', 'system', $connection_name );
 
 				// Create sync metadata tracking tables in WordPress MySQL.
@@ -1748,52 +1748,6 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 		}
 
 		/**
-		 * Create the plugin settings table in WordPress (MySQL).
-		 *
-		 * @param PDO $conn Database connection (unused — settings live in MySQL).
-		 * @return bool Success or failure.
-		 */
-		protected function create_settings_table( $conn ) {
-			unset( $conn );
-			// Create settings table in WordPress MySQL database, not PostgreSQL.
-			// This allows direct access via $wpdb for REST API and React dashboard.
-
-			global $wpdb;
-			$table_name = $wpdb->prefix . 'gregius_data_settings';
-
-			$charset_collate = $wpdb->get_charset_collate();
-
-			$sql = "CREATE TABLE IF NOT EXISTS $table_name (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				connection_name varchar(100) NOT NULL DEFAULT 'default',
-				category varchar(50) NOT NULL,
-				setting_key varchar(100) NOT NULL,
-				setting_value longtext,
-				data_type varchar(20) DEFAULT 'string',
-				is_encrypted tinyint(1) DEFAULT 0,
-				is_active tinyint(1) DEFAULT 1,
-				environment varchar(20) DEFAULT 'production',
-				provider varchar(50) DEFAULT 'custom',
-				created_at datetime DEFAULT CURRENT_TIMESTAMP,
-				updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-				PRIMARY KEY (id),
-				UNIQUE KEY unique_setting (connection_name, category, setting_key),
-				KEY connection_category (connection_name, category),
-				KEY active_settings (is_active),
-				KEY environment (environment),
-				KEY provider (provider),
-				KEY updated_at (updated_at)
-			) $charset_collate;";
-
-			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-			dbDelta( $sql );
-
-			$this->logger->log( 'Created wp_gregius_data_settings table in WordPress MySQL database for plugin settings management (WordPress multisite compatible)', 'info', 'system' );
-
-			return true;
-		}
-
-		/**
 		 * Create sync metadata tracking tables in both MySQL and PostgreSQL
 		 *
 		 * MySQL table: Tracks what SHOULD be synced (based on settings)
@@ -1827,7 +1781,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			$mysql_table     = $wpdb->prefix . 'gregius_data_sync_metadata';
 			$charset_collate = $wpdb->get_charset_collate();
 
-			$mysql_sql = "CREATE TABLE IF NOT EXISTS $mysql_table (
+			$mysql_sql = "CREATE TABLE $mysql_table (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			connection_name VARCHAR(255) NOT NULL,
 			entity_type VARCHAR(50) NOT NULL COMMENT 'Top-level entity types: term, post',
@@ -1840,7 +1794,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			enabled TINYINT(1) DEFAULT 1 COMMENT 'Whether sync is enabled for this entity type',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
+			PRIMARY KEY  (id),
 			UNIQUE KEY unique_entity (connection_name, entity_type, post_type),
 			KEY idx_connection (connection_name),
 			KEY idx_entity_type (entity_type),
@@ -1851,7 +1805,23 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 			dbDelta( $mysql_sql );
 
-			$this->logger->log( 'Created ' . $wpdb->prefix . 'gregius_data_sync_metadata table in MySQL with aggregate tracking schema (multisite-aware)', 'info', 'system' );
+			// Verify the table was created.
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Checking table existence; prepare() is used.
+			$table_exists = $wpdb->get_var(
+				$wpdb->prepare(
+					'SHOW TABLES LIKE %s',
+					$mysql_table
+				)
+			) === $mysql_table;
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+
+			if ( ! $table_exists ) {
+				( new Gregius_Data_Logger() )->log( 'Failed to create ' . $mysql_table . ' table in MySQL', 'error', 'system' );
+
+				return false;
+			}
+
+			( new Gregius_Data_Logger() )->log( 'Created ' . $mysql_table . ' table in MySQL with aggregate tracking schema (multisite-aware)', 'info', 'system' );
 
 			return true;
 		}

@@ -73,6 +73,18 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 	}
 
 	/**
+	 * Whether the pdo_pgsql extension is available.
+	 *
+	 * Direct PostgreSQL connections require the pdo_pgsql driver; PostgREST
+	 * (Supabase) connections use the HTTP API and do not need it.
+	 *
+	 * @return bool True when pdo_pgsql is loaded.
+	 */
+	private static function is_pdo_pgsql_available() {
+		return extension_loaded( 'pdo_pgsql' );
+	}
+
+	/**
 	 * Establish connection to PostgreSQL database
 	 *
 	 * @param array $connection_config Connection configuration array.
@@ -85,6 +97,13 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 	 */
 	public function connect( $connection_config ) {
 		try {
+			if ( ! self::is_pdo_pgsql_available() ) {
+				return array(
+					'success' => false,
+					'message' => 'The pdo_pgsql PHP extension is required for direct PostgreSQL connections. Install or enable it, or use a Supabase/PostgREST connection instead.',
+				);
+			}
+
 			// Validate required connection parameters.
 			$required_fields = array( 'host', 'port', 'database', 'username', 'password' );
 			foreach ( $required_fields as $field ) {
@@ -193,6 +212,13 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 	 */
 	public function test_connection( $connection_config ) {
 		try {
+			if ( ! self::is_pdo_pgsql_available() ) {
+				return array(
+					'success' => false,
+					'message' => 'The pdo_pgsql PHP extension is required for direct PostgreSQL connections. Install or enable it, or use a Supabase/PostgREST connection instead.',
+				);
+			}
+
 			// Validate required fields.
 			$required_fields = array( 'host', 'port', 'database', 'username', 'password' );
 			foreach ( $required_fields as $field ) {

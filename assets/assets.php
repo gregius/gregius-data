@@ -14,28 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Enqueue frontend styles and scripts.
- *
- * @return void
- */
-function gregius_data_frontend_scripts_support() {
-	// Enqueue the main stylesheet.
-	$css_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/frontend.min.*.css' );
-	if ( ! empty( $css_file_path ) && file_exists( $css_file_path[0] ) ) {
-		$css_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $css_file_path[0] );
-		wp_enqueue_style( 'gregius-data-frontend-style', $css_file_uri, array(), filemtime( $css_file_path[0] ), 'all' );
-	}
-
-	// Enqueue the main JavaScript file.
-	$js_file_path = glob( plugin_dir_path( __FILE__ ) . 'build/frontend.min.*.js' );
-	if ( ! empty( $js_file_path ) && file_exists( $js_file_path[0] ) ) {
-		$js_file_uri = plugin_dir_url( __FILE__ ) . 'build/' . basename( $js_file_path[0] );
-		wp_enqueue_script( 'gregius-data-frontend-script', $js_file_uri, array(), filemtime( $js_file_path[0] ), true );
-	}
-}
-add_action( 'wp_enqueue_scripts', 'gregius_data_frontend_scripts_support', 999 );
-
-/**
  * Enqueue editor styles.
  *
  * @return void

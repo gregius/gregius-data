@@ -463,11 +463,12 @@ class Gregius_Data_Settings_Manager {
             provider varchar(50) DEFAULT 'custom',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             UNIQUE KEY unique_setting (connection_name, category, setting_key),
             KEY idx_connection_category (connection_name, category),
             KEY idx_setting_key (setting_key),
-            KEY idx_is_active (is_active)
+            KEY idx_is_active (is_active),
+            KEY updated_at (updated_at)
         ) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

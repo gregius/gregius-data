@@ -27,6 +27,13 @@ if ( ! class_exists( 'Gregius_Data_Activator' ) ) {
 		 */
 		public static function activate() {
 			self::run_upgrades();
+			// Initialize logger and create logs table for all sites first, so the
+			// settings and sync-metadata routines below can log into an existing table.
+			if ( class_exists( 'Gregius_Data_Logger' ) ) {
+				$logger = new Gregius_Data_Logger();
+				$logger->create_logs_tables_for_all_sites();
+			}
+
 			// Initialize settings manager and create settings table for all sites.
 			if ( class_exists( 'Gregius_Data_Settings_Manager' ) ) {
 				$settings_manager = new Gregius_Data_Settings_Manager();
@@ -37,12 +44,6 @@ if ( ! class_exists( 'Gregius_Data_Activator' ) ) {
 			if ( class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				$schema_manager = new Gregius_Data_Schema_Manager();
 				$schema_manager->create_sync_metadata_tables_for_all_sites();
-			}
-
-			// Initialize logger and create logs table for all sites.
-			if ( class_exists( 'Gregius_Data_Logger' ) ) {
-				$logger = new Gregius_Data_Logger();
-				$logger->create_logs_tables_for_all_sites();
 			}
 
 			// Initialize search settings.
