@@ -53,6 +53,11 @@ const EXCLUDE_PATTERNS = [
 	// Hidden files in assets
 	'assets/.gitignore',
 
+	// WordPress.org directory assets (served from SVN /assets, not shipped in the plugin)
+	'assets/screenshot-*',
+	'assets/banner-*',
+	'assets/icon*',
+
 	// Documentation files (entire docs folder)
 	'docs',
 	'README.md',

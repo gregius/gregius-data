@@ -150,13 +150,24 @@ Visit the contributor profiles on WordPress.org:
 
 == Screenshots ==
 
-1. Models tab for provider and model configuration
-2. Connections tab with PostgreSQL health checks
-3. Sync tab with selective post type synchronization controls
-4. Vectors tab for embedding workflows
-5. Prompts tab for prompt templates and orchestration settings
-6. Search tab for retrieval and generation execution
-7. Logs tab for interaction and operational trace visibility
+1. One registry for every supported AI model — LLM, embeddings, rerank and evaluator.
+2. Register any supported model by type and provider, with its own key and limits.
+3. Monitor each connection: uptime, health checks and database extension status.
+4. Connect with PDO, or use Supabase over REST where no PHP extensions are available.
+5. Control the sync lifecycle: retry queue, real-time updates and post statuses.
+6. Choose which post types sync, and see drift measured per type as content changes.
+7. Point attachments at a vision-capable model to extract text from PDFs before sync.
+8. See coverage and drift for every embedding model attached to a connection.
+9. Attach any registered embedding model to the selected connection in one step.
+10. Generate vectors in batches for pending content, with live progress and a stop control.
+11. Every install ships with System and Security prompts — versioned and editable.
+12. The Evaluation prompt scores whether retrieved context actually answers the query.
+13. Enable enhanced search, tune dual retrieval and monitor health from one screen.
+14. Choose the connection and the embedding model that power semantic search.
+15. Filter logs by level, component, connection and date to trace any pipeline.
+16. Drop the RAG Assistant block into any page and point it at a PostgreSQL connection.
+17. Assign a model to each role — embedding, agentic, rerank, evaluator, answer.
+18. Set the placeholder, stream answers to the page and restrict it to logged-in users.
 
 == Changelog ==
 
