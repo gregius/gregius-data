@@ -334,9 +334,11 @@ async function main() {
 	ensureSvnRepo();
 	copyPluginToTrunk();
 	copyAssetsToSvnAssets();
+	// Add files before setting mime types or tagging, so `svn propset`
+	// targets versioned paths and `svn cp trunk tags/X` inherits the files.
+	svnAddNewFiles();
 	setMimeTypes();
 	const tagged = tagRelease( version );
-	svnAddNewFiles();
 	svnDeleteRemoved();
 
 	console.log( '\nSVN status:' );
