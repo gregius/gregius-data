@@ -15,26 +15,28 @@ WordPress remains your source of truth. PostgreSQL runs alongside as a secondary
 - Generate grounded responses with your configured AI provider
 - Return response, source attribution, and governance metadata
 
-No database migration required. No lock-in to a single AI provider. No need to rebuild your retrieval stack.
+No migration of your WordPress database. No lock-in to a single AI provider. No need to rebuild your retrieval stack.
 
 ## What You Can Build
 
 - **Grounded site assistants** that can answer from your published content
 - **RAG (Retrieval Augmented Generation) content experiences** with source attribution
-- **Recomendation Engines** that can suggest relevant content based on semantic similarity
+- **Recommendation Engines** that can suggest relevant content based on semantic similarity
 - **Custom AI integrations** via REST API, hooks, and WP-CLI
 
 ## Capabilities
 
 - **RAG workflow** with retrieval, governance, answer synthesis, and source attribution
+- **RAG Assistant block**: a retrieval-augmented chat assistant you can place on any page
 - **Provider-based architecture** for database backends and AI services
 - **Selective sync** from WordPress to PostgreSQL for chosen post types
 - **Interaction tracking and logging** for operational visibility
 - **Retry queue and health checks** for resilience
 - **Orchestration-first design**: retrieval, model selection, and policy controls in one workflow
-- **Multi-provider AI support**: OpenAI, Anthropic, Google Gemini, DeepSeek, and Cohere (when configured)
+- **Multi-provider AI support**: OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe for evaluation — when configured
 - **Grounded retrieval layer**: semantic retrieval designed for RAG quality and source attribution
 - **Developer integration surface**: REST API, WP-CLI, and hooks for customization
+- **Abilities API integration**: register capabilities discoverable by AI agents on WordPress 6.9+
 - **Data ownership stays with you**: your primary content remains in WordPress
 
 ## Requirements
@@ -43,7 +45,7 @@ No database migration required. No lock-in to a single AI provider. No need to r
 - **PHP**: 8.2 or higher
 - **Connection mode (choose one):**
 	- **Supabase** (managed, recommended)
-	- **Direct PostgreSQL** 16.0+ with pgvector (self-hosted/direct path; requires PDO + pdo_pgsql)
+	- **Direct PostgreSQL** 12+ with pgvector (self-hosted/direct path; requires PDO + pdo_pgsql)
 
 ## Quick Start
 
@@ -59,13 +61,13 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ### 2. Install Plugin
 
-1. Naviagate to Plugins
+1. Navigate to Plugins
 2. Install and activate
 3. Navigate to Data
 
 ## How It Works
 
-1. Content is synchronized from WordPress to PostgreSQL based on post types selection.
+1. Content is synchronized from WordPress to PostgreSQL based on the selected post types.
 2. Retrieval operations run against PostgreSQL data.
 3. RAG requests combine retrieval evidence with the configured AI provider.
 4. Responses return answer text plus source metadata and governance context.
@@ -76,16 +78,18 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - **Full Documentation**: [View docs folder](./docs/)
 - **Documentation Index**: [docs/README.md](./docs/README.md)
 - **Architecture**: See subsystem architecture docs in `/docs/`
-- **RAG**: [docs/rag/architecture.md](./docs/rag/architecture.md)
-- **Providers**: [docs/providers/architecture.md](./docs/providers/architecture.md)
-- **REST API**: [rest-api/architecture.md](./docs/rest-api/architecture.md)
-- **Sync Process**: [sync/architecture.md](./docs/sync/architecture.md)
-- **Schema Management**: [schema/architecture.md](./docs/schema/architecture.md)
-- **Plugin Lifecycle**: [lifecycle/architecture.md](./docs/lifecycle/architecture.md)
-- **Retry Queue**: [retry-queue/architecture.md](./docs/retry-queue/architecture.md)
-- **Interactions**: [interactions/architecture.md](./docs/interactions/architecture.md)
-- **WP-CLI**: [wpcli/architecture.md](./docs/wpcli/architecture.md)
-- **Vectors**: [vectors/architecture.md](./docs/vectors/architecture.md)
+- **[Abilities](./docs/abilities/architecture.md)**
+- **[Hooks](./docs/hooks/architecture.md)**
+- **[RAG](./docs/rag/architecture.md)**
+- **[Providers](./docs/providers/architecture.md)**
+- **[REST API](./docs/rest-api/architecture.md)**
+- **[Sync Process](./docs/sync/architecture.md)**
+- **[Schema Management](./docs/schema/architecture.md)**
+- **[Plugin Lifecycle](./docs/lifecycle/architecture.md)**
+- **[Retry Queue](./docs/retry-queue/architecture.md)**
+- **[Interactions](./docs/interactions/architecture.md)**
+- **[WP-CLI](./docs/wpcli/architecture.md)**
+- **[Vectors](./docs/vectors/architecture.md)**
 
 ## External Services
 
@@ -100,7 +104,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ## License
 
-GPL v2 or later. See [LICENSE](./LICENSE) for details.
+GPL v2 or later. See [the GNU GPL v2 license](https://www.gnu.org/licenses/gpl-2.0.html) for details.
 
 ---
 

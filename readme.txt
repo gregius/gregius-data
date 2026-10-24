@@ -26,6 +26,7 @@ WordPress remains the source of truth. PostgreSQL runs alongside as a secondary 
 * **Interaction and Logs** - Operational visibility for request flows and outcomes
 * **Orchestration Controls** - Retrieval, model selection, and policy controls in one workflow
 * **Integration Surface** - REST API, WP-CLI, and hooks for extension and automation
+* **RAG Assistant Block** - Drop a retrieval-augmented chat assistant into any page with its own model and prompt controls
 
 = How It Works =
 
@@ -48,9 +49,9 @@ WordPress remains the source of truth. PostgreSQL runs alongside as a secondary 
 
 = Requirements =
 
-* WordPress 6.9 or higher (required for AI Abilities API)
+* WordPress 6.9 or higher (required for the Abilities API)
 * PHP 8.2 or higher
-* Connection mode (choose one): Supabase (managed, recommended) or Direct PostgreSQL 16+ with pgvector (self-hosted/direct path; requires PDO + pdo_pgsql)
+* Connection mode (choose one): Supabase (managed, recommended) or Direct PostgreSQL 12+ with pgvector (self-hosted/direct path; requires PDO + pdo_pgsql)
 * Optional AI provider credentials for generation workflows
 
 = Database Setup =
@@ -59,12 +60,10 @@ WordPress remains the source of truth. PostgreSQL runs alongside as a secondary 
 * [Supabase](https://supabase.com)
 
 **Direct PostgreSQL (Alternative):**
-* Install PostgreSQL 16+ with pgvector extension
+* Install PostgreSQL 12+ with the pgvector extension
 * Run: `CREATE EXTENSION IF NOT EXISTS vector;`
 
 = Plugin Installation =
-
-### 2. Install Plugin
 
 1. Navigate to Plugins
 2. Install and activate
@@ -160,7 +159,7 @@ Visit the contributor profiles on WordPress.org:
 8. See coverage and drift for every embedding model attached to a connection.
 9. Attach any registered embedding model to the selected connection in one step.
 10. Generate vectors in batches for pending content, with live progress and a stop control.
-11. Every install ships with System and Security prompts — versioned and editable.
+11. Every install ships with factory prompts — system, security and evaluation.
 12. The Evaluation prompt scores whether retrieved context actually answers the query.
 13. Enable enhanced search, tune dual retrieval and monitor health from one screen.
 14. Choose the connection and the embedding model that power semantic search.
@@ -204,7 +203,7 @@ This plugin syncs publicly visible WordPress content (posts, pages, custom post 
 This plugin connects to services you configure:
 
 1. PostgreSQL database provider (required):
-- You provide and control this database connection (self-hosted or managed provider). When using Supabase, the plugin connects to your project's servers (e.g. `*.supabase.co` for the REST API and `*.supabase.io` for authentication).
+- You provide and control this database connection (self-hosted or managed provider). When using Supabase, the plugin connects to your project's servers (e.g. `*.supabase.co` for the REST API).
 
 2. AI provider APIs (optional):
 - OpenAI, Anthropic, Google Gemini, DeepSeek, Cohere, and TypeSafe are used only if you configure them. An account and API key are required for each provider.
