@@ -316,18 +316,21 @@ function svnDeleteRemoved() {
 	}
 }
 
-function svnCommit( version ) {
+function svnCommit( message ) {
 	const creds = svnCredentials();
 	const cmd = creds
-		? `svn ci -m "Release ${ version }" ${ creds }`
-		: `svn ci -m "Release ${ version }"`;
-	console.log( `Committing release ${ version }...` );
+		? `svn ci -m "${ message }" ${ creds }`
+		: `svn ci -m "${ message }"`;
+	console.log( `Committing: ${ message }` );
 	execSync( cmd, { cwd: SVN_DIR, stdio: 'inherit' } );
 }
 
 async function main() {
 	const version = getVersion();
 	const commit = process.argv.includes( '--commit' );
+	const message =
+		process.argv.find( ( a ) => a.startsWith( '--message=' ) )?.slice( '--message='.length ) ||
+		`Release ${ version }`;
 
 	console.log( `\n${ commit ? 'Publishing' : 'Preparing' } ${ PLUGIN_SLUG } v${ version } for WordPress.org SVN...\n` );
 
@@ -345,7 +348,7 @@ async function main() {
 	execSync( 'svn status', { cwd: SVN_DIR, stdio: 'inherit' } );
 
 	if ( commit ) {
-		svnCommit( version );
+		svnCommit( message );
 		console.log( `\nRelease ${ version } committed.` );
 		console.log( `Plugin page: https://wordpress.org/plugins/${ PLUGIN_SLUG }` );
 	} else {
