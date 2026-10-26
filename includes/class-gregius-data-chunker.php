@@ -7,7 +7,7 @@
  *
  * @package Gregius_Data
  * @subpackage Gregius_Data/includes
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 // Exit if accessed directly.
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - Hash-based change detection
  * - Token counting
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 class Gregius_Data_Chunker {
 	/**
@@ -39,7 +39,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Default chunk size in tokens.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @var int
 	 */
 	const DEFAULT_CHUNK_SIZE = 512;
@@ -47,7 +47,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Minimum chunk size in tokens.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @var int
 	 */
 	const MIN_CHUNK_SIZE = 100;
@@ -55,7 +55,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Characters per token (rough estimate).
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @var float
 	 */
 	const CHARS_PER_TOKEN = 4.0;
@@ -63,7 +63,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Logger instance.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @access protected
 	 * @var Gregius_Data_Logger
 	 */
@@ -72,7 +72,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Connection manager instance.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @access protected
 	 * @var Gregius_Data_Connection_Manager
 	 */
@@ -90,7 +90,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Constructor.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 */
 	public function __construct() {
 		$this->logger             = new Gregius_Data_Logger();
@@ -213,7 +213,7 @@ class Gregius_Data_Chunker {
 	 * 2. If paragraph too large, split on sentence boundaries
 	 * 3. If sentence too large, split on fixed character count
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $content         The content to chunk.
 	 * @param int    $target_tokens   Target tokens per chunk. Default 512.
 	 * @param string $connection_name Connection name.
@@ -314,7 +314,7 @@ class Gregius_Data_Chunker {
 		/**
 		 * Filter the generated chunks.
 		 *
-		 * @since 2.0.0
+		 * @since 1.0.0
 		 * @param array  $chunks        Array of chunk data.
 		 * @param string $content       Original content.
 		 * @param int    $target_tokens Target tokens per chunk.
@@ -325,7 +325,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Split a paragraph into sentence-aware chunks.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @access protected
 	 * @param string $paragraph   The paragraph to split.
 	 * @param int    $target_chars Target characters per chunk.
@@ -389,7 +389,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Split content on fixed character boundaries (last resort).
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @access protected
 	 * @param string $content      The content to split.
 	 * @param int    $target_chars Target characters per chunk.
@@ -421,7 +421,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Create chunk data array with text, token count, and hash.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @access protected
 	 * @param string $text The chunk text.
 	 * @return array Chunk data with 'text', 'token_count', 'hash'.
@@ -438,7 +438,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Estimate token count from text.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $text The text to estimate tokens for.
 	 * @return int Estimated token count.
 	 */
@@ -452,7 +452,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Store chunks for a post in the database.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param array  $chunks          Array of chunk data from chunk_content().
 	 * @param string $source_hash     Hash from wp_posts_clean.content_hash.
@@ -530,7 +530,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Get chunks for a post from the database.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param string $connection_name Connection name. Default 'default'.
 	 * @return array Array of chunk rows, or empty array on failure.
@@ -553,7 +553,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Get the source hash for existing chunks.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param string $connection_name Connection name. Default 'default'.
 	 * @return string|null Source hash or null if no chunks exist.
@@ -569,7 +569,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Delete all chunks for a post.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param string $connection_name Connection name. Default 'default'.
 	 * @return bool True on success, false on failure.
@@ -586,7 +586,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Check if chunks need regeneration based on content hash.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param string $clean_hash      Current content_hash from wp_posts_clean.
 	 * @param string $connection_name Connection name. Default 'default'.
@@ -600,7 +600,7 @@ class Gregius_Data_Chunker {
 	/**
 	 * Process a post: generate and store chunks if needed.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $post_id         The post ID.
 	 * @param string $content         The cleaned content to chunk.
 	 * @param string $content_hash    Hash of the clean content.

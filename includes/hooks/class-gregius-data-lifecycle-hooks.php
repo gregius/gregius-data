@@ -53,6 +53,17 @@ class Gregius_Data_Lifecycle_Hooks {
 	private $metadata_manager;
 
 	/**
+	 * Pending sync-stats refreshes, keyed by "connection|entity|post_type".
+	 *
+	 * Populated by mark_stats_dirty() during lifecycle writes and flushed once at
+	 * shutdown by flush_pending_stats_refresh() so the aggregate metadata read by
+	 * the dashboard stays accurate without a live count per request.
+	 *
+	 * @var array<string, array{0:string,1:string,2:?string}>
+	 */
+	private static $pending_stats_refresh = array();
+
+	/**
 	 * Initialize the lifecycle hooks.
 	 *
 	 * @param Gregius_Data_Connection_Manager $connection_manager Connection manager instance.
@@ -95,12 +106,20 @@ class Gregius_Data_Lifecycle_Hooks {
 		add_action( 'add_attachment', array( $this, 'handle_attachment_added' ), 10, 1 );
 		add_filter( 'wp_generate_attachment_metadata', array( $this, 'handle_attachment_metadata_generated' ), 10, 2 );
 
+		// Attachment updates (detach / parent change) do NOT fire save_post — core
+		// routes them through attachment_updated instead. Hook it so a detach
+		// re-runs the eligibility gate and removes the record from PostgreSQL.
+		add_action( 'attachment_updated', array( $this, 'handle_attachment_updated' ), 10, 2 );
+
 		// Attachment reconciliation when enabled post types change.
 		add_action( 'gregius_data_sync_post_types_changed', array( $this, 'schedule_attachment_reconcile' ), 10, 3 );
 		add_action( 'gregius_data_reconcile_attachment_children', array( $this, 'reconcile_attachment_children' ), 10, 3 );
 
 		// Orphan detection scheduled task (fallback).
 		add_action( 'gregius_data_orphan_cleanup', array( $this, 'cleanup_orphaned_records' ) );
+
+		// Flush pending sync-stats refreshes once per request (coalesced recompute).
+		add_action( 'shutdown', array( $this, 'flush_pending_stats_refresh' ) );
 	}
 
 	/**
@@ -111,6 +130,23 @@ class Gregius_Data_Lifecycle_Hooks {
 	 */
 	public function handle_attachment_added( $attachment_id ) {
 		$this->sync_attachment( $attachment_id );
+	}
+
+	/**
+	 * Handle an attachment update (detach, title/parent change, etc.).
+	 *
+	 * WordPress does not fire save_post for attachments; updates are announced
+	 * via attachment_updated instead. Route them through the same eligibility
+	 * gate so a detach (post_parent -> 0) removes the record from PostgreSQL.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param int     $post_id    Attachment post ID.
+	 * @param WP_Post $post_after Attachment object after the update.
+	 * @return void
+	 */
+	public function handle_attachment_updated( $post_id, $post_after ) {
+		$this->handle_post_save( $post_id, $post_after, true );
 	}
 
 	/**
@@ -134,38 +170,40 @@ class Gregius_Data_Lifecycle_Hooks {
 	 * @param int $attachment_id Attachment post ID.
 	 */
 	private function sync_attachment( $attachment_id ) {
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
-			return;
-		}
-
 		$post = get_post( $attachment_id );
 		if ( ! $post || 'attachment' !== $post->post_type ) {
 			return;
 		}
 
-		if ( ! $this->is_post_type_synced( 'attachment', $connection_name ) ) {
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			return;
 		}
 
-		if ( ! Gregius_Data_Content_Source::is_eligible_attachment( $attachment_id, $connection_name ) ) {
-			return;
-		}
+		foreach ( $connection_names as $connection_name ) {
+			if ( ! $this->is_post_type_synced( 'attachment', $connection_name ) ) {
+				continue;
+			}
 
-		try {
-			$this->sync_to_postgresql( $post, $connection_name, true );
-		} catch ( Exception $sync_error ) {
-			$this->logger->log(
-				sprintf(
-					'Attachment sync failed for post %d: %s (WordPress upload unaffected)',
-					$attachment_id,
-					$sync_error->getMessage()
-				),
-				'error',
-				'sync',
-				$connection_name,
-				array( 'post_id' => $attachment_id )
-			);
+			if ( ! Gregius_Data_Content_Source::is_eligible_attachment( $attachment_id, $connection_name ) ) {
+				continue;
+			}
+
+			try {
+				$this->sync_to_postgresql( $post, $connection_name, true );
+			} catch ( Exception $sync_error ) {
+				$this->logger->log(
+					sprintf(
+						'Attachment sync failed for post %d: %s (WordPress upload unaffected)',
+						$attachment_id,
+						$sync_error->getMessage()
+					),
+					'error',
+					'sync',
+					$connection_name,
+					array( 'post_id' => $attachment_id )
+				);
+			}
 		}
 	}
 
@@ -277,10 +315,46 @@ class Gregius_Data_Lifecycle_Hooks {
 			return;
 		}
 
-		// Get active connection.
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
+		// Get all active connections (multi-connection sync).
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			$this->logger->log( "No active PostgreSQL connection - skipping sync for post {$post_id}", 'info', 'sync', null, array( 'post_id' => $post_id ) );
+			return;
+		}
+
+		foreach ( $connection_names as $connection_name ) {
+			$this->sync_post_to_connection( $post, $post_id, $connection_name, $update );
+		}
+
+		// Clean up processing flag.
+		unset( $processing[ $post_id ] );
+	}
+
+	/**
+	 * Sync a single post to a single connection.
+	 *
+	 * Extracted from handle_post_save() so the multi-connection loop can invoke it
+	 * once per active connection. Contains the per-connection gates and the actual
+	 * sync/delete dispatch.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param WP_Post $post            Post object.
+	 * @param int     $post_id         Post ID.
+	 * @param string  $connection_name Connection name.
+	 * @param bool    $update          Whether this is an update.
+	 * @return void
+	 */
+	private function sync_post_to_connection( $post, $post_id, $connection_name, $update ) {
+		// Gate on real-time sync: skip the whole post-save sync when disabled.
+		if ( ! $this->is_real_time_sync_enabled( $connection_name ) ) {
+			$this->logger->log(
+				"Real-time sync disabled for connection '{$connection_name}' - skipping post {$post_id}",
+				'debug',
+				'sync',
+				$connection_name,
+				array( 'post_id' => $post_id )
+			);
 			return;
 		}
 
@@ -387,9 +461,6 @@ class Gregius_Data_Lifecycle_Hooks {
 				);
 			}
 		}
-
-		// Clean up processing flag.
-		unset( $processing[ $post_id ] );
 	}
 
 	/**
@@ -419,12 +490,32 @@ class Gregius_Data_Lifecycle_Hooks {
 			return;
 		}
 
-		// Get active connection.
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
+		// Get all active connections (multi-connection sync).
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			return;
 		}
 
+		foreach ( $connection_names as $connection_name ) {
+			$this->sync_post_status_transition_to_connection( $new_status, $old_status, $post, $connection_name );
+		}
+	}
+
+	/**
+	 * Handle a post status transition for a single connection.
+	 *
+	 * Extracted from handle_post_status_transition() so the multi-connection loop
+	 * can invoke it once per active connection.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string  $new_status      New post status.
+	 * @param string  $old_status      Old post status.
+	 * @param WP_Post $post            Post object.
+	 * @param string  $connection_name Connection name.
+	 * @return void
+	 */
+	private function sync_post_status_transition_to_connection( $new_status, $old_status, $post, $connection_name ) {
 		// Check if post should be synced (allows filtering out specific post types).
 		if ( ! apply_filters( 'gregius_data_should_sync_post', true, $post->ID ) ) {
 			return;
@@ -539,30 +630,32 @@ class Gregius_Data_Lifecycle_Hooks {
 			return;
 		}
 
-		// Get active connection.
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
+		// Get all active connections (multi-connection sync).
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			$this->logger->log( "No active PostgreSQL connection - skipping deletion for post {$post_id}", 'info', 'sync', null, array( 'post_id' => $post_id ) );
 			return;
 		}
 
-		// Check if this post type is synced to PostgreSQL.
-		if ( ! $this->is_post_type_synced( $post->post_type, $connection_name ) ) {
-			$this->logger->log(
-				"Post type '{$post->post_type}' not synced - skipping deletion for post {$post_id}",
-				'debug',
-				'sync',
-				$connection_name,
-				array(
-					'post_id'   => $post_id,
-					'post_type' => $post->post_type,
-				)
-			);
-			return;
-		}
+		foreach ( $connection_names as $connection_name ) {
+			// Check if this post type is synced to PostgreSQL.
+			if ( ! $this->is_post_type_synced( $post->post_type, $connection_name ) ) {
+				$this->logger->log(
+					"Post type '{$post->post_type}' not synced - skipping deletion for post {$post_id}",
+					'debug',
+					'sync',
+					$connection_name,
+					array(
+						'post_id'   => $post_id,
+						'post_type' => $post->post_type,
+					)
+				);
+				continue;
+			}
 
-		// Delete from PostgreSQL.
-		$this->delete_from_postgresql( $post_id, $connection_name );
+			// Delete from PostgreSQL.
+			$this->delete_from_postgresql( $post_id, $connection_name );
+		}
 	}
 
 	/**
@@ -609,18 +702,6 @@ class Gregius_Data_Lifecycle_Hooks {
 	public function handle_post_meta_deleted( $meta_ids, $post_id, $meta_key, $_meta_value ) {
 		unset( $_meta_value ); // Required by hook signature but not used in delete flow.
 
-		// Get active connection.
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
-			return;
-		}
-
-		// Check if parent post's type is configured for sync.
-		$post = get_post( $post_id );
-		if ( ! $post || ! $this->is_post_type_synced( $post->post_type, $connection_name ) ) {
-			return;
-		}
-
 		// WordPress passes array of meta IDs for bulk deletion.
 		if ( is_array( $meta_ids ) ) {
 			foreach ( $meta_ids as $meta_id ) {
@@ -665,125 +746,26 @@ class Gregius_Data_Lifecycle_Hooks {
 				return false;
 			}
 
-			// Get active connection.
-			$connection_name = $this->get_active_connection();
-			if ( empty( $connection_name ) ) {
+			// Get all active connections (multi-connection sync).
+			$connection_names = $this->get_active_connection_names();
+			if ( empty( $connection_names ) ) {
 				$this->logger->log( "No active PostgreSQL connection - skipping meta sync for post {$post_id}", 'info', 'sync', null, array( 'post_id' => $post_id ) );
 				return false;
 			}
 
-			// Check if the parent post is synced to this connection.
-			if ( ! $this->is_post_synced_to_connection( $post_id, $connection_name ) ) {
-				$this->logger->log( "Post {$post_id} not synced to connection '{$connection_name}' - skipping meta sync", 'debug', 'sync', $connection_name, array( 'post_id' => $post_id ) );
-				return false;
-			}
-
-			// Initialize database.
-			$db         = new Gregius_Data_DB();
-			$connection = $db->get_connection( $connection_name );
-
-			// PostgREST provider: get_connection() returns false (no PDO) but the provider is initialised.
-			// Delegate directly to the provider's HTTP-based upsert.
-			if ( ! $connection && $db->is_postgrest_connection( $connection_name ) ) {
-				$provider = $db->get_provider();
-				if ( ! $provider ) {
-					$this->logger->log( "PostgREST provider unavailable for meta sync on connection '{$connection_name}'", 'error', 'sync', $connection_name );
-					return false;
+			$result = false;
+			foreach ( $connection_names as $connection_name ) {
+				try {
+					if ( $this->sync_post_meta_to_connection( $connection_name, $meta_id, $post_id, $meta_key, $meta_value, $operation ) ) {
+						$result = true;
+					}
+				} catch ( Exception $e ) {
+					// Failure isolation: one connection failing must not block the others.
+					$this->logger->log( "Meta sync failed for connection '{$connection_name}': " . $e->getMessage(), 'error', 'sync', $connection_name );
 				}
-				$result = $provider->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
-				if ( $result ) {
-					$this->logger->log(
-						"Successfully {$operation} post meta {$meta_id} (key: {$meta_key}) for post {$post_id} via PostgREST",
-						'info',
-						'sync',
-						$connection_name,
-						array(
-							'post_id'  => $post_id,
-							'meta_id'  => $meta_id,
-							'meta_key' => $meta_key,
-						)
-					);
-				} else {
-					$this->logger->log(
-						"Failed to {$operation} post meta {$meta_id} for post {$post_id} via PostgREST",
-						'error',
-						'sync',
-						$connection_name,
-						array(
-							'post_id'  => $post_id,
-							'meta_id'  => $meta_id,
-							'meta_key' => $meta_key,
-						)
-					);
-				}
-				return $result;
 			}
 
-			if ( ! $connection ) {
-				$this->logger->log( "Failed to get database connection '{$connection_name}' for meta sync", 'error', 'sync', $connection_name );
-				return false;
-			}
-
-			// Test the connection with a simple query.
-			try {
-				$test_stmt   = $connection->query( 'SELECT 1' );
-				$test_result = $test_stmt->fetchColumn();
-			} catch ( Exception $e ) {
-				$this->logger->log( 'Connection test failed for meta sync: ' . $e->getMessage(), 'error', 'sync', $connection_name, array( 'error' => $e->getMessage() ) );
-				return false;
-			}
-
-			// Check if the DB object and method exist.
-			if ( ! method_exists( $db, 'upsert_post_meta' ) ) {
-				$this->logger->log( 'upsert_post_meta method does not exist on DB object', 'error', 'sync', $connection_name );
-				return false;
-			}
-
-			try {
-				// Sync meta to PostgreSQL using existing infrastructure.
-				$result = $db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
-			} catch ( Exception $e ) {
-				$this->logger->log(
-					'Exception during meta sync: ' . $e->getMessage(),
-					'error',
-					'sync',
-					$connection_name,
-					array(
-						'post_id'  => $post_id,
-						'meta_key' => $meta_key,
-						'error'    => $e->getMessage(),
-					)
-				);
-				$result = false;
-			}
-
-			if ( $result ) {
-				$this->logger->log(
-					"Successfully {$operation} post meta {$meta_id} (key: {$meta_key}) for post {$post_id} in PostgreSQL",
-					'info',
-					'sync',
-					$connection_name,
-					array(
-						'post_id'  => $post_id,
-						'meta_id'  => $meta_id,
-						'meta_key' => $meta_key,
-					)
-				);
-				return true;
-			} else {
-				$this->logger->log(
-					"Failed to {$operation} post meta {$meta_id} for post {$post_id} in PostgreSQL",
-					'error',
-					'sync',
-					$connection_name,
-					array(
-						'post_id'  => $post_id,
-						'meta_id'  => $meta_id,
-						'meta_key' => $meta_key,
-					)
-				);
-				return false;
-			}
+			return $result;
 		} catch ( Exception $e ) {
 			// CRITICAL: Never let PostgreSQL errors block WordPress meta operations.
 			$this->logger->log(
@@ -809,6 +791,144 @@ class Gregius_Data_Lifecycle_Hooks {
 	}
 
 	/**
+	 * Sync post meta to a single connection.
+	 *
+	 * Extracted from sync_post_meta_to_postgresql() so the multi-connection loop
+	 * can invoke it once per active connection.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $connection_name Connection name.
+	 * @param int    $meta_id         Meta ID.
+	 * @param int    $post_id         Post ID.
+	 * @param string $meta_key        Meta key.
+	 * @param mixed  $meta_value      Meta value.
+	 * @param string $operation       Operation type ('added' or 'updated').
+	 * @return bool Success status.
+	 */
+	private function sync_post_meta_to_connection( $connection_name, $meta_id, $post_id, $meta_key, $meta_value, $operation ) {
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- False positive: meta_key is a variable/array key for logging, not a WP_Query argument.
+		// Check if the parent post is synced to this connection.
+		if ( ! $this->is_post_synced_to_connection( $post_id, $connection_name ) ) {
+			$this->logger->log( "Post {$post_id} not synced to connection '{$connection_name}' - skipping meta sync", 'debug', 'sync', $connection_name, array( 'post_id' => $post_id ) );
+			return false;
+		}
+
+		// Initialize database.
+		$db         = new Gregius_Data_DB();
+		$connection = $db->get_connection( $connection_name );
+
+		// PostgREST provider: get_connection() returns false (no PDO) but the provider is initialised.
+		// Delegate directly to the provider's HTTP-based upsert.
+		if ( ! $connection && $db->is_postgrest_connection( $connection_name ) ) {
+			$provider = $this->connection_manager->get_provider( $connection_name );
+			if ( ! $provider ) {
+				$this->logger->log( "PostgREST provider unavailable for meta sync on connection '{$connection_name}'", 'error', 'sync', $connection_name );
+				return false;
+			}
+			$result = $provider->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
+			if ( $result ) {
+				$this->logger->log(
+					"Successfully {$operation} post meta {$meta_id} (key: {$meta_key}) for post {$post_id} via PostgREST",
+					'info',
+					'sync',
+					$connection_name,
+					array(
+						'post_id'  => $post_id,
+						'meta_id'  => $meta_id,
+						'meta_key' => $meta_key,
+					)
+				);
+			} else {
+				$this->logger->log(
+					"Failed to {$operation} post meta {$meta_id} for post {$post_id} via PostgREST",
+					'error',
+					'sync',
+					$connection_name,
+					array(
+						'post_id'  => $post_id,
+						'meta_id'  => $meta_id,
+						'meta_key' => $meta_key,
+					)
+				);
+			}
+
+			if ( $result ) {
+				$this->mark_stats_dirty( $connection_name, 'postmeta' );
+			}
+			return $result;
+		}
+
+		if ( ! $connection ) {
+			$this->logger->log( "Failed to get database connection '{$connection_name}' for meta sync", 'error', 'sync', $connection_name );
+			return false;
+		}
+
+		// Test the connection with a simple query.
+		try {
+			$test_stmt   = $connection->query( 'SELECT 1' );
+			$test_result = $test_stmt->fetchColumn();
+		} catch ( Exception $e ) {
+			$this->logger->log( 'Connection test failed for meta sync: ' . $e->getMessage(), 'error', 'sync', $connection_name, array( 'error' => $e->getMessage() ) );
+			return false;
+		}
+
+		// Check if the DB object and method exist.
+		if ( ! method_exists( $db, 'upsert_post_meta' ) ) {
+			$this->logger->log( 'upsert_post_meta method does not exist on DB object', 'error', 'sync', $connection_name );
+			return false;
+		}
+
+		try {
+			// Sync meta to PostgreSQL using existing infrastructure.
+			$result = $db->upsert_post_meta( $meta_id, $post_id, $meta_key, $meta_value, $connection_name );
+		} catch ( Exception $e ) {
+			$this->logger->log(
+				'Exception during meta sync: ' . $e->getMessage(),
+				'error',
+				'sync',
+				$connection_name,
+				array(
+					'post_id'  => $post_id,
+					'meta_key' => $meta_key,
+					'error'    => $e->getMessage(),
+				)
+			);
+			$result = false;
+		}
+
+		if ( $result ) {
+			$this->logger->log(
+				"Successfully {$operation} post meta {$meta_id} (key: {$meta_key}) for post {$post_id} in PostgreSQL",
+				'info',
+				'sync',
+				$connection_name,
+				array(
+					'post_id'  => $post_id,
+					'meta_id'  => $meta_id,
+					'meta_key' => $meta_key,
+				)
+			);
+			$this->mark_stats_dirty( $connection_name, 'postmeta' );
+			return true;
+		}
+
+		$this->logger->log(
+			"Failed to {$operation} post meta {$meta_id} for post {$post_id} in PostgreSQL",
+			'error',
+			'sync',
+			$connection_name,
+			array(
+				'post_id'  => $post_id,
+				'meta_id'  => $meta_id,
+				'meta_key' => $meta_key,
+			)
+		);
+		return false;
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+	}
+
+	/**
 	 * Delete post meta from PostgreSQL database.
 	 *
 	 * Removes post metadata from PostgreSQL when deleted from WordPress.
@@ -825,116 +945,26 @@ class Gregius_Data_Lifecycle_Hooks {
 			// Debug logging.
 			$this->logger->log( "Meta delete starting: meta_id={$meta_id}, post_id={$post_id}, key={$meta_key}", 'debug', 'sync' );
 
-			// Get active connection.
-			$connection_name = $this->get_active_connection();
-			if ( empty( $connection_name ) ) {
+			// Get all active connections (multi-connection sync).
+			$connection_names = $this->get_active_connection_names();
+			if ( empty( $connection_names ) ) {
 				$this->logger->log( "No active PostgreSQL connection - skipping meta deletion for post {$post_id}", 'info', 'sync', null, array( 'post_id' => $post_id ) );
 				return false;
 			}
 
-			// Use DB class instead of connection_manager for consistency.
-			$db         = new Gregius_Data_DB();
-			$connection = $db->get_connection( $connection_name );
-
-			// PostgREST provider: get_connection() returns false (no PDO) but the provider is initialised.
-			// Delegate directly to the provider's HTTP-based delete.
-			if ( ( ! $connection || ! is_object( $connection ) ) && $db->is_postgrest_connection( $connection_name ) ) {
-				$provider = $db->get_provider();
-				if ( ! $provider ) {
-					$this->logger->log( "PostgREST provider unavailable for meta deletion on connection '{$connection_name}'", 'error', 'sync', $connection_name, array( 'post_id' => $post_id ) );
-					return false;
-				}
-				$result = $provider->delete_post_meta( $meta_id );
-				if ( isset( $result['success'] ) && $result['success'] ) {
-					$this->logger->log(
-						"Successfully deleted post meta {$meta_id} (key: {$meta_key}) for post {$post_id} via PostgREST",
-						'info',
-						'sync',
-						$connection_name,
-						array(
-							'post_id'  => $post_id,
-							'meta_id'  => $meta_id,
-							'meta_key' => $meta_key,
-						)
-					);
-					return true;
-				} else {
-					$message = isset( $result['message'] ) ? $result['message'] : 'unknown error';
-					$this->logger->log(
-						"Failed to delete post meta {$meta_id} via PostgREST: {$message}",
-						'error',
-						'sync',
-						$connection_name,
-						array(
-							'post_id'  => $post_id,
-							'meta_id'  => $meta_id,
-							'meta_key' => $meta_key,
-						)
-					);
-					return false;
+			$result = false;
+			foreach ( $connection_names as $connection_name ) {
+				try {
+					if ( $this->delete_post_meta_from_connection( $connection_name, $meta_id, $post_id, $meta_key ) ) {
+						$result = true;
+					}
+				} catch ( Exception $e ) {
+					// Failure isolation: one connection failing must not block the others.
+					$this->logger->log( "Meta deletion failed for connection '{$connection_name}': " . $e->getMessage(), 'error', 'sync', $connection_name );
 				}
 			}
 
-			if ( ! $connection || ! is_object( $connection ) ) {
-				$this->logger->log( "Failed to get database connection '{$connection_name}' for meta deletion. Connection: " . gettype( $connection ), 'error', 'sync', $connection_name, array( 'post_id' => $post_id ) );
-				return false;
-			}
-
-			// Prepare delete statement.
-			$stmt = $connection->prepare( 'DELETE FROM wp_postmeta WHERE meta_id = :meta_id AND post_id = :post_id AND meta_key = :meta_key' );
-			// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-			$stmt->bindValue( ':meta_id', $meta_id, PDO::PARAM_INT );
-			$stmt->bindValue( ':post_id', $post_id, PDO::PARAM_INT );
-			$stmt->bindValue( ':meta_key', $meta_key, PDO::PARAM_STR );
-			// phpcs:enable WordPress.DB.RestrictedClasses.mysql__PDO
-
-			// Execute deletion.
-			$result = $stmt->execute();
-
-			if ( $result ) {
-				$rows_affected = $stmt->rowCount();
-
-				if ( $rows_affected > 0 ) {
-					$this->logger->log(
-						"Successfully deleted post meta {$meta_id} (key: {$meta_key}) for post {$post_id} from PostgreSQL",
-						'info',
-						'sync',
-						$connection_name,
-						array(
-							'post_id'  => $post_id,
-							'meta_id'  => $meta_id,
-							'meta_key' => $meta_key,
-						)
-					);
-				} else {
-					$this->logger->log(
-						"Post meta {$meta_id} not found in PostgreSQL - may not have been synced",
-						'debug',
-						'sync',
-						$connection_name,
-						array(
-							'post_id' => $post_id,
-							'meta_id' => $meta_id,
-						)
-					);
-				}
-
-				return true;
-			} else {
-				$error_info = $stmt->errorInfo();
-				$this->logger->log(
-					"Failed to delete post meta {$meta_id}: {$error_info[2]}",
-					'error',
-					'sync',
-					$connection_name,
-					array(
-						'post_id' => $post_id,
-						'meta_id' => $meta_id,
-						'error'   => $error_info[2],
-					)
-				);
-				return false;
-			}
+			return $result;
 		// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
 		} catch ( PDOException $e ) {
 			$this->logger->log(
@@ -954,6 +984,136 @@ class Gregius_Data_Lifecycle_Hooks {
 	}
 
 	/**
+	 * Delete post meta from a single connection.
+	 *
+	 * Extracted from delete_post_meta_from_postgresql() so the multi-connection
+	 * loop can invoke it once per active connection.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $connection_name Connection name.
+	 * @param int    $meta_id         Meta ID.
+	 * @param int    $post_id         Post ID.
+	 * @param string $meta_key        Meta key.
+	 * @return bool Success status.
+	 */
+	private function delete_post_meta_from_connection( $connection_name, $meta_id, $post_id, $meta_key ) {
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- False positive: meta_key is a variable/array key for logging, not a WP_Query argument.
+		// Check if parent post's type is configured for sync.
+		$post = get_post( $post_id );
+		if ( ! $post || ! $this->is_post_type_synced( $post->post_type, $connection_name ) ) {
+			return false;
+		}
+
+		// Use DB class instead of connection_manager for consistency.
+		$db         = new Gregius_Data_DB();
+		$connection = $db->get_connection( $connection_name );
+
+		// PostgREST provider: get_connection() returns false (no PDO) but the provider is initialised.
+		// Delegate directly to the provider's HTTP-based delete.
+		if ( ( ! $connection || ! is_object( $connection ) ) && $db->is_postgrest_connection( $connection_name ) ) {
+			$provider = $this->connection_manager->get_provider( $connection_name );
+			if ( ! $provider ) {
+				$this->logger->log( "PostgREST provider unavailable for meta deletion on connection '{$connection_name}'", 'error', 'sync', $connection_name, array( 'post_id' => $post_id ) );
+				return false;
+			}
+			$result = $provider->delete_post_meta( $meta_id );
+			if ( isset( $result['success'] ) && $result['success'] ) {
+				$this->logger->log(
+					"Successfully deleted post meta {$meta_id} (key: {$meta_key}) for post {$post_id} via PostgREST",
+					'info',
+					'sync',
+					$connection_name,
+					array(
+						'post_id'  => $post_id,
+						'meta_id'  => $meta_id,
+						'meta_key' => $meta_key,
+					)
+				);
+				$this->mark_stats_dirty( $connection_name, 'postmeta' );
+				return true;
+			}
+
+			$message = isset( $result['message'] ) ? $result['message'] : 'unknown error';
+			$this->logger->log(
+				"Failed to delete post meta {$meta_id} via PostgREST: {$message}",
+				'error',
+				'sync',
+				$connection_name,
+				array(
+					'post_id'  => $post_id,
+					'meta_id'  => $meta_id,
+					'meta_key' => $meta_key,
+				)
+			);
+			return false;
+		}
+
+		if ( ! $connection || ! is_object( $connection ) ) {
+			$this->logger->log( "Failed to get database connection '{$connection_name}' for meta deletion. Connection: " . gettype( $connection ), 'error', 'sync', $connection_name, array( 'post_id' => $post_id ) );
+			return false;
+		}
+
+		// Prepare delete statement.
+		$stmt = $connection->prepare( 'DELETE FROM wp_postmeta WHERE meta_id = :meta_id AND post_id = :post_id AND meta_key = :meta_key' );
+		// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
+		$stmt->bindValue( ':meta_id', $meta_id, PDO::PARAM_INT );
+		$stmt->bindValue( ':post_id', $post_id, PDO::PARAM_INT );
+		$stmt->bindValue( ':meta_key', $meta_key, PDO::PARAM_STR );
+		// phpcs:enable WordPress.DB.RestrictedClasses.mysql__PDO
+
+		// Execute deletion.
+		$result = $stmt->execute();
+
+		if ( $result ) {
+			$rows_affected = $stmt->rowCount();
+
+			if ( $rows_affected > 0 ) {
+				$this->logger->log(
+					"Successfully deleted post meta {$meta_id} (key: {$meta_key}) for post {$post_id} from PostgreSQL",
+					'info',
+					'sync',
+					$connection_name,
+					array(
+						'post_id'  => $post_id,
+						'meta_id'  => $meta_id,
+						'meta_key' => $meta_key,
+					)
+				);
+			} else {
+				$this->logger->log(
+					"Post meta {$meta_id} not found in PostgreSQL - may not have been synced",
+					'debug',
+					'sync',
+					$connection_name,
+					array(
+						'post_id' => $post_id,
+						'meta_id' => $meta_id,
+					)
+				);
+			}
+
+			$this->mark_stats_dirty( $connection_name, 'postmeta' );
+			return true;
+		}
+
+		$error_info = $stmt->errorInfo();
+		$this->logger->log(
+			"Failed to delete post meta {$meta_id}: {$error_info[2]}",
+			'error',
+			'sync',
+			$connection_name,
+			array(
+				'post_id' => $post_id,
+				'meta_id' => $meta_id,
+				'error'   => $error_info[2],
+			)
+		);
+		return false;
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+	}
+
+	/**
 	 * Check if meta key should be skipped from sync.
 	 *
 	 * Uses existing filtering logic from base class with plugin-specific exclusions.
@@ -966,33 +1126,8 @@ class Gregius_Data_Lifecycle_Hooks {
 		// Skip keys that start with underscore (WordPress internal meta) by default.
 		$skip_underscore = true;
 
-		// Keys to always skip (cache, temp data, etc.).
-		$skip_keys = array(
-			'_edit_lock',
-			'_edit_last',
-			'_wp_old_slug',
-			'_wp_old_date',
-			'_encloseme',
-			'_pingme',
-			'_wp_trash_meta_time',
-			'_wp_trash_meta_status',
-			'_wp_desired_post_slug',
-			'_wp_attached_file',
-			'_wp_attachment_metadata',
-		);
-
-		/**
-		 * Filter the meta keys to skip during PostgreSQL sync.
-		 *
-		 * Allows developers to exclude additional meta keys from being synced,
-		 * or remove keys from the default skip list.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param array $skip_keys Array of meta keys to skip.
-		 * @return array Filtered array of meta keys to skip.
-		 */
-		$skip_keys = apply_filters( 'gregius_data_skip_meta_keys', $skip_keys );
+		// Shared skip list (filterable via 'gregius_data_skip_meta_keys').
+		$skip_keys = Gregius_Data_Sync_Metadata_Manager::get_skipped_meta_keys();
 
 		// Check if key should be skipped.
 		$should_skip = in_array( $meta_key, $skip_keys, true );
@@ -1000,12 +1135,7 @@ class Gregius_Data_Lifecycle_Hooks {
 		// Skip underscore keys unless specifically allowed.
 		if ( $skip_underscore && strpos( $meta_key, '_' ) === 0 ) {
 			// Allow some important underscore keys (SEO, ACF, etc.).
-			$allowed_underscore_keys = array(
-				'_yoast_wpseo_title',
-				'_yoast_wpseo_metadesc',
-				'_thumbnail_id',
-				'_wp_page_template',
-			);
+			$allowed_underscore_keys = Gregius_Data_Sync_Metadata_Manager::get_allowed_underscore_meta_keys();
 
 			// Allow ACF fields (start with field_ or are ACF format).
 			if ( strpos( $meta_key, 'field_' ) === 0 || strpos( $meta_key, '_field_' ) !== false ) {
@@ -1031,22 +1161,15 @@ class Gregius_Data_Lifecycle_Hooks {
 	 */
 	private function is_post_synced_to_connection( $post_id, $connection_name ) {
 		try {
-			// Use Gregius_Data_DB to get proper PDO connection.
-			$db   = new Gregius_Data_DB();
-			$conn = $db->get_connection( $connection_name );
-			if ( ! $conn ) {
-				return false;
+			// Delegate to the metadata manager's provider-aware check, which works for
+			// both PostgreSQL and PostgREST. The legacy raw-PDO path returns false for
+			// PostgREST connections and silently blocks meta sync.
+			if ( ! isset( $this->metadata_manager ) || ! $this->metadata_manager ) {
+				$this->metadata_manager = new Gregius_Data_Sync_Metadata_Manager( $connection_name );
 			}
 
-			// Check if post exists in PostgreSQL (use wp_posts table name).
-			$stmt = $conn->prepare( 'SELECT COUNT(*) FROM wp_posts WHERE ID = :post_id' );
-			// phpcs:disable WordPress.DB.RestrictedClasses.mysql__PDO -- PDO required for PostgreSQL, $wpdb does not support PostgreSQL.
-			$stmt->bindValue( ':post_id', $post_id, \PDO::PARAM_INT );
-			// phpcs:enable WordPress.DB.RestrictedClasses.mysql__PDO
-			$stmt->execute();
-
-			$count = $stmt->fetchColumn();
-			return $count > 0;      } catch ( PDOException $e ) {
+			return $this->metadata_manager->is_entity_synced_in_postgresql( 'post', $post_id );
+		} catch ( Exception $e ) {
 			$this->logger->log(
 				"Error checking post sync status for post {$post_id}: " . $e->getMessage(),
 				'error',
@@ -1058,7 +1181,7 @@ class Gregius_Data_Lifecycle_Hooks {
 				)
 			);
 			return false;
-			}
+		}
 	}
 
 	/**
@@ -1091,6 +1214,12 @@ class Gregius_Data_Lifecycle_Hooks {
 				// Clean up metadata entry to keep sync metadata accurate.
 				$metadata_manager = new Gregius_Data_Sync_Metadata_Manager( $connection_name );
 				$metadata_manager->remove_metadata( 'post', $post_id );
+
+				// Refresh aggregate sync stats (coalesced).
+				$deleted_post = get_post( $post_id );
+				if ( $deleted_post ) {
+					$this->mark_stats_dirty( $connection_name, 'post', $deleted_post->post_type );
+				}
 
 				return true;
 			} else {
@@ -1135,20 +1264,19 @@ class Gregius_Data_Lifecycle_Hooks {
 	 */
 	private function sync_to_postgresql( $post, $connection_name, $is_update = false ) {
 		try {
-			// Initialize database and content cleaner.
-			$db              = new Gregius_Data_DB();
+			// Initialize content cleaner.
 			$content_cleaner = new Gregius_Data_Content_Cleaner();
 
-			// Establish connection before using DB methods.
-			// For PostgREST connections, get_connection() returns false but the provider is still valid.
-			$connection = $db->get_connection( $connection_name );
-			if ( ! $connection && ! $db->is_postgrest_connection( $connection_name ) ) {
-				$this->logger->log( "No connection available for {$connection_name}", 'error', 'sync', $connection_name );
-				return;
+			// Get the provider (works for both PostgreSQL and PostgREST; cached).
+			$provider = $this->connection_manager->get_provider( $connection_name );
+			if ( ! $provider || ! method_exists( $provider, 'sync_post' ) ) {
+				$this->logger->log( "No provider available for {$connection_name}", 'error', 'sync', $connection_name );
+				return false;
 			}
 
 			// Store ORIGINAL content in wp_posts (true WordPress mirror).
-			$result = $db->upsert_post( $post, $connection_name );           if ( ! $result ) {
+			$result = $provider->sync_post( $post->ID, $post );
+			if ( ! is_array( $result ) || empty( $result['success'] ) ) {
 				$this->logger->log( "Failed to sync post {$post->ID} to PostgreSQL (WordPress save unaffected)", 'error', 'sync', $connection_name, array( 'post_id' => $post->ID ) );
 				return false;
 			}
@@ -1166,6 +1294,9 @@ class Gregius_Data_Lifecycle_Hooks {
 					'source_modified_at' => $post->post_modified_gmt,
 				)
 			);
+
+			// Refresh aggregate sync stats (coalesced) so the dashboard stays accurate.
+			$this->mark_stats_dirty( $connection_name, 'post', $post->post_type );
 
 			// Term relationship sync now handled by wp_after_insert_post hook.
 			// This ensures term relationships are synced after WordPress has completely finished.
@@ -1286,17 +1417,55 @@ class Gregius_Data_Lifecycle_Hooks {
 	}
 
 	/**
+	 * Whether real-time (post-save) sync is enabled for a connection.
+	 *
+	 * Reads the per-connection `sync_real_time_sync` setting, falling back to the
+	 * global `gregius_data_sync_real_time_sync` option (default true).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $connection_name Connection name.
+	 * @return bool True when real-time sync is enabled.
+	 */
+	private function is_real_time_sync_enabled( $connection_name ) {
+		$default = get_option( 'gregius_data_sync_real_time_sync', true );
+
+		$value = $this->settings_manager->get_with_category( 'sync', $connection_name, 'sync_real_time_sync', $default );
+
+		// Normalize serialized booleans / string representations.
+		if ( is_string( $value ) ) {
+			$value = maybe_unserialize( $value );
+		}
+
+		return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+	}
+
+	/**
 	 * Cleanup orphaned records (fallback mechanism).
 	 *
 	 * Identifies posts in PostgreSQL that no longer exist in WordPress.
 	 * Scheduled task runs periodically to catch any missed deletions.
 	 */
 	public function cleanup_orphaned_records() {
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			return;
 		}
 
+		foreach ( $connection_names as $connection_name ) {
+			$this->cleanup_orphaned_records_for_connection( $connection_name );
+		}
+	}
+
+	/**
+	 * Clean up orphaned PostgreSQL records for a single connection.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $connection_name Connection name.
+	 * @return void
+	 */
+	private function cleanup_orphaned_records_for_connection( $connection_name ) {
 		try {
 			// Use the provider to get all post IDs - works with both PDO and PostgREST.
 			$connection_config = $this->settings_manager->get_connection( $connection_name );
@@ -1358,27 +1527,75 @@ class Gregius_Data_Lifecycle_Hooks {
 	}
 
 	/**
-	 * Get the first active PostgreSQL connection name.
+	 * Get the names of all active connections.
 	 *
-	 * Returns the first connection marked as active. For operations that need
-	 * to sync to all active connections, use get_active_connections() instead.
+	 * Used by the multi-connection sync path so that editor CRUD propagates to
+	 * every active connection (PDO and PostgREST), not just the first.
 	 *
-	 * @return string|null Active connection name or null.
+	 * @since 1.0.1
+	 *
+	 * @return string[] Active connection names.
 	 */
-	private function get_active_connection() {
-		$connections = $this->settings_manager->get_all_connections();
+	private function get_active_connection_names() {
+		return array_keys( $this->settings_manager->get_active_connections() );
+	}
 
-		foreach ( $connections as $connection_name => $connection_config ) {
-			// Handle multiple is_active formats: serialized boolean (b:1;), string ('1'), or native bool.
-			$is_active_value = $connection_config['is_active'] ?? '';
-			$is_active       = ( 'b:1;' === $is_active_value || '1' === $is_active_value || true === $is_active_value );
+	/**
+	 * Mark an entity's aggregate sync stats as dirty.
+	 *
+	 * Deferred (coalesced) so that a single request firing multiple lifecycle
+	 * hooks (save_post + transition_post_status + wp_after_insert_post, and the
+	 * per-connection loop) only triggers one update_sync_stats() per entity at
+	 * shutdown. update_sync_stats() is a recount, so it is idempotent and immune
+	 * to the double-fire these overlapping hooks produce.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string      $connection_name Connection name.
+	 * @param string      $entity_type     Entity type (post, term, term_taxonomy, postmeta, term_relationships).
+	 * @param string|null $post_type       Post type (required for 'post' entity).
+	 * @return void
+	 */
+	private function mark_stats_dirty( $connection_name, $entity_type, $post_type = null ) {
+		$key = $connection_name . '|' . $entity_type . '|' . ( $post_type ? $post_type : '' );
 
-			if ( $is_active ) {
-				return $connection_name;
-			}
+		self::$pending_stats_refresh[ $key ] = array( $connection_name, $entity_type, $post_type );
+	}
+
+	/**
+	 * Flush pending sync-stats refreshes at shutdown.
+	 *
+	 * Runs update_sync_stats() once per dirty (connection, entity, post_type)
+	 * tuple, so the dashboard's metadata read model stays accurate. Failures are
+	 * logged and never surfaced to the user (non-blocking).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return void
+	 */
+	public function flush_pending_stats_refresh() {
+		if ( empty( self::$pending_stats_refresh ) ) {
+			return;
 		}
 
-		return null;
+		$pending                     = self::$pending_stats_refresh;
+		self::$pending_stats_refresh = array();
+
+		foreach ( $pending as $entry ) {
+			list( $connection_name, $entity_type, $post_type ) = $entry;
+
+			try {
+				$metadata_manager = new Gregius_Data_Sync_Metadata_Manager( $connection_name );
+				$metadata_manager->update_sync_stats( $entity_type, $post_type );
+			} catch ( Exception $e ) {
+				$this->logger->log(
+					sprintf( 'Failed to refresh sync stats for %s: %s', $entity_type, $e->getMessage() ),
+					'error',
+					'sync',
+					$connection_name
+				);
+			}
+		}
 	}
 
 	/**
@@ -1459,8 +1676,22 @@ class Gregius_Data_Lifecycle_Hooks {
 			// Include taxonomy sync class.
 			require_once GREGIUS_DATA_PLUGIN_DIR . 'includes/batch/class-gregius-data-taxonomy-sync.php';
 
-			$taxonomy_sync = new Gregius_Data_Taxonomy_Sync();
-			$result        = $taxonomy_sync->sync_single_term( $term_id, $taxonomy );
+			// Multi-connection sync: propagate to every active connection (not just
+			// the first, and not the 'default' fallback).
+			$connection_names = $this->get_active_connection_names();
+			if ( empty( $connection_names ) ) {
+				$this->logger->log( "No active PostgreSQL connection - skipping term sync for #{$term_id}", 'info', 'sync', null, array( 'term_id' => $term_id ) );
+				return;
+			}
+			$result = false;
+			foreach ( $connection_names as $connection_name ) {
+				$taxonomy_sync = new Gregius_Data_Taxonomy_Sync( $connection_name );
+				if ( $taxonomy_sync->sync_single_term( $term_id, $taxonomy ) ) {
+					$result = true;
+					$this->mark_stats_dirty( $connection_name, 'term' );
+					$this->mark_stats_dirty( $connection_name, 'term_taxonomy' );
+				}
+			}
 
 			if ( $result ) {
 				$this->logger->log(
@@ -1530,8 +1761,22 @@ class Gregius_Data_Lifecycle_Hooks {
 			// Include taxonomy sync class.
 			require_once GREGIUS_DATA_PLUGIN_DIR . 'includes/batch/class-gregius-data-taxonomy-sync.php';
 
-			$taxonomy_sync = new Gregius_Data_Taxonomy_Sync();
-			$result        = $taxonomy_sync->sync_single_term( $term_id, $taxonomy );
+			// Multi-connection sync: propagate to every active connection (not just
+			// the first, and not the 'default' fallback).
+			$connection_names = $this->get_active_connection_names();
+			if ( empty( $connection_names ) ) {
+				$this->logger->log( "No active PostgreSQL connection - skipping term sync for #{$term_id}", 'info', 'sync', null, array( 'term_id' => $term_id ) );
+				return;
+			}
+			$result = false;
+			foreach ( $connection_names as $connection_name ) {
+				$taxonomy_sync = new Gregius_Data_Taxonomy_Sync( $connection_name );
+				if ( $taxonomy_sync->sync_single_term( $term_id, $taxonomy ) ) {
+					$result = true;
+					$this->mark_stats_dirty( $connection_name, 'term' );
+					$this->mark_stats_dirty( $connection_name, 'term_taxonomy' );
+				}
+			}
 
 			if ( $result ) {
 				$this->logger->log(
@@ -1604,18 +1849,32 @@ class Gregius_Data_Lifecycle_Hooks {
 			$active_connections = $this->settings_manager->get_active_connections();
 
 			foreach ( $active_connections as $connection_name => $connection_config ) {
-				$db = new Gregius_Data_DB();
+				// Route through the provider so deletion works for both PDO and
+				// PostgREST (bug #1373: this previously used Gregius_Data_DB which
+				// returns no connection for PostgREST).
+				$provider = $this->connection_manager->get_provider( $connection_name );
+				if ( ! $provider ) {
+					$this->logger->log(
+						"No provider for connection '{$connection_name}' - skipping term delete for #{$term_id}",
+						'warning',
+						'sync',
+						$connection_name,
+						array( 'term_id' => $term_id )
+					);
+					continue;
+				}
 
-				// Delete term relationships first (due to foreign key constraints).
-				$relationships_result = $db->delete_term_relationships_by_taxonomy_id( $tt_id );
+				// Delete term taxonomy (cascades relationships via FK).
+				$taxonomy_result = $provider->delete_term_taxonomy( $tt_id );
+				$taxonomy_ok     = is_array( $taxonomy_result ) && ! empty( $taxonomy_result['success'] );
 
-				// Delete term taxonomy.
-				$taxonomy_result = $db->delete_term_taxonomy( $tt_id );
+				// Delete term (unconditional — correct for the common single-taxonomy
+				// case; a term shared across taxonomies is an edge case left to the
+				// orphan manager).
+				$term_result = $provider->delete_term( $term_id );
+				$term_ok     = is_array( $term_result ) && ! empty( $term_result['success'] );
 
-				// Delete term (only if no other taxonomies reference it).
-				$term_result = $db->delete_term_if_unused( $term_id );
-
-				if ( $relationships_result && $taxonomy_result ) {
+				if ( $taxonomy_ok && $term_ok ) {
 					$this->logger->log(
 						"Successfully deleted term #{$term_id} from PostgreSQL",
 						'info',
@@ -1638,6 +1897,10 @@ class Gregius_Data_Lifecycle_Hooks {
 						)
 					);
 				}
+
+				$this->mark_stats_dirty( $connection_name, 'term' );
+				$this->mark_stats_dirty( $connection_name, 'term_taxonomy' );
+				$this->mark_stats_dirty( $connection_name, 'term_relationships' );
 			}
 		} catch ( Exception $e ) {
 			$this->logger->log(
@@ -1691,13 +1954,35 @@ class Gregius_Data_Lifecycle_Hooks {
 			return;
 		}
 
-		// Get active connection.
-		$connection_name = $this->get_active_connection();
-		if ( empty( $connection_name ) ) {
+		// Get all active connections (multi-connection sync).
+		$connection_names = $this->get_active_connection_names();
+		if ( empty( $connection_names ) ) {
 			$this->logger->log( "No active PostgreSQL connection - skipping term relationship sync for post {$post_id}", 'info', 'sync', null, array( 'post_id' => $post_id ) );
 			return;
 		}
 
+		foreach ( $connection_names as $connection_name ) {
+			$this->sync_post_relationships_to_connection( $post_id, $post, $connection_name );
+		}
+
+		// Clean up processing flag.
+		unset( $processing[ $post_id ] );
+	}
+
+	/**
+	 * Sync term relationships for a post to a single connection.
+	 *
+	 * Extracted from handle_post_complete() so the multi-connection loop can
+	 * invoke it once per active connection.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param int     $post_id         Post ID.
+	 * @param WP_Post $post            Post object.
+	 * @param string  $connection_name Connection name.
+	 * @return void
+	 */
+	private function sync_post_relationships_to_connection( $post_id, $post, $connection_name ) {
 		// Check if post type is configured for sync.
 		if ( ! $this->is_post_type_synced( $post->post_type, $connection_name ) ) {
 			$this->logger->log(
@@ -1716,15 +2001,25 @@ class Gregius_Data_Lifecycle_Hooks {
 		$this->logger->log( "Post complete: post #{$post_id}, syncing term relationships to connection: {$connection_name}", 'debug', 'sync', $connection_name, array( 'post_id' => $post_id ) );
 
 		try {
-			// Use our dedicated database method for term relationship sync.
-			$db     = new Gregius_Data_DB();
-			$result = $db->sync_post_term_relationships( $post_id, $connection_name, 'wp_after_insert_post' );
+			// Use the provider-aware taxonomy sync (bug #1373: the previous
+			// Gregius_Data_DB::sync_post_term_relationships() used a direct PDO
+			// connection which returns nothing for PostgREST connections).
+			require_once GREGIUS_DATA_PLUGIN_DIR . 'includes/batch/class-gregius-data-taxonomy-sync.php';
+			$taxonomy_sync = new Gregius_Data_Taxonomy_Sync( $connection_name );
+			$result        = false;
+			foreach ( get_object_taxonomies( $post->post_type, 'names' ) as $taxonomy ) {
+				if ( $taxonomy_sync->sync_post_term_relationships( $post_id, $taxonomy ) ) {
+					$result = true;
+				}
+			}
 
 			if ( $result ) {
 				$this->logger->log( "Successfully synced term relationships for post #{$post_id} via wp_after_insert_post hook", 'info', 'sync', $connection_name, array( 'post_id' => $post_id ) );
 			} else {
 				$this->logger->log( "Failed to sync term relationships for post #{$post_id} via wp_after_insert_post hook", 'warning', 'sync', $connection_name, array( 'post_id' => $post_id ) );
 			}
+
+			$this->mark_stats_dirty( $connection_name, 'term_relationships' );
 		} catch ( Exception $e ) {
 			$this->logger->log(
 				"Error syncing term relationships for post #{$post_id}: " . $e->getMessage(),
@@ -1737,9 +2032,6 @@ class Gregius_Data_Lifecycle_Hooks {
 				)
 			);
 		}
-
-		// Clean up processing flag.
-		unset( $processing[ $post_id ] );
 	}
 
 	/**
@@ -1755,7 +2047,10 @@ class Gregius_Data_Lifecycle_Hooks {
 
 		foreach ( $active_connections as $connection_name => $connection_config ) {
 			// Note: Key is 'sync_sync_terms' not 'sync_terms' due to UI prefixing.
-			$sync_terms = $this->settings_manager->get_with_category( 'sync', $connection_name, 'sync_sync_terms' );
+			// Default to true: term sync is on unless explicitly disabled, matching
+			// the sync-configuration UI which reports sync_terms default true. Without
+			// this default the gate is false on fresh installs (bug #1369).
+			$sync_terms = $this->settings_manager->get_with_category( 'sync', $connection_name, 'sync_sync_terms', true );
 			if ( $sync_terms ) {
 				return true;
 			}

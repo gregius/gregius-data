@@ -119,6 +119,65 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 		}
 
 		/**
+		 * Create the schema metadata table in PostgreSQL.
+		 *
+		 * Single source of truth for the schema version, shared with Supabase
+		 * (mirrors the `gregius_data_schema_meta` table in postgrest-schema.sql).
+		 *
+		 * @since 1.0.1
+		 *
+		 * @param PDO $conn Database connection.
+		 * @return void
+		 */
+		protected function create_schema_meta_table( $conn ) {
+			$conn->exec(
+				'CREATE TABLE IF NOT EXISTS gregius_data_schema_meta (
+					key TEXT PRIMARY KEY,
+					value TEXT NOT NULL,
+					updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+				)'
+			);
+		}
+
+		/**
+		 * Write the schema version stamp into the PostgreSQL meta table.
+		 *
+		 * @since 1.0.1
+		 *
+		 * @param PDO    $conn    Database connection.
+		 * @param string $version Version string.
+		 * @return void
+		 */
+		protected function set_schema_version_in_db( $conn, $version ) {
+			$stmt = $conn->prepare(
+				"INSERT INTO gregius_data_schema_meta (key, value, updated_at)
+				 VALUES ('version', :version, NOW())
+				 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()"
+			);
+			$stmt->execute( array( ':version' => $version ) );
+		}
+
+		/**
+		 * Read the schema version stamp from the PostgreSQL meta table.
+		 *
+		 * @since 1.0.1
+		 *
+		 * @param PDO $conn Database connection.
+		 * @return string Version string, or '0.0.0' if absent/unreadable.
+		 */
+		protected function get_schema_version_from_db( $conn ) {
+			try {
+				$stmt  = $conn->query( "SELECT value FROM gregius_data_schema_meta WHERE key = 'version' LIMIT 1" );
+				$value = $stmt->fetchColumn();
+
+				return ( $value ) ? (string) $value : '0.0.0';
+			} catch ( Exception $e ) {
+				// Meta table may not exist on legacy schemas; treat as unknown.
+				return '0.0.0';
+			}
+		}
+
+		/**
 		 * Create all database tables for WordPress schema
 		 *
 		 * @param string $connection_name Connection name to use (default: 'default').
@@ -217,12 +276,17 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				$this->create_hashingtf_embedding_table( $conn );
 				$this->logger->log( 'Created wp_posts_hashingtf_murmur3_1024 table (stateless internal, no vocabulary required)', 'info', 'system', $connection_name );
 
+				// Record the schema version in the PostgreSQL meta table (single source
+				// of truth shared with Supabase) before committing.
+				$this->create_schema_meta_table( $conn );
+				$this->set_schema_version_in_db( $conn, GREGIUS_DATA_SCHEMA_VERSION );
+
 				// Commit transaction.
 				$conn->commit();
 				$this->logger->log( 'PostgreSQL schema creation transaction committed successfully', 'info', 'system', $connection_name );
 
 				// Update schema version (per-connection) in wp_gregius_data_settings.
-				$this->set_schema_version( $connection_name, GREGIUS_DATA_VERSION );
+				$this->set_schema_version( $connection_name, GREGIUS_DATA_SCHEMA_VERSION );
 					return array(
 						'success' => true,
 						'message' => sprintf(
@@ -230,7 +294,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 							__( 'Successfully created PostgreSQL schema for connection "%s".', 'gregius-data' ),
 							$connection_name
 						),
-						'version' => GREGIUS_DATA_VERSION,
+						'version' => GREGIUS_DATA_SCHEMA_VERSION,
 					);
 			} catch ( Exception $e ) {
 				// Rollback on error.
@@ -380,23 +444,25 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				// Check if gregius_data_schema_meta table exists and has version.
 				if ( ! is_array( $result ) || empty( $result ) ) {
 					return array(
-						'connected'         => true,
-						'connection_name'   => $connection_name,
-						'complete'          => false,
-						'schema_exists'     => false,
-						'tables'            => array(
+						'connected'               => true,
+						'connection_name'         => $connection_name,
+						'complete'                => false,
+						'schema_exists'           => false,
+						'tables'                  => array(
 							'complete' => false,
 							'missing'  => array( 'gregius_data_schema_meta' ),
 						),
-						'vector_extension'  => false,
-						'pg_trgm_extension' => false,
-						'schema_version'    => '0.0.0',
-						'version'           => '0.0.0',
-						'plugin_version'    => GREGIUS_DATA_VERSION,
-						'requires_update'   => false,
-						'update_available'  => false,
-						'post_count'        => 0,
-						'vector_count'      => 0,
+						'vector_extension'        => false,
+						'pg_trgm_extension'       => false,
+						'schema_version'          => '0.0.0',
+						'version'                 => '0.0.0',
+						'plugin_version'          => GREGIUS_DATA_VERSION,
+						'required_schema_version' => GREGIUS_DATA_SCHEMA_VERSION,
+						'schema_status'           => 'missing',
+						'requires_update'         => false,
+						'update_available'        => false,
+						'post_count'              => 0,
+						'vector_count'            => 0,
 					);
 				}
 
@@ -409,24 +475,28 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				$has_vector  = $schema_exists;
 				$has_pg_trgm = $schema_exists;
 
+				$schema_status = $this->get_schema_status_enum( $schema_exists, $schema_version );
+
 				return array(
-					'connected'         => true,
-					'connection_name'   => $connection_name,
-					'complete'          => $schema_exists,
-					'schema_exists'     => $schema_exists,
-					'tables'            => array(
+					'connected'               => true,
+					'connection_name'         => $connection_name,
+					'complete'                => $schema_exists,
+					'schema_exists'           => $schema_exists,
+					'tables'                  => array(
 						'complete' => $schema_exists,
 						'missing'  => array(),
 					),
-					'vector_extension'  => $has_vector,
-					'pg_trgm_extension' => $has_pg_trgm,
-					'schema_version'    => $schema_version,
-					'version'           => $schema_version,
-					'plugin_version'    => GREGIUS_DATA_VERSION,
-					'requires_update'   => $schema_exists && version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' ),
-					'update_available'  => $schema_exists && version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' ),
-					'post_count'        => 0,  // Can be queried separately if needed.
-					'vector_count'      => 0,  // Can be queried separately if needed.
+					'vector_extension'        => $has_vector,
+					'pg_trgm_extension'       => $has_pg_trgm,
+					'schema_version'          => $schema_version,
+					'version'                 => $schema_version,
+					'plugin_version'          => GREGIUS_DATA_VERSION,
+					'required_schema_version' => GREGIUS_DATA_SCHEMA_VERSION,
+					'schema_status'           => $schema_status,
+					'requires_update'         => 'update_available' === $schema_status,
+					'update_available'        => 'update_available' === $schema_status,
+					'post_count'              => 0,  // Can be queried separately if needed.
+					'vector_count'            => 0,  // Can be queried separately if needed.
 				);
 
 			} catch ( Exception $e ) {
@@ -459,8 +529,12 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 			}
 
 			try {
-				$current_version = $this->get_schema_version( $connection_name );
-				$target_version  = GREGIUS_DATA_VERSION;             // Check if upgrade is needed.
+				// Prefer the DB stamp (truth), falling back to the stored per-connection setting.
+				$current_version = $this->get_schema_version_from_db( $conn );
+				if ( '0.0.0' === $current_version ) {
+					$current_version = $this->get_schema_version( $connection_name );
+				}
+				$target_version = GREGIUS_DATA_SCHEMA_VERSION;             // Check if upgrade is needed.
 				if ( version_compare( $current_version, $target_version, '>=' ) ) {
 					return array(
 						'success'         => true,
@@ -479,6 +553,10 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				$this->migrate_posts_table_for_sync( $conn ); // Add sync tracking columns.
 				$this->logger->log( 'Completed schema migrations', 'info', 'system', $connection_name ); // Ensure pgvector extension is installed (for upgrades from older versions).
 				$this->install_pgvector_extension( $conn );
+
+				// Record the schema version in the PostgreSQL meta table before committing.
+				$this->create_schema_meta_table( $conn );
+				$this->set_schema_version_in_db( $conn, $target_version );
 
 				// Commit transaction.
 				$conn->commit();
@@ -596,14 +674,13 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				$stmt              = $conn->query( "SELECT * FROM pg_extension WHERE extname = 'pg_trgm'" );
 				$pg_trgm_installed = (bool) $stmt->fetchColumn();
 
-				// Get current schema version from wp_gregius_data_settings.
-				// If tables don't exist, version is 0.0.0.
+				// Get current schema version. Prefer the DB stamp (truth), then the
+				// stored per-connection setting, then '0.0.0' (unknown).
 				$schema_version = '0.0.0';
 				if ( empty( $missing_tables ) ) {
-					$schema_version = $this->get_schema_version( $connection_name );
-					if ( empty( $schema_version ) || '0.0.0' === $schema_version ) {
-						// Fallback to plugin version for newly created schemas.
-						$schema_version = GREGIUS_DATA_VERSION;
+					$schema_version = $this->get_schema_version_from_db( $conn );
+					if ( '0.0.0' === $schema_version ) {
+						$schema_version = $this->get_schema_version( $connection_name );
 					}
 				}
 
@@ -613,34 +690,59 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 				// Schema is complete if all tables exist.
 				$complete = $schema_exists;
 
-				// Check if update is available (plugin version > schema version).
-				$update_available = $schema_exists && version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' );
+				// Check if update is available (schema version < required schema version).
+				$schema_status    = $this->get_schema_status_enum( $schema_exists, $schema_version );
+				$update_available = ( 'update_available' === $schema_status );
 
 				return array(
-					'connected'         => true,
-					'connection_name'   => $connection_name,
-					'complete'          => $complete,
-					'schema_exists'     => $schema_exists,
-					'tables'            => array(
+					'connected'               => true,
+					'connection_name'         => $connection_name,
+					'complete'                => $complete,
+					'schema_exists'           => $schema_exists,
+					'tables'                  => array(
 						'complete' => empty( $missing_tables ),
 						'missing'  => $missing_tables,
 					),
-					'vector_extension'  => $vector_installed,  // Keep this name for JS compatibility.
-					'pg_trgm_extension' => $pg_trgm_installed,  // For typo tolerance.
-					'schema_version'    => $schema_version,  // Current schema version.
-					'version'           => $schema_version,  // Keep for backward compatibility.
-					'plugin_version'    => GREGIUS_DATA_VERSION,  // Target version.
-					'requires_update'   => version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' ),
-					'update_available'  => $update_available,  // UI flag for upgrade banner.
+					'vector_extension'        => $vector_installed,  // Keep this name for JS compatibility.
+					'pg_trgm_extension'       => $pg_trgm_installed,  // For typo tolerance.
+					'schema_version'          => $schema_version,  // Current schema version.
+					'version'                 => $schema_version,  // Keep for backward compatibility.
+					'plugin_version'          => GREGIUS_DATA_VERSION,  // Plugin version.
+					'required_schema_version' => GREGIUS_DATA_SCHEMA_VERSION,
+					'schema_status'           => $schema_status,
+					'requires_update'         => $update_available,
+					'update_available'        => $update_available,  // UI flag for upgrade banner.
 				);
 			} catch ( Exception $e ) {
 				return array(
-					'connected'       => true,
+					'connected'       => false,
 					'connection_name' => $connection_name,
 					'error'           => true,
 					'message'         => $e->getMessage(),
 				);
 			}
+		}
+
+		/**
+		 * Determine the schema status enum for a stored schema version.
+		 *
+		 * @since 1.0.1
+		 *
+		 * @param bool   $schema_exists  Whether the schema exists.
+		 * @param string $schema_version Stored schema version.
+		 * @return string 'missing' | 'current' | 'update_available' | 'schema_newer'.
+		 */
+		protected function get_schema_status_enum( $schema_exists, $schema_version ) {
+			if ( ! $schema_exists ) {
+				return 'missing';
+			}
+			if ( version_compare( $schema_version, GREGIUS_DATA_SCHEMA_VERSION, '<' ) ) {
+				return 'update_available';
+			}
+			if ( version_compare( $schema_version, GREGIUS_DATA_SCHEMA_VERSION, '>' ) ) {
+				return 'schema_newer';
+			}
+			return 'current';
 		}
 
 		/**
@@ -1020,7 +1122,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 					FROM information_schema.table_constraints 
 					WHERE table_name = '$table_name' 
 					AND constraint_type = 'UNIQUE' 
-                    AND table_schema = 'WordPress'
+                    AND table_schema = 'public'
 				"
 				);
 				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL.
@@ -1041,7 +1143,7 @@ if ( ! class_exists( 'Gregius_Data_Schema_Manager' ) ) {
 					FROM information_schema.columns 
 					WHERE table_name = '$table_name' 
 					AND column_name = 'meta_value' 
-                    AND table_schema = 'WordPress'
+                    AND table_schema = 'public'
 				"
 				);
 				$data_type = $stmt->fetchColumn();

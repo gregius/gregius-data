@@ -41,10 +41,13 @@ const ConnectionList = ({
     const [settingsNeedFix, setSettingsNeedFix] = useState({});
     const [settingsFixed, setSettingsFixed] = useState({});
     const [checkingHealth, setCheckingHealth] = useState({});
+    const [healthCheckResults, setHealthCheckResults] = useState({});
     const [upgradingSchema, setUpgradingSchema] = useState({});
     const [verifyingSchema, setVerifyingSchema] = useState({});
     const [schemaModalOpen, setSchemaModalOpen] = useState(false);
     const [schemaModalConnection, setSchemaModalConnection] = useState(null);
+    const [schemaModalMode, setSchemaModalMode] = useState('setup');
+    const [schemaActionError, setSchemaActionError] = useState({});
 
     // Fetch schema status for all connections
     useEffect(() => {
@@ -91,7 +94,8 @@ const ConnectionList = ({
 
         // For Supabase, open schema setup modal
         if (connection.type === 'postgrest') {
-            setSchemaModalConnection(connection);
+            setSchemaModalConnection(connectionName);
+            setSchemaModalMode('setup');
             setSchemaModalOpen(true);
             return;
         }
@@ -99,6 +103,7 @@ const ConnectionList = ({
         // For PDO connections, create schema directly
         try {
             setCreatingSchema(prev => ({ ...prev, [connectionName]: true }));
+            setSchemaActionError(prev => ({ ...prev, [connectionName]: null }));
             const response = await apiFetch({
                 path: `/gregius-data/v1/schema/create?connection=${connectionName}`,
                 method: 'POST'
@@ -112,6 +117,10 @@ const ConnectionList = ({
                 setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
             }
         } catch (err) {
+            setSchemaActionError(prev => ({
+                ...prev,
+                [connectionName]: err?.data?.message || err?.message || __('Failed to create schema.', 'gregius-data')
+            }));
         } finally {
             setCreatingSchema(prev => ({ ...prev, [connectionName]: false }));
         }
@@ -189,24 +198,48 @@ const ConnectionList = ({
     const handleCheckHealth = async (connectionName) => {
         try {
             setCheckingHealth(prev => ({ ...prev, [connectionName]: true }));
+            setHealthCheckResults(prev => ({ ...prev, [connectionName]: null }));
             const response = await apiFetch({
                 path: '/gregius-data/v1/sync/connection-health/check',
-                method: 'POST'
+                method: 'POST',
+                data: { connection: connectionName }
             });
 
             if (response.success) {
                 setHealthStatuses(prev => ({ ...prev, [connectionName]: response.data }));
+                setHealthCheckResults(prev => ({
+                    ...prev,
+                    [connectionName]: {
+                        status: response.data?.status,
+                        message: response.data?.last_error || ''
+                    }
+                }));
             }
         } catch (err) {
+            setHealthCheckResults(prev => ({
+                ...prev,
+                [connectionName]: {
+                    status: 'error',
+                    message: err?.data?.message || err?.message || __('Health check failed.', 'gregius-data')
+                }
+            }));
         } finally {
             setCheckingHealth(prev => ({ ...prev, [connectionName]: false }));
         }
+    };
+
+    // Handler to open the schema update modal (Supabase manual re-run)
+    const handleUpgradeSchemaModal = (connectionName) => {
+        setSchemaModalConnection(connectionName);
+        setSchemaModalMode('upgrade');
+        setSchemaModalOpen(true);
     };
 
     // Handler to upgrade schema
     const handleUpgradeSchema = async (connectionName) => {
         try {
             setUpgradingSchema(prev => ({ ...prev, [connectionName]: true }));
+            setSchemaActionError(prev => ({ ...prev, [connectionName]: null }));
             const response = await apiFetch({
                 path: `/gregius-data/v1/schema/upgrade?connection=${connectionName}`,
                 method: 'POST'
@@ -220,6 +253,10 @@ const ConnectionList = ({
                 setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
             }
         } catch (err) {
+            setSchemaActionError(prev => ({
+                ...prev,
+                [connectionName]: err?.data?.message || err?.message || __('Failed to upgrade schema.', 'gregius-data')
+            }));
         } finally {
             setUpgradingSchema(prev => ({ ...prev, [connectionName]: false }));
         }
@@ -228,18 +265,96 @@ const ConnectionList = ({
     // Handler for successful schema setup
     const handleSchemaSetupSuccess = async () => {
         if (schemaModalConnection) {
-            // Find connection name from connection object
-            const connectionName = Object.keys(connections).find(
-                name => connections[name] === schemaModalConnection
-            );
+            const connectionName = schemaModalConnection;
 
-            if (connectionName) {
-                // Refresh schema status
-                const schemaResponse = await apiFetch({
-                    path: `/gregius-data/v1/schema/status?connection=${connectionName}`
-                });
-                setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
-            }
+            // Refresh schema status
+            const schemaResponse = await apiFetch({
+                path: `/gregius-data/v1/schema/status?connection=${connectionName}`
+            });
+            setSchemaStatuses(prev => ({ ...prev, [connectionName]: schemaResponse }));
+        }
+    };
+
+    // Helper to render the "Schema" detail cell for a connection.
+    const renderSchemaCell = (name, connection) => {
+        const status = schemaStatuses[name];
+        if (!status) return null;
+
+        // Connection failure: report it, offer no action (the action would fail).
+        if (status.connected === false || status.error) {
+            return (
+                <div className="gg-health-detail">
+                    <strong>{__('Schema: ', 'gregius-data')}</strong>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{__('Unavailable', 'gregius-data')}</span>
+                        {status.message && (
+                            <span style={{ fontSize: '0.85em', opacity: 0.7 }} title={status.message}>
+                                {status.message}
+                            </span>
+                        )}
+                    </span>
+                </div>
+            );
+        }
+
+        const version = (status.schema_version && status.schema_version !== '0.0.0')
+            ? status.schema_version
+            : null;
+
+        switch (status.schema_status) {
+            case 'missing':
+                return (
+                    <div className="gg-health-detail">
+                        <strong>{__('Schema: ', 'gregius-data')}</strong>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span>{__('Not Created', 'gregius-data')}</span>
+                            <Button
+                                variant="primary"
+                                onClick={() => handleCreateSchema(name)}
+                                disabled={creatingSchema[name]}
+                            >
+                                {creatingSchema[name] ? __('Creating...', 'gregius-data') : __('Create Schema', 'gregius-data')}
+                            </Button>
+                        </span>
+                    </div>
+                );
+
+            case 'update_available':
+                return (
+                    <div className="gg-health-detail">
+                        <strong>{__('Schema: ', 'gregius-data')}</strong>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <code>{version || __('Unknown', 'gregius-data')}</code>
+                            <Button
+                                variant="primary"
+                                onClick={() => connection.type === 'postgrest' ? handleUpgradeSchemaModal(name) : handleUpgradeSchema(name)}
+                                disabled={upgradingSchema[name]}
+                            >
+                                {upgradingSchema[name] ? __('Updating...', 'gregius-data') : __('Update Schema', 'gregius-data')}
+                            </Button>
+                        </span>
+                    </div>
+                );
+
+            case 'schema_newer':
+                return (
+                    <div className="gg-health-detail">
+                        <strong>{__('Schema: ', 'gregius-data')}</strong>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <code>{version || __('Unknown', 'gregius-data')}</code>
+                            <span className="components-badge is-info">{__('Newer', 'gregius-data')}</span>
+                        </span>
+                    </div>
+                );
+
+            case 'current':
+            default:
+                return (
+                    <div className="gg-health-detail">
+                        <strong>{__('Schema: ', 'gregius-data')}</strong>
+                        <code>{version || __('Unknown', 'gregius-data')}</code>
+                    </div>
+                );
         }
     };
 
@@ -324,9 +439,10 @@ const ConnectionList = ({
                         setSchemaModalOpen(false);
                         setSchemaModalConnection(null);
                     }}
-                    connectionName={Object.keys(connections).find(
-                        name => connections[name] === schemaModalConnection
-                    )}
+                    connectionName={schemaModalConnection}
+                    mode={schemaModalMode}
+                    currentVersion={schemaStatuses[schemaModalConnection]?.schema_version}
+                    requiredVersion={schemaStatuses[schemaModalConnection]?.required_schema_version || schemaStatuses[schemaModalConnection]?.plugin_version}
                     onSuccess={handleSchemaSetupSuccess}
                 />
             )}
@@ -395,29 +511,29 @@ const ConnectionList = ({
                         </div>
                     </CardHeader>
                     <CardBody>
-                        {/* Schema update available banner */}
+                        {/* Schema update available banner (text only; action lives in the Schema row below) */}
                         {schemaStatuses[name]?.update_available && (
                             <Notice
                                 status="warning"
                                 isDismissible={false}
                                 style={{ marginBottom: '16px' }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                                    <div>
-                                        <strong>{__('Schema Update Available', 'gregius-data')}</strong>
-                                        <span style={{ marginLeft: '8px' }}>
-                                            {__('New schema version', 'gregius-data')} {schemaStatuses[name].plugin_version} {__('is available', 'gregius-data')}
-                                        </span>
-                                    </div>
-                                    <Button
-                                        variant="primary"
-                                        onClick={() => handleUpgradeSchema(name)}
-                                        disabled={upgradingSchema[name]}
-                                        style={{ flexShrink: 0 }}
-                                    >
-                                        {upgradingSchema[name] ? __('Updating...', 'gregius-data') : __('Update Schema', 'gregius-data')}
-                                    </Button>
-                                </div>
+                                <strong>{__('Schema Update Required', 'gregius-data')}</strong>
+                                <span style={{ marginLeft: '8px' }}>
+                                    {__('Your schema is', 'gregius-data')} <code>{schemaStatuses[name].schema_version}</code>, {__('this plugin requires', 'gregius-data')} <code>{schemaStatuses[name].required_schema_version || schemaStatuses[name].plugin_version}</code>.
+                                </span>
+                            </Notice>
+                        )}
+
+                        {/* Schema action error (create/upgrade failure) */}
+                        {schemaActionError[name] && (
+                            <Notice
+                                status="error"
+                                isDismissible={false}
+                                style={{ marginBottom: '16px' }}
+                            >
+                                <strong>{__('Schema action failed:', 'gregius-data')}</strong>{' '}
+                                {schemaActionError[name]}
                             </Notice>
                         )}
 
@@ -436,6 +552,23 @@ const ConnectionList = ({
                                         ({testResults.result.response_time}ms)
                                     </span>
                                 )}
+                            </Notice>
+                        )}
+
+                        {/* Health check result for this specific connection */}
+                        {healthCheckResults && healthCheckResults[name] && (
+                            <Notice
+                                status={healthCheckResults[name].status === 'healthy' ? 'success' : 'error'}
+                                isDismissible={true}
+                                onDismiss={() => setHealthCheckResults(prev => ({ ...prev, [name]: null }))}
+                                style={{ marginBottom: '16px' }}
+                            >
+                                <strong>{__('Health Check: ', 'gregius-data')}</strong>
+                                <span>
+                                    {healthCheckResults[name].status === 'healthy'
+                                        ? __('healthy', 'gregius-data')
+                                        : healthCheckResults[name].message || __('unhealthy', 'gregius-data')}
+                                </span>
                             </Notice>
                         )}
 
@@ -497,28 +630,7 @@ const ConnectionList = ({
 
                         {/* Schema information (detail rows like Search Health Card) */}
                         <Grid columns={3} gap={4} style={{ marginTop: '16px' }}>
-                            {schemaStatuses[name] && (
-                                <div className="gg-health-detail">
-                                    <strong>{__('Schema: ', 'gregius-data')}</strong>
-                                    {schemaStatuses[name].schema_version && schemaStatuses[name].schema_version !== '0.0.0' ? (
-                                        <span>{schemaStatuses[name].schema_version}</span>
-                                    ) : (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                            <span>{__('Not Created', 'gregius-data')}</span>
-                                            <Button
-                                                variant="primary"
-                                                onClick={() => handleCreateSchema(name)}
-                                                disabled={creatingSchema[name]}
-                                            >
-                                                {connection.type === 'postgrest'
-                                                    ? __('Setup Schema', 'gregius-data')
-                                                    : creatingSchema[name] ? __('Creating...', 'gregius-data') : __('Create', 'gregius-data')
-                                                }
-                                            </Button>
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                            {renderSchemaCell(name, connection)}
 
                             {schemaStatuses[name] && (
                                 <div className="gg-health-detail">

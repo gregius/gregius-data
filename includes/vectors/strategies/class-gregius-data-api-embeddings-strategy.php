@@ -11,7 +11,7 @@
  *
  * @package Gregius_Data
  * @subpackage Gregius_Data/includes/vectors/strategies
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Implements the vector generation strategy for external API embeddings.
  * Supports OpenAI, Cohere, and other API-based embedding providers.
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 class Gregius_Data_API_Embeddings_Strategy implements Gregius_Data_Vector_Strategy_Interface {
 
@@ -144,7 +144,7 @@ class Gregius_Data_API_Embeddings_Strategy implements Gregius_Data_Vector_Strate
 	 *
 	 * Routes to PDO or Supabase implementation based on provider type.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array  $model           Model configuration from registry.
 	 * @param int    $batch_size      Number of posts to process.
 	 * @param string $connection_name PostgreSQL connection name.

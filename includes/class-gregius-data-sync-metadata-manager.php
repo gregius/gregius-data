@@ -80,6 +80,13 @@ class Gregius_Data_Sync_Metadata_Manager {
 	private $connection_name;
 
 	/**
+	 * Whether this connection uses the PostgREST (HTTP) provider.
+	 *
+	 * @var bool
+	 */
+	private $is_postgrest;
+
+	/**
 	 * Constructor
 	 *
 	 * @param string $connection_name Connection name.
@@ -95,6 +102,11 @@ class Gregius_Data_Sync_Metadata_Manager {
 
 		// Get provider for this connection.
 		$this->provider = $this->connection_manager->get_provider( $connection_name );
+
+		// Determine provider type once (PostgREST/HTTP vs PostgreSQL/PDO).
+		$settings_manager   = new Gregius_Data_Settings_Manager();
+		$connection_config  = $settings_manager->get_connection( $connection_name );
+		$this->is_postgrest = ( $connection_config && isset( $connection_config['type'] ) && in_array( $connection_config['type'], array( 'postgrest', 'supabase' ), true ) );
 
 		// Lazy-load PostgreSQL connection (only initialize when needed).
 		// This saves 300-400ms for Supabase when only using MySQL queries.
@@ -123,16 +135,22 @@ class Gregius_Data_Sync_Metadata_Manager {
 	 * @return bool True on success, false on failure.
 	 */
 	public function track_synced( $entity_type, $entity_id, $extra_data = array() ) {
+		$post_type          = isset( $extra_data['post_type'] ) ? $extra_data['post_type'] : null;
+		$source_id          = isset( $extra_data['source_id'] ) ? $extra_data['source_id'] : null;
+		$source_modified_at = isset( $extra_data['source_modified_at'] ) ? $extra_data['source_modified_at'] : null;
+
+		// PostgREST (HTTP): use the provider upsert path.
+		if ( $this->is_postgrest ) {
+			return $this->track_synced_via_provider( $entity_type, $entity_id, $post_type, $source_id, $source_modified_at );
+		}
+
+		// PostgreSQL (PDO): keep the existing raw SQL path unchanged.
 		try {
 			$conn = $this->get_pg_db()->get_connection();
 			if ( ! $conn ) {
 				$this->logger->log( 'No PostgreSQL connection available for metadata tracking', 'error', 'sync', $this->connection_name );
 				return false;
 			}
-
-			$post_type          = isset( $extra_data['post_type'] ) ? $extra_data['post_type'] : null;
-			$source_id          = isset( $extra_data['source_id'] ) ? $extra_data['source_id'] : null;
-			$source_modified_at = isset( $extra_data['source_modified_at'] ) ? $extra_data['source_modified_at'] : null;
 
 			$sql = "INSERT INTO {$this->pg_table}
 				(connection_name, entity_type, entity_id, post_type, source_id, source_modified_at, synced_at, created_at, updated_at)
@@ -179,6 +197,72 @@ class Gregius_Data_Sync_Metadata_Manager {
 	}
 
 	/**
+	 * Track a synced entity via the provider (PostgREST/HTTP).
+	 *
+	 * Sends connection_name, entity_type, entity_id (string), post_type, source_id,
+	 * source_modified_at, synced_at and updated_at. OMITS id and created_at because
+	 * merge-duplicates would overwrite them (created_at must be preserved). The
+	 * synced_at/updated_at timestamps are sent explicitly because merge-duplicates
+	 * cannot express CURRENT_TIMESTAMP.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string      $entity_type        Entity type.
+	 * @param int|string  $entity_id          Entity ID.
+	 * @param string|null $post_type          Post type.
+	 * @param int|null    $source_id          Source ID.
+	 * @param string|null $source_modified_at Source modification timestamp (GMT).
+	 * @return bool True on success, false on failure.
+	 */
+	private function track_synced_via_provider( $entity_type, $entity_id, $post_type, $source_id, $source_modified_at ) {
+		if ( ! $this->provider || ! method_exists( $this->provider, 'upsert' ) ) {
+			$this->logger->log( 'Provider contract violation: missing upsert()', 'error', 'sync', $this->connection_name );
+			return false;
+		}
+
+		$now = gmdate( 'Y-m-d H:i:s' );
+
+		$data = array(
+			'connection_name'    => $this->connection_name,
+			'entity_type'        => (string) $entity_type,
+			'entity_id'          => (string) $entity_id,
+			'post_type'          => $post_type,
+			'source_id'          => $source_id,
+			'source_modified_at' => $source_modified_at,
+			'synced_at'          => $now,
+			'updated_at'         => $now,
+		);
+
+		try {
+			$result = $this->provider->upsert(
+				$this->pg_table,
+				$data,
+				array( 'connection_name', 'entity_type', 'entity_id' )
+			);
+		} catch ( Exception $e ) {
+			$this->logger->log(
+				'Failed to track synced entity via provider: ' . $e->getMessage(),
+				'error',
+				'sync',
+				$this->connection_name
+			);
+			return false;
+		}
+
+		if ( ! $result ) {
+			$this->logger->log(
+				sprintf( 'Failed to track synced entity via provider: %s ID %s', $entity_type, (string) $entity_id ),
+				'warning',
+				'sync',
+				$this->connection_name
+			);
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
 	 * Remove entity metadata from PostgreSQL tracking table.
 	 *
 	 * @param string $entity_type Entity type.
@@ -186,6 +270,12 @@ class Gregius_Data_Sync_Metadata_Manager {
 	 * @return bool True on success, false on failure.
 	 */
 	public function remove_metadata( $entity_type, $entity_id ) {
+		// PostgREST (HTTP): use the provider delete path.
+		if ( $this->is_postgrest ) {
+			return $this->remove_metadata_via_provider( $entity_type, $entity_id );
+		}
+
+		// PostgreSQL (PDO): keep the existing raw SQL path unchanged.
 		try {
 			$conn = $this->get_pg_db()->get_connection();
 			if ( ! $conn ) {
@@ -220,6 +310,40 @@ class Gregius_Data_Sync_Metadata_Manager {
 	}
 
 	/**
+	 * Remove entity metadata via the provider (PostgREST/HTTP).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $entity_type Entity type.
+	 * @param mixed  $entity_id   Entity ID.
+	 * @return bool True on success, false on failure.
+	 */
+	private function remove_metadata_via_provider( $entity_type, $entity_id ) {
+		if ( ! $this->provider || ! method_exists( $this->provider, 'delete' ) ) {
+			$this->logger->log( 'Provider contract violation: missing delete()', 'error', 'sync', $this->connection_name );
+			return false;
+		}
+
+		$conditions = array(
+			'connection_name' => $this->connection_name,
+			'entity_type'     => (string) $entity_type,
+			'entity_id'       => (string) $entity_id,
+		);
+
+		try {
+			return (bool) $this->provider->delete( $this->pg_table, $conditions );
+		} catch ( Exception $e ) {
+			$this->logger->log(
+				'Failed to remove metadata via provider: ' . $e->getMessage(),
+				'error',
+				'sync',
+				$this->connection_name
+			);
+			return false;
+		}
+	}
+
+	/**
 	 * Get validation summary (counts of synced vs unsynced)
 	 *
 	 * @return array Array with 'should_sync' and 'has_synced' counts.
@@ -243,30 +367,75 @@ class Gregius_Data_Sync_Metadata_Manager {
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Query PostgreSQL for what HAS BEEN synced.
-		try {
-			$conn = $this->get_pg_db()->get_connection();
-			if ( $conn ) {
-				$stmt = $conn->prepare(
-					"SELECT entity_type, COUNT(*) as total
-					FROM {$this->pg_table}
-					WHERE connection_name = :connection_name
-					GROUP BY entity_type"
-				);
-				$stmt->execute( array( ':connection_name' => $this->connection_name ) );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connection
-				$pg_counts = $stmt->fetchAll( PDO::FETCH_ASSOC );
-			} else {
+		if ( $this->is_postgrest ) {
+			$pg_counts = $this->get_validation_summary_pg_via_provider();
+		} else {
+			// PostgreSQL (PDO): keep the existing raw SQL path unchanged.
+			try {
+				$conn = $this->get_pg_db()->get_connection();
+				if ( $conn ) {
+					$stmt = $conn->prepare(
+						"SELECT entity_type, COUNT(*) as total
+						FROM {$this->pg_table}
+						WHERE connection_name = :connection_name
+						GROUP BY entity_type"
+					);
+					$stmt->execute( array( ':connection_name' => $this->connection_name ) );
+					// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connection
+					$pg_counts = $stmt->fetchAll( PDO::FETCH_ASSOC );
+				} else {
+					$pg_counts = array();
+				}
+			} catch ( Exception $e ) {
+				$this->logger->log( 'Failed to get PostgreSQL validation summary: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
 				$pg_counts = array();
 			}
-		} catch ( Exception $e ) {
-			$this->logger->log( 'Failed to get PostgreSQL validation summary: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
-			$pg_counts = array();
 		}
 
 		return array(
 			'mysql_summary' => $mysql_counts,
 			'pg_summary'    => $pg_counts,
 		);
+	}
+
+	/**
+	 * Count synced entities per type via the provider (PostgREST/HTTP).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return array Array of { entity_type, total } rows.
+	 */
+	private function get_validation_summary_pg_via_provider() {
+		if ( ! $this->provider || ! method_exists( $this->provider, 'count_records' ) ) {
+			$this->logger->log( 'Provider contract violation: missing count_records()', 'error', 'sync', $this->connection_name );
+			return array();
+		}
+
+		$entity_types = array( 'post', 'postmeta', 'term', 'term_taxonomy', 'term_relationship' );
+		$summary      = array();
+
+		foreach ( $entity_types as $entity_type ) {
+			$conditions = array(
+				'connection_name' => 'eq.' . $this->connection_name,
+				'entity_type'     => 'eq.' . $entity_type,
+			);
+
+			try {
+				$result = $this->provider->count_records( $this->pg_table, $conditions );
+				$count  = ( ! empty( $result['success'] ) ) ? (int) $result['count'] : 0;
+
+				if ( $count > 0 ) {
+					$summary[] = array(
+						'entity_type' => $entity_type,
+						'total'       => $count,
+					);
+				}
+			} catch ( Exception $e ) {
+				$this->logger->log( 'Failed to count metadata via provider: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
+			}
+		}
+
+		return $summary;
 	}
 
 	/**
@@ -394,6 +563,12 @@ class Gregius_Data_Sync_Metadata_Manager {
 	 * @return bool True if entity exists in PostgreSQL metadata, false otherwise.
 	 */
 	public function is_entity_synced_in_postgresql( $entity_type, $entity_id ) {
+		// PostgREST (HTTP): use the provider select path.
+		if ( $this->is_postgrest ) {
+			return $this->is_entity_synced_via_provider( $entity_type, $entity_id );
+		}
+
+		// PostgreSQL (PDO): keep the existing raw SQL path unchanged.
 		try {
 			$conn = $this->get_pg_db()->get_connection();
 			if ( ! $conn ) {
@@ -417,6 +592,36 @@ class Gregius_Data_Sync_Metadata_Manager {
 			return (int) $stmt->fetchColumn() > 0;
 		} catch ( Exception $e ) {
 			$this->logger->log( 'Failed to check if entity is synced: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
+			return false;
+		}
+	}
+
+	/**
+	 * Check if entity is synced via the provider (PostgREST/HTTP).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $entity_type Entity type.
+	 * @param mixed  $entity_id   Entity ID.
+	 * @return bool True if the entity exists in the metadata table.
+	 */
+	private function is_entity_synced_via_provider( $entity_type, $entity_id ) {
+		if ( ! $this->provider || ! method_exists( $this->provider, 'select' ) ) {
+			$this->logger->log( 'Provider contract violation: missing select()', 'error', 'sync', $this->connection_name );
+			return false;
+		}
+
+		$conditions = array(
+			'connection_name' => $this->connection_name,
+			'entity_type'     => (string) $entity_type,
+			'entity_id'       => (string) $entity_id,
+		);
+
+		try {
+			$rows = $this->provider->select( $this->pg_table, $conditions, null, 'id', 1 );
+			return is_array( $rows ) && ! empty( $rows );
+		} catch ( Exception $e ) {
+			$this->logger->log( 'Failed to check if entity is synced via provider: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
 			return false;
 		}
 	}
@@ -448,6 +653,12 @@ class Gregius_Data_Sync_Metadata_Manager {
 	 * @return array|null Metadata record or null if not found.
 	 */
 	public function get_entity_metadata( $entity_type, $entity_id ) {
+		// PostgREST (HTTP): use the provider select path.
+		if ( $this->is_postgrest ) {
+			return $this->get_entity_metadata_via_provider( $entity_type, $entity_id );
+		}
+
+		// PostgreSQL (PDO): keep the existing raw SQL path unchanged.
 		try {
 			$conn = $this->get_pg_db()->get_connection();
 			if ( ! $conn ) {
@@ -474,6 +685,39 @@ class Gregius_Data_Sync_Metadata_Manager {
 			return $result ? $result : null;
 		} catch ( Exception $e ) {
 			$this->logger->log( 'Failed to get entity metadata: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
+			return null;
+		}
+	}
+
+	/**
+	 * Get entity metadata via the provider (PostgREST/HTTP).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $entity_type Entity type.
+	 * @param mixed  $entity_id   Entity ID.
+	 * @return array|null Metadata record or null if not found.
+	 */
+	private function get_entity_metadata_via_provider( $entity_type, $entity_id ) {
+		if ( ! $this->provider || ! method_exists( $this->provider, 'select' ) ) {
+			$this->logger->log( 'Provider contract violation: missing select()', 'error', 'sync', $this->connection_name );
+			return null;
+		}
+
+		$conditions = array(
+			'connection_name' => $this->connection_name,
+			'entity_type'     => (string) $entity_type,
+			'entity_id'       => (string) $entity_id,
+		);
+
+		try {
+			$rows = $this->provider->select( $this->pg_table, $conditions, null, '*', 1 );
+			if ( is_array( $rows ) && ! empty( $rows ) ) {
+				return $rows[0];
+			}
+			return null;
+		} catch ( Exception $e ) {
+			$this->logger->log( 'Failed to get entity metadata via provider: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
 			return null;
 		}
 	}
@@ -536,12 +780,30 @@ class Gregius_Data_Sync_Metadata_Manager {
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $wpdb->term_taxonomy is a WordPress core table property, safe from SQL injection
 			$wp_count = (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$this->wpdb->term_taxonomy}" );
 		} elseif ( 'post' === $entity_type && $post_type ) {
-			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- $wpdb->posts is a WordPress core table property, safe from SQL injection
+			// Use the connection's configured enabled statuses (not a hardcoded list)
+			// so the WordPress count matches the dashboard's live count and the sync
+			// filter, keeping drift meaningful.
+			$settings         = new Gregius_Data_Settings_Manager();
+			$enabled_statuses = $settings->get_with_category( 'sync', $this->connection_name, 'sync_enabled_statuses', array( 'publish' ) );
+			if ( is_string( $enabled_statuses ) ) {
+				$enabled_statuses = maybe_unserialize( $enabled_statuses );
+			}
+			if ( ! is_array( $enabled_statuses ) || empty( $enabled_statuses ) ) {
+				$enabled_statuses = array( 'publish' );
+			}
+			$status_placeholders = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
+
+			$query = "SELECT COUNT(*) FROM {$this->wpdb->posts} WHERE post_type = %s AND post_status IN ($status_placeholders)";
+
+			// Attachments only sync when eligible (PDF documents) — mirror that so
+			// images (which are intentionally excluded) don't count as drift.
+			if ( 'attachment' === $post_type ) {
+				$query .= " AND post_mime_type = 'application/pdf'";
+			}
+
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- $wpdb->posts is a WordPress core table property, safe from SQL injection; placeholders are generated from the enabled statuses array.
 			$wp_count = (int) $this->wpdb->get_var(
-				$this->wpdb->prepare(
-					"SELECT COUNT(*) FROM {$this->wpdb->posts} WHERE post_type = %s AND post_status IN ('publish', 'private', 'draft')",
-					$post_type
-				)
+				$this->wpdb->prepare( $query, array_merge( array( $post_type ), $enabled_statuses ) )
 			);
 			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 		} elseif ( 'postmeta' === $entity_type ) {
@@ -568,22 +830,33 @@ class Gregius_Data_Sync_Metadata_Manager {
 			if ( empty( $enabled_post_types ) ) {
 				$wp_count = 0;
 			} else {
+				$skipped_keys       = self::get_skipped_meta_keys();
+				$allowed_underscore = self::get_allowed_underscore_meta_keys();
+
 				$post_types_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
 				$statuses_placeholders   = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
+				$skipped_placeholders    = implode( ',', array_fill( 0, count( $skipped_keys ), '%s' ) );
+				$allowed_placeholders    = implode( ',', array_fill( 0, count( $allowed_underscore ), '%s' ) );
 
-				// Simplified count query for performance (skipping complex meta_key filtering for speed).
-				// We accept slight inaccuracy in "Total" vs "Synced" for postmeta to avoid 3s+ queries.
-				// Real validation happens in the Validator class.
-				// phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- $post_types_placeholders and $statuses_placeholders are strings of comma-separated '%s' placeholders, safe for interpolation into query string before prepare()
+				// Apply the meta-key blacklist so the WordPress count matches what the
+				// sync actually writes (excludes _edit_lock and other internal keys).
+				// phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- placeholder strings are safe for interpolation into the query before prepare().
 				$query = "SELECT COUNT(pm.meta_id)
 					FROM {$this->wpdb->postmeta} pm
 					INNER JOIN {$this->wpdb->posts} p ON pm.post_id = p.ID
 					WHERE p.post_type IN ($post_types_placeholders)
-					AND p.post_status IN ($statuses_placeholders)";
+					AND p.post_status IN ($statuses_placeholders)
+					AND pm.meta_key NOT IN ($skipped_placeholders)
+					AND (
+						pm.meta_key NOT LIKE '\\_%%'
+						OR pm.meta_key IN ($allowed_placeholders)
+						OR pm.meta_key LIKE 'field_%%'
+						OR pm.meta_key LIKE '\\_field\\_%%'
+					)";
 
 				// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Query built with placeholders
 				$wp_count = (int) $this->wpdb->get_var(
-					$this->wpdb->prepare( $query, array_merge( $enabled_post_types, $enabled_statuses ) )
+					$this->wpdb->prepare( $query, array_merge( $enabled_post_types, $enabled_statuses, $skipped_keys, $allowed_underscore ) )
 				);
 				// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			}
@@ -756,12 +1029,16 @@ class Gregius_Data_Sync_Metadata_Manager {
 				return 0;
 			}
 
+			// Postmeta needs the meta-key blacklist, which a bare count_records()
+			// cannot express — delegate to the RPC (PostgREST) or raw SQL (PDO).
+			if ( 'postmeta' === $entity_type ) {
+				return $this->count_postmeta_in_postgresql();
+			}
+
 			if ( 'term' === $entity_type ) {
 				$table = $prefix . 'terms';
 			} elseif ( 'term_taxonomy' === $entity_type ) {
 				$table = $prefix . 'term_taxonomy';
-			} elseif ( 'postmeta' === $entity_type ) {
-				$table = $prefix . 'postmeta';
 			} elseif ( 'term_relationships' === $entity_type ) {
 				$table = $prefix . 'term_relationships';
 			} elseif ( 'post' === $entity_type ) {
@@ -770,7 +1047,29 @@ class Gregius_Data_Sync_Metadata_Manager {
 				return 0;
 			}
 
-			$where  = ( 'post' === $entity_type && $post_type ) ? array( 'post_type' => "eq.$post_type" ) : array();
+			$where = array();
+			if ( 'post' === $entity_type && $post_type ) {
+				$where['post_type'] = "eq.$post_type";
+
+				// Filter by the connection's enabled statuses so the PostgreSQL count
+				// matches the WordPress side (which counts only enabled statuses).
+				$settings         = new Gregius_Data_Settings_Manager();
+				$enabled_statuses = $settings->get_with_category( 'sync', $this->connection_name, 'sync_enabled_statuses', array( 'publish' ) );
+				if ( is_string( $enabled_statuses ) ) {
+					$enabled_statuses = maybe_unserialize( $enabled_statuses );
+				}
+				if ( ! is_array( $enabled_statuses ) || empty( $enabled_statuses ) ) {
+					$enabled_statuses = array( 'publish' );
+				}
+
+				// PostgREST uses the "in.(...)" operator syntax; the PDO provider's
+				// count_records() turns an array value into a native IN (...) clause.
+				if ( $this->is_postgrest ) {
+					$where['post_status'] = 'in.(' . implode( ',', $enabled_statuses ) . ')';
+				} else {
+					$where['post_status'] = $enabled_statuses;
+				}
+			}
 			$result = $this->provider->count_records( $table, $where );
 
 			return ! empty( $result['success'] ) ? (int) $result['count'] : 0;
@@ -779,6 +1078,151 @@ class Gregius_Data_Sync_Metadata_Manager {
 			$this->logger->log( 'Failed to count in PostgreSQL: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
 			return 0;
 		}
+	}
+
+	/**
+	 * Count postmeta records in PostgreSQL with the meta-key blacklist applied.
+	 *
+	 * Uses the gregius_data_count_postmeta RPC for PostgREST and an equivalent
+	 * raw SQL query for PDO. Both mirror the WordPress-side blacklist in
+	 * update_sync_stats() and Gregius_Data_Lifecycle_Hooks::should_skip_meta_key().
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return int Count of synced postmeta.
+	 */
+	private function count_postmeta_in_postgresql() {
+		$settings           = new Gregius_Data_Settings_Manager();
+		$enabled_post_types = $settings->get_with_category( 'sync', $this->connection_name, 'sync_enabled_post_types', array( 'post', 'page' ) );
+		$enabled_statuses   = $settings->get_with_category( 'sync', $this->connection_name, 'sync_enabled_statuses', array( 'publish' ) );
+
+		if ( is_string( $enabled_post_types ) ) {
+			$enabled_post_types = maybe_unserialize( $enabled_post_types );
+		}
+		if ( is_string( $enabled_statuses ) ) {
+			$enabled_statuses = maybe_unserialize( $enabled_statuses );
+		}
+		if ( ! is_array( $enabled_post_types ) || empty( $enabled_post_types ) ) {
+			$enabled_post_types = array();
+		}
+		if ( ! is_array( $enabled_statuses ) || empty( $enabled_statuses ) ) {
+			$enabled_statuses = array( 'publish' );
+		}
+		if ( empty( $enabled_post_types ) ) {
+			return 0;
+		}
+
+		// PostgREST: call the count RPC (carries the blacklist).
+		if ( $this->is_postgrest ) {
+			if ( ! method_exists( $this->provider, 'execute_rpc' ) ) {
+				$this->logger->log( 'Provider contract violation: missing execute_rpc()', 'error', 'sync', $this->connection_name );
+				return 0;
+			}
+			try {
+				$result = $this->provider->execute_rpc(
+					'gregius_data_count_postmeta',
+					array(
+						'post_types' => array_values( $enabled_post_types ),
+						'statuses'   => array_values( $enabled_statuses ),
+					)
+				);
+			} catch ( Exception $e ) {
+				$this->logger->log( 'postmeta RPC threw: ' . $e->getMessage(), 'error', 'sync', $this->connection_name );
+				return 0;
+			}
+			if ( is_wp_error( $result ) ) {
+				$this->logger->log( 'postmeta RPC failed: ' . $result->get_error_message(), 'error', 'sync', $this->connection_name );
+				return 0;
+			}
+			return (int) $result;
+		}
+
+		// PDO: run the equivalent raw SQL with the same blacklist.
+		$conn = $this->provider->get_connection();
+		if ( ! $conn ) {
+			$this->logger->log( 'No PDO connection for postmeta count', 'error', 'sync', $this->connection_name );
+			return 0;
+		}
+
+		$prefix             = Gregius_Data_Table_Prefix_Resolver::runtime_prefix();
+		$skipped_keys       = self::get_skipped_meta_keys();
+		$allowed_underscore = self::get_allowed_underscore_meta_keys();
+
+		$post_type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '?' ) );
+		$status_placeholders    = implode( ',', array_fill( 0, count( $enabled_statuses ), '?' ) );
+		$skipped_placeholders   = implode( ',', array_fill( 0, count( $skipped_keys ), '?' ) );
+		$allowed_placeholders   = implode( ',', array_fill( 0, count( $allowed_underscore ), '?' ) );
+
+		$sql = "SELECT COUNT(*)
+			FROM {$prefix}postmeta pm
+			INNER JOIN {$prefix}posts p ON pm.post_id = p.id
+			WHERE p.post_type IN ($post_type_placeholders)
+			  AND p.post_status IN ($status_placeholders)
+			  AND pm.meta_key NOT IN ($skipped_placeholders)
+			  AND (
+			      pm.meta_key NOT LIKE '\\_%'
+			      OR pm.meta_key IN ($allowed_placeholders)
+			      OR pm.meta_key LIKE 'field_%'
+			      OR pm.meta_key LIKE '\\_field\\_%'
+			  )";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is prepared above.
+		$stmt = $conn->prepare( $sql );
+		$stmt->execute( array_merge( $enabled_post_types, $enabled_statuses, $skipped_keys, $allowed_underscore ) );
+
+		return (int) $stmt->fetchColumn();
+	}
+
+	/**
+	 * Meta keys that are always skipped during sync (internal/transient).
+	 *
+	 * Shared definition so the sync skip logic and the aggregate counts stay in
+	 * lockstep. Filterable via the 'gregius_data_skip_meta_keys' filter.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return string[] Meta keys to skip.
+	 */
+	public static function get_skipped_meta_keys() {
+		$skip_keys = array(
+			'_edit_lock',
+			'_edit_last',
+			'_wp_old_slug',
+			'_wp_old_date',
+			'_encloseme',
+			'_pingme',
+			'_wp_trash_meta_time',
+			'_wp_trash_meta_status',
+			'_wp_desired_post_slug',
+			'_wp_attached_file',
+			'_wp_attachment_metadata',
+		);
+
+		/**
+		 * Filter the meta keys to skip during PostgreSQL sync and aggregate counts.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param array $skip_keys Meta keys to skip.
+		 * @return array Filtered meta keys.
+		 */
+		return apply_filters( 'gregius_data_skip_meta_keys', $skip_keys );
+	}
+
+	/**
+	 * Underscore-prefixed meta keys that are allowed to sync (SEO, thumbnail, ACF).
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return string[] Allowed underscore meta keys.
+	 */
+	public static function get_allowed_underscore_meta_keys() {
+		return array(
+			'_yoast_wpseo_title',
+			'_yoast_wpseo_metadesc',
+			'_thumbnail_id',
+			'_wp_page_template',
+		);
 	}
 
 	/**

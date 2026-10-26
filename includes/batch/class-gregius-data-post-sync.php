@@ -528,10 +528,29 @@ if ( ! class_exists( 'Gregius_Data_Post_Sync' ) ) {
 					// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 					if ( ! empty( $all_relationships ) ) {
-						$rel_result = $this->provider->bulk_upsert_term_relationships( $all_relationships, $this->connection_name );
-						if ( empty( $rel_result['success'] ) ) {
-							$error_msg = isset( $rel_result['error'] ) ? $rel_result['error'] : 'Unknown error';
-							throw new Exception( 'Bulk term relationships upsert failed: ' . $error_msg );
+						// Non-fatal: term relationships are synced separately by
+						// sync_term_relationships() after terms/taxonomies exist. On a
+						// fresh sync, taxonomy sync runs AFTER post sync, so the
+						// relationship upsert here hits a FK violation
+						// (term_taxonomy_id not present). Defer rather than abort the
+						// batch (bug #1370).
+						try {
+							$rel_result = $this->provider->bulk_upsert_term_relationships( $all_relationships, $this->connection_name );
+							if ( empty( $rel_result['success'] ) ) {
+								$this->logger->log(
+									'Term relationships deferred (taxonomy not yet synced): ' . ( isset( $rel_result['error'] ) ? $rel_result['error'] : 'Unknown error' ),
+									'warning',
+									'sync',
+									$this->connection_name
+								);
+							}
+						} catch ( Exception $rel_error ) {
+							$this->logger->log(
+								'Term relationships deferred (taxonomy not yet synced): ' . $rel_error->getMessage(),
+								'warning',
+								'sync',
+								$this->connection_name
+							);
 						}
 					}
 

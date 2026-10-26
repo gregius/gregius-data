@@ -195,7 +195,7 @@ interface Gregius_Data_AI_Provider_Interface {
 	 * This is an OPTIONAL method - only providers with batch embedding support
 	 * implement it (OpenAI, Cohere). Check with method_exists() before calling.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array $texts   Array of strings to embed.
 	 * @param array $options Embedding options (model, api_key, etc).
 	 * @return array|WP_Error {

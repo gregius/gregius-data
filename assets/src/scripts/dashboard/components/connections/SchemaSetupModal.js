@@ -26,6 +26,9 @@ const SchemaSetupModal = ({
     isOpen, 
     onRequestClose, 
     connectionName,
+    mode = 'setup',
+    currentVersion,
+    requiredVersion,
     onSuccess 
 }) => {
     const [sqlContent, setSqlContent] = useState('');
@@ -87,13 +90,14 @@ const SchemaSetupModal = ({
                 path: `/gregius-data/v1/schema/verify`,
                 method: 'POST',
                 data: {
-                    connection: connectionName
+                    connection: connectionName,
+                    expected_version: requiredVersion
                 }
             });
 
             setVerifyResult(response);
 
-            if (response.success && response.status === 'ready') {
+            if (response.status === 'ready') {
                 // Wait a moment to show success message, then close
                 setTimeout(() => {
                     onSuccess();
@@ -120,14 +124,21 @@ const SchemaSetupModal = ({
 
     return (
         <Modal
-            title={__('Setup Supabase Schema', 'gregius-data')}
+            title={mode === 'upgrade' ? __('Update Supabase Schema', 'gregius-data') : __('Setup Supabase Schema', 'gregius-data')}
             onRequestClose={handleClose}
             style={{ maxWidth: '800px' }}
             className="gg-schema-setup-modal"
         >
             <VStack spacing={4}>
+                {mode === 'upgrade' && currentVersion && requiredVersion && (
+                    <Text>
+                        {__('Current schema:', 'gregius-data')} <code>{currentVersion}</code> → {__('Required:', 'gregius-data')} <code>{requiredVersion}</code>
+                    </Text>
+                )}
                 <Text>
-                    {__('Paste and run the SQL code in the Supabase SQL Editor to create your database schema:', 'gregius-data')}
+                    {mode === 'upgrade'
+                        ? __('Re-run the SQL below in the Supabase SQL Editor to update your database schema (idempotent — existing data is preserved):', 'gregius-data')
+                        : __('Paste and run the SQL code in the Supabase SQL Editor to create your database schema:', 'gregius-data')}
                 </Text>
 
                 {loading ? (
@@ -154,11 +165,23 @@ const SchemaSetupModal = ({
 
                 {/* Verification result */}
                 {verifyResult && (
-                    verifyResult.success ? (
+                    verifyResult.status === 'ready' ? (
                         <Notice status="success" isDismissible={false}>
                             <strong>{__('Schema Verified!', 'gregius-data')}</strong>
                             {' '}
                             {__('Version', 'gregius-data')} <code>{verifyResult.version}</code> {__('is ready to use.', 'gregius-data')}
+                        </Notice>
+                    ) : verifyResult.status === 'outdated' ? (
+                        <Notice status="warning" isDismissible={false}>
+                            <strong>{__('Schema Still Outdated', 'gregius-data')}</strong>
+                            <br />
+                            {verifyResult.message}
+                        </Notice>
+                    ) : verifyResult.status === 'newer' ? (
+                        <Notice status="info" isDismissible={false}>
+                            <strong>{__('Schema Is Newer', 'gregius-data')}</strong>
+                            <br />
+                            {verifyResult.message}
                         </Notice>
                     ) : (
                         <Notice status="warning" isDismissible={false}>

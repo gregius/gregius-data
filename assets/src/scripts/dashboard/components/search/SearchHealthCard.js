@@ -4,7 +4,7 @@
  * Displays PostgreSQL search health status with auto-refresh.
  * Loads connection from global search settings.
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 import { Card, CardHeader, CardBody, Button, Notice, Spinner, DropdownMenu, __experimentalGrid as Grid, __experimentalHeading as Heading } from '@wordpress/components';

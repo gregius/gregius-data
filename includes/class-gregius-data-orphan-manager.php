@@ -66,7 +66,10 @@ class Gregius_Data_Orphan_Manager {
 		$db->get_connection( $connection_name );
 
 		$this->logger->log( 'Getting provider', 'debug', 'orphan', $connection_name );
-		$this->provider = $db->get_provider();
+		// PostgREST connections return false from get_connection() without setting
+		// $db->provider, so obtain the provider via the Connection Manager (cached,
+		// and correct for both PostgreSQL and PostgREST).
+		$this->provider = ( new Gregius_Data_Connection_Manager() )->get_provider( $connection_name );
 
 		if ( ! $this->provider ) {
 			$last_error = $db->get_last_error();

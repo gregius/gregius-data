@@ -4,7 +4,7 @@
 -- Creates the complete PostgreSQL schema for the Gregius Data plugin.
 -- Run this script in your Supabase SQL Editor before activating the plugin.
 --
--- Version: 1.0.0
+-- Version: 1.0.1
 -- Architecture: Row-per-embedding with chunk support
 -- ================================================
 
@@ -19,10 +19,9 @@ CREATE TABLE IF NOT EXISTS gregius_data_schema_meta (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert schema version
-INSERT INTO gregius_data_schema_meta (key, value) 
-VALUES ('version', '1.0.0')
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+-- Note: the schema version stamp is written at the END of this script, so it is
+-- only recorded once the entire script applies successfully (a failed run never
+-- leaves a stale "success" version behind).
 
 -- Sync metadata entities table (individual entity modification tracking).
 -- Mirrors the PHP-generated schema (Gregius_Data_Schema_Manager::create_sync_metadata_postgresql_table).
@@ -629,6 +628,58 @@ BEGIN
         'checked_at', NOW()
     );
 END;
+$$;
+
+-- Count postmeta rows for the enabled post types/statuses, applying the same
+-- meta_key blacklist the WordPress-side validation uses (parity with the MySQL
+-- count in Gregius_Data_Sync_Validator::validate_postmeta).
+CREATE OR REPLACE FUNCTION gregius_data_count_postmeta(
+    post_types text[],
+    statuses text[]
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+    SELECT COUNT(*)
+    FROM wp_postmeta pm
+    INNER JOIN wp_posts p ON pm.post_id = p.id
+    WHERE p.post_type = ANY(post_types)
+      AND p.post_status = ANY(statuses)
+      AND pm.meta_key NOT IN (
+          '_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date',
+          '_encloseme', '_pingme', '_wp_trash_meta_time', '_wp_trash_meta_status',
+          '_wp_desired_post_slug', '_wp_attached_file', '_wp_attachment_metadata'
+      )
+      AND (
+          pm.meta_key NOT LIKE '\_%'
+          OR pm.meta_key IN ('_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_thumbnail_id', '_wp_page_template')
+          OR pm.meta_key LIKE 'field_%'
+          OR pm.meta_key LIKE '\_field\_%'
+      );
+$$;
+
+-- Count posts of a given type/status that have no cleaned row yet (posts needing
+-- content processing). Mirrors the PDO SQL in
+-- Gregius_Data_Sync_Validator::get_cleaning_count_by_post_type.
+CREATE OR REPLACE FUNCTION gregius_data_count_cleaning_needed(
+    post_type text,
+    statuses text[]
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+    SELECT COUNT(*)
+    FROM wp_posts p
+    LEFT JOIN wp_posts_clean pc ON p.id = pc.post_id
+    WHERE pc.post_id IS NULL
+      AND p.post_type = post_type
+      AND p.post_status = ANY(statuses);
 $$;
 
 -- ================================================
@@ -1371,8 +1422,13 @@ ON wp_posts_clean USING GIST (post_title_clean gist_trgm_ops);
 -- english, spanish, french, german, italian, portuguese, russian, simple
 -- Language parameter should match WordPress locale (e.g., en_US -> english, es_ES -> spanish)
 
+-- Schema version stamp (written last: only recorded if the whole script applies).
+INSERT INTO gregius_data_schema_meta (key, value)
+VALUES ('version', '1.0.1')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE 'Gregius Data schema v1.0.0 created successfully. Row-per-embedding architecture with chunk support is ready.';
+    RAISE NOTICE 'Gregius Data schema v1.0.1 created successfully. Row-per-embedding architecture with chunk support is ready.';
 END $$;

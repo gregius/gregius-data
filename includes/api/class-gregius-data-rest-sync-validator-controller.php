@@ -203,18 +203,12 @@ class Gregius_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 
 			$start_time = microtime( true );
 
-			// Use metadata tables for fast validation (same logic for PDO and Supabase).
-			// MySQL metadata: what SHOULD be synced (from wp_gregius_data_sync_metadata).
-			// PostgreSQL: Use RPC for Supabase, direct query for PDO.
-			$metadata_start = microtime( true );
-
 			if ( ! class_exists( 'Gregius_Data_Sync_Metadata_Manager' ) ) {
 				throw new Exception( 'Gregius_Data_Sync_Metadata_Manager class not found' );
 			}
 
 			$metadata_manager = new Gregius_Data_Sync_Metadata_Manager( $connection_name );
-			// Only query MySQL metadata - PostgreSQL data comes from RPC (Supabase) or direct queries (PDO).
-			$mysql_summary = $metadata_manager->get_mysql_validation_summary();
+			$mysql_summary    = $metadata_manager->get_mysql_validation_summary();
 
 			// Get provider for fallback counts (Supabase/PDO).
 			$provider = $connection_manager->get_provider( $connection_name );
@@ -315,189 +309,13 @@ class Gregius_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 					'pending' => 0,
 				);
 
-				// Calculate actual WordPress count (don't rely on metadata which might be stale/empty).
-				// Always query live WP tables to show accurate drift for new content.
-				$wp_total = 0;
-
-				switch ( $entity_type ) {
-					case 'term':
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-						$wp_total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->terms}" );
-						break;
-					case 'term_taxonomy':
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-						$wp_total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy}" );
-						break;
-					case 'term_relationships':
-						if ( ! empty( $enabled_post_types ) && ! empty( $enabled_statuses ) ) {
-							$post_type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
-							$status_placeholders    = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
-
-							// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are dynamically generated based on array count.
-							$query = $wpdb->prepare(
-								"SELECT COUNT(*) 
-								FROM {$wpdb->term_relationships} tr
-								INNER JOIN {$wpdb->posts} p ON tr.object_id = p.ID
-								WHERE p.post_type IN ($post_type_placeholders)
-								AND p.post_status IN ($status_placeholders)",
-								array_merge( $enabled_post_types, $enabled_statuses )
-							);
-							// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-							// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Query is prepared above
-							// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-							$wp_total = (int) $wpdb->get_var( $query );
-							// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
-						}
-						break;
-					case 'postmeta':
-						if ( ! empty( $enabled_post_types ) && ! empty( $enabled_statuses ) ) {
-							$post_type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
-							$status_placeholders    = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
-
-							// Exclude WordPress internal/transient keys.
-							$skipped_keys         = array(
-								'_edit_lock',
-								'_edit_last',
-								'_wp_old_slug',
-								'_wp_old_date',
-								'_encloseme',
-								'_pingme',
-								'_wp_trash_meta_time',
-								'_wp_trash_meta_status',
-								'_wp_desired_post_slug',
-							);
-							$skipped_placeholders = implode( ',', array_fill( 0, count( $skipped_keys ), '%s' ) );
-
-							// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Placeholders are dynamically generated.
-							$query = $wpdb->prepare(
-								"SELECT COUNT(*) 
-								FROM {$wpdb->postmeta} pm
-								INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-								WHERE p.post_type IN ($post_type_placeholders)
-								AND p.post_status IN ($status_placeholders)
-								AND pm.meta_key NOT IN ($skipped_placeholders)
-								AND pm.meta_key NOT LIKE %s
-								AND pm.meta_key NOT LIKE %s",
-								array_merge( $enabled_post_types, $enabled_statuses, $skipped_keys, array( '_transient%', '_site_transient%' ) )
-							);
-							// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-							// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Query is prepared above
-							// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-							$wp_total = (int) $wpdb->get_var( $query );
-							// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
-						}
-						break;
-				}
-
-				// Use metadata for PostgreSQL counts (already tracked in wp_gregius_data_sync_metadata.pg_count).
-				$pg_total = (int) $mysql_data['synced'];
-
-				// Fallback: Query actual PostgreSQL tables for real-time counts.
-				// Use provider if it supports count_records (Supabase).
-				// NOTE: We intentionally skip live remote queries here to rely on the metadata table (wp_gregius_data_sync_metadata)
-				// which is now the source of truth and much faster.
-				if ( $pg_conn ) {
-					$entity_probe_failed = false;
-					// Fallback to PDO connection for providers that don't support count_records.
-					try {
-						switch ( $entity_type ) {
-							case 'term':
-								$stmt     = $pg_conn->query( "SELECT COUNT(*) FROM {$pg_prefix}terms" );
-								$pg_total = (int) $stmt->fetchColumn();
-								break;
-							case 'term_taxonomy':
-								$stmt     = $pg_conn->query( "SELECT COUNT(*) FROM {$pg_prefix}term_taxonomy" );
-								$pg_total = (int) $stmt->fetchColumn();
-								break;
-							case 'term_relationships':
-								// Only count relationships for enabled post types and statuses.
-								$enabled_statuses = $settings_manager->get_with_category(
-									'sync',
-									$connection_name,
-									'sync_enabled_statuses',
-									array( 'publish' )
-								);
-								if ( is_string( $enabled_statuses ) ) {
-									$enabled_statuses = maybe_unserialize( $enabled_statuses );
-								}
-								if ( ! empty( $enabled_post_types ) && ! empty( $enabled_statuses ) ) {
-									$post_type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '?' ) );
-									$status_placeholders    = implode( ',', array_fill( 0, count( $enabled_statuses ), '?' ) );
-									$stmt                   = $pg_conn->prepare(
-										"SELECT COUNT(*) 
-										FROM (
-											SELECT DISTINCT tr.object_id, tr.term_taxonomy_id
-											FROM {$pg_prefix}term_relationships tr
-											INNER JOIN {$pg_prefix}posts p ON tr.object_id = p.id
-											WHERE p.post_type IN ($post_type_placeholders)
-											AND p.post_status IN ($status_placeholders)
-										) subquery"
-									);
-									$stmt->execute( array_merge( $enabled_post_types, $enabled_statuses ) );
-									$pg_total = (int) $stmt->fetchColumn();
-								}
-								break;
-							case 'postmeta':
-								// Only count postmeta for enabled post types and statuses.
-								$enabled_statuses = $settings_manager->get_with_category(
-									'sync',
-									$connection_name,
-									'sync_enabled_statuses',
-									array( 'publish' )
-								);
-								if ( is_string( $enabled_statuses ) ) {
-									$enabled_statuses = maybe_unserialize( $enabled_statuses );
-								}
-								if ( ! empty( $enabled_post_types ) && ! empty( $enabled_statuses ) ) {
-									$post_type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '?' ) );
-									$status_placeholders    = implode( ',', array_fill( 0, count( $enabled_statuses ), '?' ) );
-
-									// Exclude WordPress internal/transient keys (same as MySQL query for consistency).
-									$skipped_keys         = array(
-										'_edit_lock',
-										'_edit_last',
-										'_wp_old_slug',
-										'_wp_old_date',
-										'_encloseme',
-										'_pingme',
-										'_wp_trash_meta_time',
-										'_wp_trash_meta_status',
-										'_wp_desired_post_slug',
-									);
-									$skipped_placeholders = implode( ',', array_fill( 0, count( $skipped_keys ), '?' ) );
-
-									$stmt = $pg_conn->prepare(
-										"SELECT COUNT(*) 
-									FROM {$pg_prefix}postmeta pm
-									INNER JOIN {$pg_prefix}posts p ON pm.post_id = p.id
-									WHERE p.post_type IN ($post_type_placeholders)
-									AND p.post_status IN ($status_placeholders)
-									AND pm.meta_key NOT IN ($skipped_placeholders)
-									AND pm.meta_key NOT LIKE ?
-									AND pm.meta_key NOT LIKE ?"
-									);
-									$stmt->execute( array_merge( $enabled_post_types, $enabled_statuses, $skipped_keys, array( '_transient%', '_site_transient%' ) ) );
-									$pg_total = (int) $stmt->fetchColumn();
-								}
-								break;
-						}
-					} catch ( Exception $e ) {
-						$entity_probe_failed = true;
-						$probe_errors[]      = array(
-							'scope'       => 'entity',
-							'entity_type' => $entity_type,
-							'operation'   => 'postgres_count_probe',
-							'message'     => $e->getMessage(),
-						);
-					}
-
-					if ( $entity_probe_failed ) {
-						$has_critical = true;
-					}
-				}
-
-				// MySQL counts come from metadata (cached, fast).
-				// No live table queries needed - metadata is updated during sync.
+				// Read aggregate counts from the metadata read model (updated on
+				// lifecycle writes via Gregius_Data_Lifecycle_Hooks::mark_stats_dirty).
+				// Both WordPress and PostgreSQL counts are precomputed so the dashboard
+				// stays O(1) at any data scale.
+				$wp_total            = (int) $mysql_data['total'];
+				$pg_total            = (int) $mysql_data['synced'];
+				$entity_probe_failed = false;
 
 				$drift = $wp_total - $pg_total;
 				// Signed drift: negative = PostgreSQL behind, positive = PostgreSQL ahead.
@@ -544,7 +362,6 @@ class Gregius_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 
 			// Query metadata per post type for ALL post types (to show counts even if disabled).
 			if ( ! empty( $all_post_types ) ) {
-				$per_type_start = microtime( true );
 				global $wpdb;
 				$results['posts'] = array();
 
@@ -573,79 +390,14 @@ class Gregius_Data_REST_Sync_Validator_Controller extends WP_REST_Controller {
 					$pt_mysql_total   = 0;
 					$pt_mysql_synced  = 0;
 					$pt_mysql_pending = 0;
+					$pt_failed_count  = 0;
 
-					// ALWAYS query actual WordPress counts with CURRENT enabled statuses
-					// Don't use metadata counts because they reflect statuses at time of last sync,
-					// not current user selection.
-					$status_placeholders = implode( ',', array_fill( 0, count( $enabled_statuses ), '%s' ) );
-
-					$pt_failed_count = 0;
-
-					if ( 'attachment' === $post_type ) {
-						// Count only ELIGIBLE attachments (mirrors Gregius_Data_Content_Source::is_eligible_attachment):
-						// inherit + parent (non-attachment) of an enabled type/status + application/pdf + not featured.
-						$type_placeholders = implode( ',', array_fill( 0, count( $enabled_post_types ), '%s' ) );
-
-						// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are generated dynamically from the enabled type/status arrays.
-						$query = $wpdb->prepare(
-							"SELECT COUNT(*) FROM {$wpdb->posts} a
-							 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
-							 WHERE a.post_type = 'attachment'
-							   AND a.post_status = 'inherit'
-							   AND p.post_type <> 'attachment'
-							   AND p.post_type IN ($type_placeholders)
-							   AND p.post_status IN ($status_placeholders)
-							   AND a.post_mime_type = 'application/pdf'
-							   AND a.ID <> COALESCE((
-							       SELECT CAST(pm.meta_value AS UNSIGNED)
-							       FROM {$wpdb->postmeta} pm
-							       WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
-							       LIMIT 1
-							   ), 0)",
-							array_merge( $enabled_post_types, $enabled_statuses )
-						);
-						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-
-						// Count eligible attachments whose extraction FAILED (post meta),
-						// so the UI can surface failed extractions as a diagnostic.
-						// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are generated dynamically from the enabled type/status arrays.
-						$failed_query = $wpdb->prepare(
-							"SELECT COUNT(*) FROM {$wpdb->posts} a
-							 INNER JOIN {$wpdb->posts} p ON a.post_parent = p.ID
-							 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = a.ID AND pm.meta_key = '_gregius_data_asset_status' AND pm.meta_value = 'failed'
-							 WHERE a.post_type = 'attachment'
-							   AND a.post_status = 'inherit'
-							   AND p.post_type <> 'attachment'
-							   AND p.post_type IN ($type_placeholders)
-							   AND p.post_status IN ($status_placeholders)
-							   AND a.post_mime_type = 'application/pdf'
-							   AND a.ID <> COALESCE((
-							       SELECT CAST(pm2.meta_value AS UNSIGNED)
-							       FROM {$wpdb->postmeta} pm2
-							       WHERE pm2.post_id = p.ID AND pm2.meta_key = '_thumbnail_id'
-							       LIMIT 1
-							   ), 0)",
-							array_merge( $enabled_post_types, $enabled_statuses )
-						);
-						// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Counting failed extractions by post meta for validation; query is prepared above.
-						$pt_failed_count = (int) $wpdb->get_var( $failed_query );
-					} else {
-						$query = $wpdb->prepare(
-							"SELECT COUNT(*) FROM {$wpdb->posts} 
-							WHERE post_type = %s 
-							AND post_status IN ($status_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $status_placeholders is a safe string of comma-separated '%s' placeholders
-							array_merge( array( $post_type ), $enabled_statuses )
-						);
-					}
-					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Required to count posts by type/status from WordPress core table for validation, query is prepared above
-					$pt_mysql_total = (int) $wpdb->get_var( $query );                  // Get synced/pending from metadata if available.
+					// Read aggregate counts from the metadata read model (updated on
+					// lifecycle writes); no live table queries on the dashboard path.
 					if ( ! empty( $pt_summary ) ) {
+						$pt_mysql_total   = (int) $pt_summary[0]['total'];
 						$pt_mysql_synced  = (int) $pt_summary[0]['synced'];
 						$pt_mysql_pending = (int) $pt_summary[0]['pending'];
-					} else {
-						// No metadata yet - all pending.
-						$pt_mysql_pending = $pt_mysql_total;
 					}
 
 					// Use metadata for PostgreSQL count (already tracked).

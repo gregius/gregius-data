@@ -115,8 +115,9 @@ class Gregius_Data_REST_Connection_Health_Controller extends WP_REST_Controller 
 	 */
 	public function manual_health_check( $request ) {
 		try {
-			$this->health_monitor->perform_health_check();
-			$status = $this->health_monitor->get_health_status();
+			$connection_name = $request->get_param( 'connection' );
+			$this->health_monitor->perform_health_check( $connection_name );
+			$status = $this->health_monitor->get_health_status( $connection_name );
 
 			return new WP_REST_Response(
 				array(

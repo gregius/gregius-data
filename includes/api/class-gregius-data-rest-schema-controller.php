@@ -185,34 +185,10 @@ class Gregius_Data_REST_Schema_Controller extends WP_REST_Controller {
 
 			// Handle PostgREST differently from direct PostgreSQL.
 			if ( 'postgrest' === $config['type'] ) {
-				// For PostgREST, check via REST API and return same format as direct connection.
-				require_once plugin_dir_path( __FILE__ ) . '../providers/class-gregius-data-postgrest-provider.php';
-				$provider       = new Gregius_Data_PostgREST_Provider( $config );
-				$version_result = $provider->get_schema_version();
+				// Delegate to the schema manager so Supabase and PDO share ONE status path.
+				$schema_manager = new Gregius_Data_Schema_Manager();
 
-				$schema_version = $version_result['version'] ?? '0.0.0';
-				$schema_exists  = $version_result['success'] && '0.0.0' !== $schema_version && 'unknown' !== $schema_version;
-
-				// Return same format as PDO for consistent frontend handling.
-				$status = array(
-					'connected'         => true,
-					'connection_name'   => $connection_name,
-					'complete'          => $schema_exists,
-					'schema_exists'     => $schema_exists,
-					'tables'            => array(
-						'complete' => $schema_exists,
-						'missing'  => array(),
-					),
-					'vector_extension'  => $schema_exists,  // Assume extensions are installed if schema exists
-					'pg_trgm_extension' => $schema_exists,  // Assume extensions are installed if schema exists
-					'schema_version'    => $schema_version,
-					'version'           => $schema_version,
-					'plugin_version'    => GREGIUS_DATA_VERSION,
-					'requires_update'   => $schema_exists && version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' ),
-					'update_available'  => $schema_exists && version_compare( $schema_version, GREGIUS_DATA_VERSION, '<' ),
-				);
-
-				return new WP_REST_Response( $status, 200 );
+				return new WP_REST_Response( $schema_manager->get_schema_status( $connection_name ), 200 );
 			} else {
 				// For PDO connections, use schema manager.
 				$schema_manager = new Gregius_Data_Schema_Manager();
@@ -362,28 +338,17 @@ class Gregius_Data_REST_Schema_Controller extends WP_REST_Controller {
 			$provider       = new Gregius_Data_PostgREST_Provider( $config );           // Check schema version.
 			$version_result = $provider->get_schema_version();
 
-			if ( $version_result['success'] && '0.0.0' !== $version_result['version'] ) {
-				// Schema exists!
-				// Update connection metadata.
-				$config['schema_version'] = $version_result['version'];
-				$config['schema_status']  = 'ready';
-				$settings_manager->save_connection( $connection_name, $config );
+			$expected_version = $request->get_param( 'expected_version' );
+			if ( empty( $expected_version ) ) {
+				$expected_version = GREGIUS_DATA_SCHEMA_VERSION;
+			}
 
-				return new WP_REST_Response(
-					array(
-						'success' => true,
-						'message' => sprintf(
-							/* translators: %s: schema version number */
-							__( 'Schema verified successfully. Version: %s', 'gregius-data' ),
-							$version_result['version']
-						),
-						'version' => $version_result['version'],
-						'status'  => 'ready',
-					),
-					200
-				);
-			} else {
-				// Schema doesn't exist yet.
+			$version = ( ! empty( $version_result['success'] ) && ! empty( $version_result['version'] ) )
+				? $version_result['version']
+				: '0.0.0';
+
+			// Not created / unreachable.
+			if ( '0.0.0' === $version || 'unknown' === $version ) {
 				return new WP_REST_Response(
 					array(
 						'success' => false,
@@ -394,6 +359,64 @@ class Gregius_Data_REST_Schema_Controller extends WP_REST_Controller {
 					200
 				);
 			}
+
+			// Still on an older schema.
+			if ( version_compare( $version, $expected_version, '<' ) ) {
+				return new WP_REST_Response(
+					array(
+						'success'          => false,
+						'message'          => sprintf(
+							/* translators: 1: current version, 2: required version */
+							__( 'Schema is still on version %1$s. This plugin requires %2$s. Re-run the updated SQL file.', 'gregius-data' ),
+							$version,
+							$expected_version
+						),
+						'version'          => $version,
+						'required_version' => $expected_version,
+						'status'           => 'outdated',
+					),
+					200
+				);
+			}
+
+			// Newer than this plugin understands (rollback / shared project).
+			if ( version_compare( $version, $expected_version, '>' ) ) {
+				return new WP_REST_Response(
+					array(
+						'success'          => true,
+						'message'          => sprintf(
+							/* translators: 1: current version, 2: expected version */
+							__( 'Schema is on version %1$s, newer than this plugin expects (%2$s).', 'gregius-data' ),
+							$version,
+							$expected_version
+						),
+						'version'          => $version,
+						'required_version' => $expected_version,
+						'status'           => 'newer',
+					),
+					200
+				);
+			}
+
+			// Up to date.
+			$config['schema_version'] = $version;
+			$config['schema_status']  = 'ready';
+			$settings_manager->save_connection( $connection_name, $config );
+
+			return new WP_REST_Response(
+				array(
+					'success'          => true,
+					'message'          => sprintf(
+						/* translators: %s: schema version number */
+						__( 'Schema verified successfully. Version: %s', 'gregius-data' ),
+						$version
+					),
+					'version'          => $version,
+					'required_version' => $expected_version,
+					'status'           => 'ready',
+				),
+				200
+			);
 		} catch ( Exception $e ) {
 			return new WP_Error(
 				'verification_error',

@@ -4,7 +4,7 @@
  * Manages PostgreSQL Full-Text Search configuration and health monitoring.
  * Cards now manage their own state and load settings from global settings.
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 import { useSelect } from '@wordpress/data';

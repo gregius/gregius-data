@@ -340,6 +340,8 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 					'post_modified'     => isset( $post_data->post_modified ) ? $post_data->post_modified : '',
 					'post_modified_gmt' => isset( $post_data->post_modified_gmt ) ? $post_data->post_modified_gmt : '',
 					'post_type'         => isset( $post_data->post_type ) ? $post_data->post_type : '',
+					'post_mime_type'    => isset( $post_data->post_mime_type ) ? $post_data->post_mime_type : '',
+					'post_parent'       => isset( $post_data->post_parent ) ? (int) $post_data->post_parent : 0,
 					'guid'              => isset( $post_data->guid ) ? $post_data->guid : '',
 				);
 			} elseif ( is_array( $post_data ) ) {
@@ -376,6 +378,12 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 			if ( ! isset( $post_arr['post_excerpt'] ) ) {
 				$post_arr['post_excerpt'] = '';
 			}
+			if ( ! isset( $post_arr['post_mime_type'] ) ) {
+				$post_arr['post_mime_type'] = '';
+			}
+			if ( ! isset( $post_arr['post_parent'] ) ) {
+				$post_arr['post_parent'] = 0;
+			}
 
 			// Convert MySQL zero dates to valid PostgreSQL dates.
 			$zero_date    = '0000-00-00 00:00:00';
@@ -404,6 +412,8 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 				'post_modified',
 				'post_modified_gmt',
 				'post_type',
+				'post_mime_type',
+				'post_parent',
 				'guid',
 				'synced_at',
 			);
@@ -422,6 +432,8 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 				':post_modified'     => $post_arr['post_modified'],
 				':post_modified_gmt' => $post_arr['post_modified_gmt'],
 				':post_type'         => $post_arr['post_type'],
+				':post_mime_type'    => $post_arr['post_mime_type'],
+				':post_parent'       => $post_arr['post_parent'],
 				':guid'              => $post_arr['guid'],
 			);
 
@@ -509,15 +521,11 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 			$stmt_meta      = $this->conn->prepare( $sql_meta );
 			$stmt_meta->execute( array( ':post_id' => $post_id ) );
 
-			// Delete vector embeddings.
-			$vector_table = $this->get_table_name( 'vector_store' );
-			$sql_vector   = "DELETE FROM {$vector_table} WHERE post_id = :post_id";
-			$stmt_vector  = $this->conn->prepare( $sql_vector );
-			$stmt_vector->execute(
-				array(
-					':post_id' => $post_id,
-				)
-			);
+			// Note: vector embeddings, chunks, and cleaned content are removed by
+			// the wp_posts ON DELETE CASCADE foreign keys (wp_posts_clean,
+			// wp_posts_chunks, and the per-embedding tables all reference wp_posts(id)
+			// ON DELETE CASCADE). The legacy 'vector_store' table no longer exists in
+			// the 1.0.1 schema, so no explicit delete is required here.
 
 			// Delete term relationships.
 			$term_rel_table = $this->get_table_name( 'term_relationships' );
@@ -1152,6 +1160,8 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 			'post_modified'     => isset( $post->post_modified ) ? $post->post_modified : '',
 			'post_modified_gmt' => isset( $post->post_modified_gmt ) ? $post->post_modified_gmt : '',
 			'post_type'         => isset( $post->post_type ) ? $post->post_type : '',
+			'post_mime_type'    => isset( $post->post_mime_type ) ? $post->post_mime_type : '',
+			'post_parent'       => isset( $post->post_parent ) ? (int) $post->post_parent : 0,
 			'guid'              => isset( $post->guid ) ? $post->guid : '',
 		);
 
@@ -1455,6 +1465,92 @@ class Gregius_Data_PostgreSQL_Provider implements Gregius_Data_DB_Provider {
 			if ( $this->conn->inTransaction() ) {
 				$this->conn->rollBack();
 			}
+			$this->last_error = $e->getMessage();
+			return false;
+		}
+	}
+
+	/**
+	 * Upsert a record into a table (insert or update on conflict).
+	 *
+	 * Uses native INSERT ... ON CONFLICT (conflict_columns) DO UPDATE SET. Only
+	 * columns outside the conflict target are updated; the conflict key itself is
+	 * never overwritten. Returns true on success.
+	 *
+	 * @since 1.0.1
+	 * @param string $table            Table name.
+	 * @param array  $data             Row data as key => value pairs.
+	 * @param array  $conflict_columns Columns forming the unique conflict target.
+	 * @return bool True on success, false on error.
+	 */
+	public function upsert( $table, $data, $conflict_columns = array() ) {
+		if ( ! $this->conn || empty( $data ) || ! is_array( $data ) || empty( $conflict_columns ) ) {
+			return false;
+		}
+
+		$full_table_name = $this->qualify_table_name( $table );
+		if ( empty( $full_table_name ) ) {
+			return false;
+		}
+
+		$columns      = array();
+		$placeholders = array();
+		$bindings     = array();
+
+		foreach ( $data as $column => $value ) {
+			if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', (string) $column ) ) {
+				return false;
+			}
+			$columns[]                = $column;
+			$placeholder              = ':' . $column;
+			$placeholders[]           = $placeholder;
+			$bindings[ $placeholder ] = $value;
+		}
+
+		$conflict_sql = array();
+		foreach ( $conflict_columns as $column ) {
+			if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', (string) $column ) ) {
+				return false;
+			}
+			$conflict_sql[] = $column;
+		}
+
+		if ( empty( $conflict_sql ) ) {
+			return false;
+		}
+
+		// Only update columns that are not part of the conflict target.
+		$update_parts = array();
+		foreach ( $columns as $column ) {
+			if ( in_array( $column, $conflict_sql, true ) ) {
+				continue;
+			}
+			$update_parts[] = "{$column} = EXCLUDED.{$column}";
+		}
+
+		if ( empty( $update_parts ) ) {
+			$sql = sprintf(
+				'INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s) DO NOTHING',
+				$full_table_name,
+				implode( ', ', $columns ),
+				implode( ', ', $placeholders ),
+				implode( ', ', $conflict_sql )
+			);
+		} else {
+			$sql = sprintf(
+				'INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s',
+				$full_table_name,
+				implode( ', ', $columns ),
+				implode( ', ', $placeholders ),
+				implode( ', ', $conflict_sql ),
+				implode( ', ', $update_parts )
+			);
+		}
+
+		try {
+			$stmt = $this->conn->prepare( $sql );
+			return (bool) $stmt->execute( $bindings );
+		} catch ( Exception $e ) {
 			$this->last_error = $e->getMessage();
 			return false;
 		}

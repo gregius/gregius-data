@@ -5,7 +5,7 @@
  * Search settings are GLOBAL (stored under '__global__' scope)
  * because search is a site-wide feature, not per-database-connection.
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 import {

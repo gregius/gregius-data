@@ -176,32 +176,56 @@ class Gregius_Data_Connection_Health {
 	}
 
 	/**
-	 * Perform health check (called by WP-Cron)
+	 * Perform health check (called by WP-Cron and the dashboard's manual trigger).
 	 *
+	 * @since 1.0.0
+	 * @since 1.0.1 Optional $connection_name — checks all active connections when omitted, or a single connection when provided.
+	 *
+	 * @param string|null $connection_name Optional connection name. When null, checks every active connection.
 	 * @return void
 	 */
-	public function perform_health_check() {
-		// Get the first active connection.
-		$active_connections = $this->settings->get_active_connections();
+	public function perform_health_check( $connection_name = null ) {
+		// Resolve the connection(s) to check: a specific name (manual button), or
+		// every active connection (WP-Cron / no-arg).
+		if ( empty( $connection_name ) ) {
+			$active_connections = $this->settings->get_active_connections();
 
-		if ( empty( $active_connections ) ) {
-			$this->record_failure( 'No active database connections configured' );
-			return;
+			if ( empty( $active_connections ) ) {
+				$this->record_failure( 'No active database connections configured' );
+				return;
+			}
+
+			$connection_names = array_keys( $active_connections );
+		} else {
+			$connection_names = array( $connection_name );
 		}
-
-		// Use the first active connection for health monitoring.
-		$connection_name = key( $active_connections );
 
 		// Use Connection Manager's provider-aware test connection method.
-		$connection_manager = new Gregius_Data_Connection_Manager();
-		$test_result        = $connection_manager->test_connection( $connection_name );
+		$connection_manager = $this->create_connection_manager();
 
-		if ( $test_result['success'] ) {
-			$this->record_success( $connection_name );
-		} else {
-			$error_message = isset( $test_result['message'] ) ? $test_result['message'] : 'Unknown connection error';
-			$this->record_failure( $error_message, $connection_name );
+		foreach ( $connection_names as $name ) {
+			$test_result = $connection_manager->test_connection( $name );
+
+			if ( $test_result['success'] ) {
+				$this->record_success( $name );
+			} else {
+				$error_message = isset( $test_result['message'] ) ? $test_result['message'] : 'Unknown connection error';
+				$this->record_failure( $error_message, $name );
+			}
 		}
+	}
+
+	/**
+	 * Create the connection manager used to test connections.
+	 *
+	 * Isolated so tests can substitute a mock without touching the loop logic.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return Gregius_Data_Connection_Manager
+	 */
+	protected function create_connection_manager() {
+		return new Gregius_Data_Connection_Manager();
 	}
 
 	/**

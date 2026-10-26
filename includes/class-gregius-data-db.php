@@ -309,12 +309,11 @@ if ( ! class_exists( 'Gregius_Data_DB' ) ) {
 				$stmt_meta->bindParam( ':post_id', $post_id, PDO::PARAM_INT );
 				$stmt_meta->execute();
 
-				// Delete vector embeddings (if vector functionality is enabled).
-				$sql_vector  = 'DELETE FROM vector_store WHERE post_id = :post_id';
-				$stmt_vector = $conn->prepare( $sql_vector );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt_vector->bindParam( ':post_id', $post_id, PDO::PARAM_INT );
-				$stmt_vector->execute();
+				// Note: vector embeddings, chunks, and cleaned content are removed by
+				// the wp_posts ON DELETE CASCADE foreign keys (wp_posts_clean,
+				// wp_posts_chunks, and the per-embedding tables all reference wp_posts(id)
+				// ON DELETE CASCADE). The legacy 'vector_store' table no longer exists in
+				// the 1.0.1 schema, so no explicit delete is required here.
 
 				// Delete term relationships.
 				$term_relationships_table = $this->get_table_name( 'term_relationships' );

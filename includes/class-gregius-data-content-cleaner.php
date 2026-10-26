@@ -450,7 +450,7 @@ class Gregius_Data_Content_Cleaner {
 	 * 2. ONE bulk delete for all existing chunks
 	 * 3. ONE bulk insert for all new chunks
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array  $posts           Array of post objects with ID, post_title, post_content, post_excerpt.
 	 * @param string $connection_name Connection name.
 	 * @return array Results with success/failure counts and chunk count.

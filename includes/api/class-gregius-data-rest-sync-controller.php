@@ -807,7 +807,7 @@ class Gregius_Data_REST_Sync_Controller extends WP_REST_Controller {
 			// Get global defaults from activation (empty by default - user must choose).
 			$default_post_types = get_option( 'gregius_data_sync_enabled_post_types', array() );
 			$default_statuses   = get_option( 'gregius_data_sync_enabled_statuses', array() );
-			$default_realtime   = get_option( 'gregius_data_sync_real_time_sync', false );
+			$default_realtime   = get_option( 'gregius_data_sync_real_time_sync', true );
 
 			$document_model = ( new Gregius_Data_Model_Registry() )->get_document_model( $connection_name );
 

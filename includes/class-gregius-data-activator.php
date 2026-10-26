@@ -842,6 +842,97 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 		}
 
 		/**
+		 * Flip the real-time sync default from false to true on existing installs.
+		 *
+		 * The real-time sync toggle was previously a no-op (post-save sync always ran
+		 * regardless of the stored value), and its stored default was false. Flipping
+		 * the default to true makes the setting reflect actual behavior before the
+		 * toggle is wired into the post-save path. Runs once, guarded by a site option.
+		 *
+		 * @since 1.0.1
+		 */
+		public static function migrate_realtime_sync_default() {
+			if ( get_option( 'gregius_data_real_time_sync_migrated' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_realtime_sync_default_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_realtime_sync_default_for_current_site();
+		}
+
+		/**
+		 * Flip the real-time sync default for the current site.
+		 *
+		 * @since 1.0.1
+		 */
+		private static function migrate_realtime_sync_default_for_current_site() {
+			update_option( 'gregius_data_sync_real_time_sync', true );
+			update_option( 'gregius_data_real_time_sync_migrated', true );
+		}
+
+		/**
+		 * Clear stale sync validation results cached before the 1.0.1 parity fix.
+		 *
+		 * Pre-1.0.1 releases could store a false "100% critical drift" result for
+		 * Supabase connections. Clear them on update so the cached results can never
+		 * be served stale (the next validation run repopulates them). Runs once,
+		 * guarded by a site option.
+		 *
+		 * @since 1.0.1
+		 */
+		public static function migrate_clear_stale_validation_results() {
+			if ( get_option( 'gregius_data_validation_results_cleared' ) ) {
+				return;
+			}
+
+			if ( is_multisite() ) {
+				$sites = get_sites( array( 'number' => 0 ) );
+
+				foreach ( $sites as $site ) {
+					switch_to_blog( (int) $site->blog_id );
+					self::migrate_clear_stale_validation_results_for_current_site();
+					restore_current_blog();
+				}
+
+				return;
+			}
+
+			self::migrate_clear_stale_validation_results_for_current_site();
+		}
+
+		/**
+		 * Clear stale sync validation results for the current site.
+		 *
+		 * @since 1.0.1
+		 */
+		private static function migrate_clear_stale_validation_results_for_current_site() {
+			global $wpdb;
+
+			$like = $wpdb->esc_like( 'gregius_data_validation_results_' ) . '%';
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time migration; deletes cached validation results by prefix.
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb, value prepared.
+					$like
+				)
+			);
+
+			update_option( 'gregius_data_validation_results_cleared', true );
+		}
+
+		/**
 		 * Check plugin version and run upgrades if needed
 		 * Called on admin_init hook to catch updates while plugin is active
 		 */
@@ -868,6 +959,8 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 			self::migrate_search_bestmatch_fts();
 			self::migrate_remove_typo_tolerance_settings();
 			self::migrate_remove_observability_setting();
+			self::migrate_realtime_sync_default();
+			self::migrate_clear_stale_validation_results();
 
 			// Seed factory prompts idempotently (each guarded by its own option) so
 			// a new prompt type (e.g. evaluation) lands on existing installs without
@@ -938,7 +1031,7 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 			$defaults = array(
 				'enabled_post_types' => array(),
 				'enabled_statuses'   => array(),
-				'real_time_sync'     => false,
+				'real_time_sync'     => true,
 				'sync_meta'          => true,
 				'sync_terms'         => true,
 			);

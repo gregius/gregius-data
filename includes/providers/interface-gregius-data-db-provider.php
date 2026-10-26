@@ -224,4 +224,78 @@ interface Gregius_Data_DB_Provider {
 	 * }
 	 */
 	public function create_schema( $schema_config = array() );
+
+	/**
+	 * Count records in a table.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $table Table name.
+	 * @param array  $where Optional WHERE conditions (key => value or PostgREST operator string).
+	 * @return array Result with 'success' and 'count' (or 'error') keys.
+	 */
+	public function count_records( $table, $where = array() );
+
+	/**
+	 * Select records from a table.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string      $table      Table name.
+	 * @param array       $conditions WHERE conditions as key => value pairs.
+	 * @param string|null $order      ORDER BY clause.
+	 * @param string      $select     Columns to select (default: '*').
+	 * @param int|null    $limit      LIMIT clause.
+	 * @return array|false Array of rows or false on error.
+	 */
+	public function select( $table, $conditions = array(), $order = null, $select = '*', $limit = null );
+
+	/**
+	 * Insert a record into a table.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $table Table name.
+	 * @param array  $data  Row data as key => value pairs.
+	 * @return bool True on success, false on error.
+	 */
+	public function insert( $table, $data );
+
+	/**
+	 * Delete records from a table.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $table      Table name.
+	 * @param array  $conditions WHERE conditions as key => value pairs.
+	 * @return bool True on success, false on error.
+	 */
+	public function delete( $table, $conditions = array() );
+
+	/**
+	 * Bulk insert multiple records into a table.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $table Table name.
+	 * @param array  $rows  Array of data arrays to insert.
+	 * @return bool|int Number of rows inserted on success, false on error.
+	 */
+	public function bulk_insert( $table, $rows );
+
+	/**
+	 * Upsert a record into a table (insert or update on conflict).
+	 *
+	 * PostgREST implementations MUST use 'Prefer: resolution=merge-duplicates' and
+	 * own the HTTP 409 fallback (409 = ambiguous multiple matching rows). They MUST
+	 * return true only once the row is actually written, or false on failure.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $table            Table name.
+	 * @param array  $data             Row data as key => value pairs.
+	 * @param array  $conflict_columns Columns forming the unique conflict target (e.g. connection_name, entity_type, entity_id).
+	 * @return bool True on success, false on error.
+	 */
+	public function upsert( $table, $data, $conflict_columns = array() );
 }

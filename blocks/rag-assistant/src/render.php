@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Render-template locals scoped to WP_Block::render(); not globals.
 // Get attributes with defaults.
 $block_id             = isset( $attributes['blockId'] ) ? $attributes['blockId'] : 'gregius-rag-assistant-' . wp_unique_id();
 $connection_id        = isset( $attributes['connectionId'] ) ? $attributes['connectionId'] : '';
@@ -44,6 +45,7 @@ if ( ! is_user_logged_in() && ! $guest_allowed ) {
 
 $guest_post_id      = get_queried_object_id();
 $guest_access_nonce = $guest_allowed ? wp_create_nonce( 'gregius_data_rag_guest_access:' . $block_id . ':' . $guest_post_id ) : '';
+// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 ?>
 
 <div

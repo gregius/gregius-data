@@ -709,17 +709,17 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 		}
 
 		return array(
-			'id'           => $post_id,
-			'post_title'   => isset( $post_data['post_title'] ) ? $post_data['post_title'] : '',
-			'post_content' => isset( $post_data['post_content'] ) ? $post_data['post_content'] : '',
-			'post_excerpt' => isset( $post_data['post_excerpt'] ) ? $post_data['post_excerpt'] : '',
-			'post_type'    => isset( $post_data['post_type'] ) ? $post_data['post_type'] : 'post',
-			'post_status'  => isset( $post_data['post_status'] ) ? $post_data['post_status'] : 'publish',
-			'post_author'  => isset( $post_data['post_author'] ) ? $post_data['post_author'] : 0,
-			'post_date'    => isset( $post_data['post_date'] ) ? $this->sanitize_date( $post_data['post_date'] ) : gmdate( 'Y-m-d H:i:s' ),
-			'meta'         => isset( $post_data['meta'] ) ? wp_json_encode( $post_data['meta'] ) : '{}',
-			'taxonomies'   => isset( $post_data['taxonomies'] ) ? wp_json_encode( $post_data['taxonomies'] ) : '{}',
-			'synced_at'    => gmdate( 'c' ),
+			'id'             => $post_id,
+			'post_title'     => isset( $post_data['post_title'] ) ? $post_data['post_title'] : '',
+			'post_content'   => isset( $post_data['post_content'] ) ? $post_data['post_content'] : '',
+			'post_excerpt'   => isset( $post_data['post_excerpt'] ) ? $post_data['post_excerpt'] : '',
+			'post_type'      => isset( $post_data['post_type'] ) ? $post_data['post_type'] : 'post',
+			'post_status'    => isset( $post_data['post_status'] ) ? $post_data['post_status'] : 'publish',
+			'post_author'    => isset( $post_data['post_author'] ) ? $post_data['post_author'] : 0,
+			'post_date'      => isset( $post_data['post_date'] ) ? $this->sanitize_date( $post_data['post_date'] ) : gmdate( 'Y-m-d H:i:s' ),
+			'post_parent'    => isset( $post_data['post_parent'] ) ? (int) $post_data['post_parent'] : 0,
+			'post_mime_type' => isset( $post_data['post_mime_type'] ) ? $post_data['post_mime_type'] : '',
+			'synced_at'      => gmdate( 'c' ),
 		);
 	}
 
@@ -1242,13 +1242,15 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 	public function upsert_post( $post, $connection_name = null ) {
 		// Convert post object to array for sync_post.
 		$post_data = array(
-			'post_title'   => $post->post_title,
-			'post_content' => $post->post_content,
-			'post_excerpt' => $post->post_excerpt,
-			'post_type'    => $post->post_type,
-			'post_status'  => $post->post_status,
-			'post_author'  => $post->post_author,
-			'post_date'    => $post->post_date,
+			'post_title'     => $post->post_title,
+			'post_content'   => $post->post_content,
+			'post_excerpt'   => $post->post_excerpt,
+			'post_type'      => $post->post_type,
+			'post_status'    => $post->post_status,
+			'post_author'    => $post->post_author,
+			'post_date'      => $post->post_date,
+			'post_parent'    => isset( $post->post_parent ) ? (int) $post->post_parent : 0,
+			'post_mime_type' => isset( $post->post_mime_type ) ? $post->post_mime_type : '',
 		);
 
 		$result = $this->sync_post( $post->ID, $post_data );
@@ -1439,7 +1441,7 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 	 *
 	 * Generic select method for querying data from Supabase tables.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string      $table      Table name.
 	 * @param array       $conditions WHERE conditions as key => value pairs. Values are matched with 'eq.' operator.
 	 * @param string|null $order      ORDER BY clause (e.g., 'chunk_index.asc').
@@ -1512,7 +1514,7 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 	 *
 	 * Generic delete method for removing data from Supabase tables.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table      Table name.
 	 * @param array  $conditions WHERE conditions as key => value pairs. Values are matched with 'eq.' operator.
 	 * @return bool True on success, false on error.
@@ -1564,7 +1566,7 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 	 *
 	 * Generic insert method for adding data to Supabase tables.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table Table name.
 	 * @param array  $data  Data to insert as key => value pairs.
 	 * @return bool True on success, false on error.
@@ -1614,7 +1616,7 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 	 * PostgREST supports bulk inserts by sending an array of objects.
 	 * This is MUCH faster than individual inserts (single HTTP request vs N requests).
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table Table name.
 	 * @param array  $rows  Array of data arrays to insert.
 	 * @return bool|int Number of rows inserted on success, false on error.
@@ -1656,6 +1658,123 @@ class Gregius_Data_PostgREST_Provider implements Gregius_Data_DB_Provider {
 		}
 
 		return count( $rows );
+	}
+
+	/**
+	 * Upsert a record into a table (insert or update on conflict).
+	 *
+	 * Uses PostgREST 'Prefer: resolution=merge-duplicates'. On an HTTP 409
+	 * (ambiguous multiple matching rows) it falls back to a targeted
+	 * check-then-write keyed on the conflict columns. Returns true once the row
+	 * is actually written.
+	 *
+	 * @since 1.0.1
+	 * @param string $table            Table name.
+	 * @param array  $data             Row data as key => value pairs.
+	 * @param array  $conflict_columns Columns forming the unique conflict target.
+	 * @return bool True on success, false on error.
+	 */
+	public function upsert( $table, $data, $conflict_columns = array() ) {
+		if ( empty( $this->config['project_url'] ) || empty( $data ) || ! is_array( $data ) ) {
+			return false;
+		}
+
+		$url = trailingslashit( $this->config['project_url'] ) . 'rest/v1/' . $table;
+
+		$response = wp_safe_remote_post(
+			$url,
+			array(
+				'headers' => array_merge(
+					$this->get_headers( true ),
+					array(
+						'Prefer' => 'resolution=merge-duplicates,return=minimal',
+					)
+				),
+				'body'    => wp_json_encode( $data ),
+				'timeout' => 30,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$this->last_error = $response->get_error_message();
+			return false;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+
+		if ( 200 === $code || 201 === $code ) {
+			return true;
+		}
+
+		// 409 under merge-duplicates means ambiguous multiple matching rows.
+		// Fall back to check-then-write using the conflict columns.
+		if ( 409 === $code && ! empty( $conflict_columns ) ) {
+			return $this->upsert_conflict_fallback( $table, $data, $conflict_columns );
+		}
+
+		$this->last_error = 'HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response );
+		return false;
+	}
+
+	/**
+	 * Check-then-write fallback for upsert() when merge-duplicates returns 409.
+	 *
+	 * @since 1.0.1
+	 * @param string $table            Table name.
+	 * @param array  $data             Row data as key => value pairs.
+	 * @param array  $conflict_columns Columns forming the unique conflict target.
+	 * @return bool True on success, false on error.
+	 */
+	protected function upsert_conflict_fallback( $table, $data, $conflict_columns ) {
+		$conditions = array();
+		foreach ( $conflict_columns as $column ) {
+			if ( array_key_exists( $column, $data ) ) {
+				$conditions[ $column ] = $data[ $column ];
+			}
+		}
+
+		if ( empty( $conditions ) ) {
+			$this->last_error = 'conflict';
+			return false;
+		}
+
+		$existing = $this->select( $table, $conditions, null, '*', 1 );
+
+		if ( is_array( $existing ) && ! empty( $existing ) ) {
+			// Update the existing row(s) via PATCH keyed on the conflict columns.
+			$params = array();
+			foreach ( $conditions as $key => $value ) {
+				$params[ $key ] = 'eq.' . $value;
+			}
+
+			$url = add_query_arg( $params, trailingslashit( $this->config['project_url'] ) . 'rest/v1/' . $table );
+
+			$response = wp_remote_request(
+				$url,
+				array(
+					'method'  => 'PATCH',
+					'headers' => array_merge(
+						$this->get_headers( true ),
+						array(
+							'Prefer' => 'return=minimal',
+						)
+					),
+					'body'    => wp_json_encode( $data ),
+					'timeout' => 30,
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				$this->last_error = $response->get_error_message();
+				return false;
+			}
+
+			$code = wp_remote_retrieve_response_code( $response );
+			return in_array( $code, array( 200, 204 ), true );
+		}
+
+		// No existing row: plain insert.
+		return $this->insert( $table, $data );
 	}
 
 	/**
