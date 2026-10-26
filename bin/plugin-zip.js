@@ -49,6 +49,7 @@ const EXCLUDE_PATTERNS = [
 	'blocks/rag-assistant/package.json',
 	'blocks/rag-assistant/package-lock.json',
 	'blocks/rag-assistant/.gitignore',
+	'blocks/rag-assistant/readme.txt',
 
 	// Hidden files in assets
 	'assets/.gitignore',

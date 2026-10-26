@@ -3,7 +3,7 @@ Contributors: hectorjarquin, gregiusteam
 Tags: ai, rag, semantic search, postgresql, embeddings
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -170,6 +170,17 @@ Visit the contributor profiles on WordPress.org:
 
 == Changelog ==
 
+= 1.0.1 =
+* Supabase (PostgREST) sync parity: metadata tracking, validation counts, and drift alerts operate through the provider layer
+* Simultaneous synchronization to every active connection (direct PostgreSQL and Supabase together)
+* Attachments sync their mime type and parent column on both backends; detached or deleted attachments are removed from every active connection
+* Postmeta drift counts mirror the WordPress-side meta key filtering on both backends
+* Dashboard validation reads a pre-aggregated read model for fast drift status on load
+* Real-time sync is enabled by default and governs post-save sync
+* Dedicated schema versioning with a Supabase schema-update flow
+* Supabase count functions for postmeta and cleaning-needed validation
+* The schema update banner compares against a dedicated schema version
+
 = 1.0.0 =
 * Initial release
 * Selective WordPress to PostgreSQL synchronization for chosen post types
@@ -190,6 +201,9 @@ https://github.com/gregius/gregius-data
 This plugin uses composer for PHP dependency management and @wordpress/scripts for asset compilation. Source JavaScript lives in `assets/src/` and compiles to `assets/build/`. All PHP source is human-readable.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+Supabase connections should re-run the schema SQL (or use the new "Update Schema" button) to install the two count functions and stamp schema version 1.0.1. Real-time sync is now enabled by default.
 
 = 1.0.0 =
 Initial public release. After activation, configure your PostgreSQL connection, run schema setup, and choose synchronized post types before enabling retrieval and generation workflows.

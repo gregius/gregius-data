@@ -64,6 +64,8 @@ A sync operation flows through a predictable pipeline regardless of whether it w
 
 You can control which post types and statuses are synced per connection through the Gregius Data settings.
 
+**PDF & vision extraction.** PDF attachments are processed through the document extractor (`includes/ai/class-gregius-data-document-extractor.php`), routed to Gemini, OpenAI, or Anthropic vision models (DeepSeek is not supported). Enable the `attachment` post type and activate a vision-capable model to include PDF text in the search and vector pipelines.
+
 [SRS: SYNC-FR-08]
 
 ---

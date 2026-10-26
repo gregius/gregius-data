@@ -550,7 +550,7 @@ Plugin Code:
 | Constraint | Impact | Rationale |
 |---|---|---|
 | PHP 8.2+ required | Minimum PHP version | Enables typed properties and union return types (e.g. `array\|WP_Error`) used across the provider interfaces |
-| WordPress 6.9+ required | Core version | REST API stability; async/lazy loading support |
+| WordPress 6.9+ required | Core version | Abilities API integration (WordPress 6.9+) |
 | PDO with `pdo_pgsql` for PostgreSQL Direct | Optional dependency | VPS/cloud only; no extension = use PostgREST |
 | `wp_remote_post()` for HTTP providers | HTTP API requirement | WordPress HTTP client; handles proxies, SSL, authentication |
 | PostgreSQL 12+ (minimum) | Database version | pgvector extension; JSON operators; window functions |

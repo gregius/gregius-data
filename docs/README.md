@@ -2,7 +2,7 @@
 
 ## Documentation Structure
 
-This documentation is organized for **active development**. User-facing documentation will be written before public release.
+This documentation is organized for **active development** and includes both internal reference material and user-facing public documentation.
 ## 📁 Current Documentation
 
 ### Architecture & Reference (Root)
