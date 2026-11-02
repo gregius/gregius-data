@@ -3052,7 +3052,8 @@ class Gregius_Data_RAG_Service {
 		if ( '' === $text ) {
 			$post = get_post( $entity_id );
 			if ( $post instanceof WP_Post ) {
-				$text = trim( $post->post_title . "\n\n" . wp_strip_all_tags( (string) $post->post_content ) );
+				$processor = new Gregius_Data_Content_Processor();
+				$text      = trim( $processor->clean_title( (string) $post->post_title ) . "\n\n" . $processor->clean_content( (string) $post->post_content ) );
 			}
 		}
 
@@ -6780,6 +6781,8 @@ class Gregius_Data_RAG_Service {
 		// Step 2.5: Passage retrieval — expand post candidates to chunk-level context.
 		// Fetches actual chunk text from wp_posts_chunks and selects the best passages
 		// for context assembly. Falls back to full post content when unavailable.
+		$this->emit_progress( $progress_callback, 'retrieving', __( 'Retrieving relevant content...', 'gregius-data' ) );
+
 		$connection_config = $this->get_connection_config();
 		$chunks_by_post    = array();
 

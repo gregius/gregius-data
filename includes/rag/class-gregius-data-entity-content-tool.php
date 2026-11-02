@@ -178,6 +178,11 @@ class Gregius_Data_Entity_Content_Tool {
 		$result['metadata']['llm_model'] = $llm_response['model'] ?? $llm_model_id;
 		$result['metadata']['usage']     = $llm_response['usage'] ?? array();
 
+		$progress_callback = $options['progress_callback'] ?? null;
+		if ( is_callable( $progress_callback ) ) {
+			$progress_callback( 'suggestions', __( 'Preparing follow-up questions...', 'gregius-data' ) );
+		}
+
 		$suggestions = $rag_service->generate_suggestions(
 			$content_for_llm,
 			$title,

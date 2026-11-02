@@ -19,6 +19,19 @@ class Test_Gregius_Data_Plugin_Activation extends WP_UnitTestCase {
 		$this->assertIsString( GREGIUS_DATA_VERSION );
 	}
 
+	public function test_version_constant_matches_plugin_header() {
+		$header = get_file_data(
+			$this->plugin_file,
+			array( 'Version' => 'Version' )
+		);
+
+		$this->assertSame(
+			$header['Version'],
+			GREGIUS_DATA_VERSION,
+			'GREGIUS_DATA_VERSION must match the plugin header Version.'
+		);
+	}
+
 	public function test_activation_sets_version_option() {
 		Gregius_Data_Activator::activate();
 		$version = get_option( 'gregius_data_db_version' );

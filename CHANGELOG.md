@@ -5,6 +5,14 @@ All notable changes to Gregius Data will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-11-01
+
+### Added
+- RAG progress feedback: a "Preparing follow-up questions..." stage when generating follow-up questions, and a "Retrieving relevant content..." stage during passage retrieval.
+
+### Fixed
+- Entity-grounded answers on PostgREST (Supabase) connections now apply the same content cleaning (tag and shortcode stripping, whitespace collapse, 10-character minimum, cleaned title) as direct PostgreSQL connections.
+
 ## [1.0.1] - 2026-10-26
 
 ### Added

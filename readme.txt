@@ -3,7 +3,7 @@ Contributors: hectorjarquin, gregiusteam
 Tags: ai, rag, semantic search, postgresql, embeddings
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -170,6 +170,11 @@ Visit the contributor profiles on WordPress.org:
 
 == Changelog ==
 
+= 1.0.2 =
+* RAG progress feedback: emit a "Preparing follow-up questions..." stage when generating follow-up questions, and a "Retrieving relevant content..." stage during passage retrieval
+* Entity-grounded answers on PostgREST connections now use the same cleaned content (shortcodes stripped, 10-character minimum) as direct PostgreSQL connections
+* Note: REST (non-streaming) answers still return a single response and therefore do not emit intermediate progress stages
+
 = 1.0.1 =
 * Supabase (PostgREST) sync parity: metadata tracking, validation counts, and drift alerts operate through the provider layer
 * Simultaneous synchronization to every active connection (direct PostgreSQL and Supabase together)
@@ -201,6 +206,9 @@ https://github.com/gregius/gregius-data
 This plugin uses composer for PHP dependency management and @wordpress/scripts for asset compilation. Source JavaScript lives in `assets/src/` and compiles to `assets/build/`. All PHP source is human-readable.
 
 == Upgrade Notice ==
+
+= 1.0.2 =
+No action required — no schema or database changes. This release only adds progress feedback and aligns entity-content cleaning across connection types.
 
 = 1.0.1 =
 Supabase connections should re-run the schema SQL (or use the new "Update Schema" button) to install the two count functions and stamp schema version 1.0.1. Real-time sync is now enabled by default.
