@@ -102,6 +102,17 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - **Issues**: [GitHub Issues](https://github.com/gregius/gregius-data/issues)
 - **Documentation**: Full documentation in `/docs/` folder
 
+## Development
+
+```bash
+composer install   # install dev dependencies
+composer test      # unit + integration tests (no database needed)
+composer test:wp   # WordPress integration tests (needs MySQL)
+composer lint      # PHP_CodeSniffer (WordPress Coding Standards)
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution workflow.
+
 ## License
 
 GPL v2 or later. See [the GNU GPL v2 license](https://www.gnu.org/licenses/gpl-2.0.html) for details.

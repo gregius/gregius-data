@@ -32,9 +32,13 @@ $has_config   = defined( 'WP_TESTS_CONFIG_FILE_PATH' )
 	&& file_exists( WP_TESTS_CONFIG_FILE_PATH );
 
 if ( ! $has_config && $run_wp_tests ) {
-	$config_paths = array(
-		'/var/www/html/wp-tests-config.php',
-		__DIR__ . '/wp-tests-config.php',
+	$wp_tests_dir = getenv( 'WP_TESTS_DIR' );
+	$config_paths = array_filter(
+		array(
+			$wp_tests_dir ? $wp_tests_dir . '/wp-tests-config.php' : '',
+			'/var/www/html/wp-tests-config.php',
+			__DIR__ . '/wp-tests-config.php',
+		)
 	);
 
 	foreach ( $config_paths as $path ) {
@@ -48,9 +52,13 @@ if ( ! $has_config && $run_wp_tests ) {
 
 if ( $has_config ) {
 	$plugin_dir         = dirname( __DIR__ );
-	$wp_test_base_paths = array(
-		$plugin_dir . '/tests/wp-phpunit',
-		dirname( __DIR__ ) . '/tests/wp-phpunit',
+	$wp_tests_dir       = getenv( 'WP_TESTS_DIR' );
+	$wp_test_base_paths = array_filter(
+		array(
+			$wp_tests_dir,
+			$plugin_dir . '/tests/wp-phpunit',
+			dirname( __DIR__ ) . '/tests/wp-phpunit',
+		)
 	);
 
 	$wp_test_base = null;
