@@ -121,7 +121,7 @@ class Test_Gregius_Data_Chunker extends PHPUnit\Framework\TestCase {
 		$chunker = $this->create_chunker();
 
 		Functions\when( 'apply_filters' )->alias(
-			function ( $hook, $value ) {
+			function ( $hook, $value ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- apply_filters stub signature.
 				return '';
 			}
 		);
@@ -137,7 +137,7 @@ class Test_Gregius_Data_Chunker extends PHPUnit\Framework\TestCase {
 		$chunker = $this->create_chunker();
 
 		Functions\when( 'apply_filters' )->alias(
-			function ( $hook, $value ) {
+			function ( $hook, $value ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- apply_filters stub signature.
 				return 'custom_strategy';
 			}
 		);

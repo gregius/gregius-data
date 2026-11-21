@@ -165,6 +165,7 @@ class Gregius_Data_CLI_Evaluation {
 	 * @param array $assoc_args Associative arguments.
 	 * @return void
 	 */
+	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WP-CLI command signature requires $args and $assoc_args.
 	public function adapters( $args, $assoc_args ) {
 		$items = array();
 

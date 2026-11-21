@@ -403,6 +403,7 @@ class Gregius_Data_REST_Prompts_Controller extends WP_REST_Controller {
 			'selected'    => '1' === get_post_meta( $post->ID, '_gregius_prompt_selected', true ),
 			'is_factory'  => '1' === get_post_meta( $post->ID, '_gregius_prompt_is_factory', true ),
 			'hash'        => '' !== (string) get_post_meta( $post->ID, '_gregius_prompt_hash', true ) ? (string) get_post_meta( $post->ID, '_gregius_prompt_hash', true ) : $this->hash_content( $post->post_content ),
+			// phpcs:ignore PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved -- mysql_to_rfc3339() is a WordPress core function, not the deprecated mysql_ extension.
 			'modified'    => mysql_to_rfc3339( '' !== $post->post_modified_gmt ? $post->post_modified_gmt : $post->post_modified ),
 		);
 	}

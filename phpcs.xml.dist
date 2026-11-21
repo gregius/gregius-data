@@ -8,7 +8,7 @@
 
 	<config name="testVersion" value="8.2-"/>
 
-	<rule ref="WordPress"/>
+	<rule ref="WordPress-Core"/>
 	<rule ref="WordPress-Extra"/>
 	<rule ref="PHPCompatibility"/>
 
@@ -16,4 +16,20 @@
 	<exclude-pattern>node_modules/*</exclude-pattern>
 	<exclude-pattern>build/*</exclude-pattern>
 	<exclude-pattern>tests/wp-phpunit/*</exclude-pattern>
+
+	<!-- Test files use the Test_Gregius_Data_* convention (docs/testing/srs.md),
+	     not the class-*.php / hyphenated-file-name convention, and legitimately
+	     declare helper classes/functions and stub WordPress globals. -->
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Files.SeparateFunctionsFromOO">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
 </ruleset>

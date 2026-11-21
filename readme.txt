@@ -3,7 +3,7 @@ Contributors: hectorjarquin, gregiusteam
 Tags: ai, rag, semantic search, postgresql, embeddings
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -170,6 +170,11 @@ Visit the contributor profiles on WordPress.org:
 
 == Changelog ==
 
+= 1.0.3 =
+* Coding standards compliance and internal cleanup — no user-facing behavior change
+* Removed an unused internal database method (`Gregius_Data_DB::delete_term_relationships()`) that had no callers
+* Removed unused commented-out provider aliases from the provider factory
+
 = 1.0.2 =
 * RAG progress feedback: emit a "Preparing follow-up questions..." stage when generating follow-up questions, and a "Retrieving relevant content..." stage during passage retrieval
 * Entity-grounded answers on PostgREST connections now use the same cleaned content (shortcodes stripped, 10-character minimum) as direct PostgreSQL connections
@@ -206,6 +211,9 @@ https://github.com/gregius/gregius-data
 This plugin uses composer for PHP dependency management and @wordpress/scripts for asset compilation. Source JavaScript lives in `assets/src/` and compiles to `assets/build/`. All PHP source is human-readable.
 
 == Upgrade Notice ==
+
+= 1.0.3 =
+No action required — no schema or database changes. This is a maintenance release.
 
 = 1.0.2 =
 No action required — no schema or database changes. This release only adds progress feedback and aligns entity-content cleaning across connection types.

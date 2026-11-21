@@ -531,7 +531,7 @@ Be strict: prefer "no" when the context does not clearly support a grounded answ
 						$search_schema = new Gregius_Data_Search_Schema();
 						$search_schema->create_search_function( $conn, $connection_name );
 					}
-				} catch ( Exception $e ) {
+				} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- PostgreSQL cleanup is best-effort; schema can be re-run manually.
 					// PostgreSQL cleanup is best-effort; the schema can be re-run manually.
 				}
 			}

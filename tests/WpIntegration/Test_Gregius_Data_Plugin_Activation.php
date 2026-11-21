@@ -137,9 +137,9 @@ class Test_Gregius_Data_Plugin_Activation extends WP_UnitTestCase {
 
 		$snapshot = array();
 		foreach ( array( 'gregius_data_settings', 'gregius_data_sync_metadata', 'gregius_data_logs' ) as $suffix ) {
-			$table   = $wpdb->prefix . $suffix;
-			$create  = $wpdb->get_var( "SHOW CREATE TABLE {$table}", 1 );
-			$create  = preg_replace( '/AUTO_INCREMENT=\d+\s*/', '', (string) $create );
+			$table               = $wpdb->prefix . $suffix;
+			$create              = $wpdb->get_var( "SHOW CREATE TABLE {$table}", 1 ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name cannot be bound as a placeholder.
+			$create              = preg_replace( '/AUTO_INCREMENT=\d+\s*/', '', (string) $create );
 			$snapshot[ $suffix ] = $create;
 		}
 

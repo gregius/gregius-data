@@ -21,7 +21,7 @@ class Gregius_Data_Fake_Discovery_Provider {
 	 * @param string $api_key API key.
 	 * @return array|WP_Error
 	 */
-	public function list_remote_models( string $api_key ): array|WP_Error {
+	public function list_remote_models( string $api_key ): array|WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Provider interface signature requires $api_key.
 		if ( null !== $this->error ) {
 			return $this->error;
 		}

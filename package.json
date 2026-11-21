@@ -1,6 +1,6 @@
 {
 	"name": "gregius-data",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Vector database and AI-powered search for WordPress with PostgreSQL backend",
 	"author": "Hector Jarquin, Gregius",
 	"license": "GPL-2.0-or-later",

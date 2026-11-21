@@ -5,6 +5,15 @@ All notable changes to Gregius Data will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-11-21
+
+### Changed
+- Coding standards compliance (WordPress-Core + WordPress-Extra + PHPCompatibility) across the codebase. No user-facing behavior change.
+
+### Removed
+- `Gregius_Data_DB::delete_term_relationships()` — unused internal method with no callers.
+- Commented-out provider aliases from `Gregius_Data_Provider_Factory`.
+
 ## [1.0.2] - 2026-11-01
 
 ### Added

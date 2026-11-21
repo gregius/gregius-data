@@ -22,7 +22,7 @@ class Test_Gregius_Data_Manifest_Validator extends PHPUnit\Framework\TestCase {
 				if ( ! is_string( $str ) ) {
 					return $str;
 				}
-				return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) );
+				return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Emulates WP sanitize_text_field(), which uses strip_tags() internally.
 			}
 		);
 		Monkey\Functions\when( 'absint' )->alias(
@@ -46,7 +46,10 @@ class Test_Gregius_Data_Manifest_Validator extends PHPUnit\Framework\TestCase {
 				'type'        => 'post',
 				'taxonomies'  => array(
 					'Category Name' => array(
-						array( 'term_id' => 1, 'term_slug' => 'foo' ),
+						array(
+							'term_id'   => 1,
+							'term_slug' => 'foo',
+						),
 					),
 				),
 				'meta'        => array( 'Custom Meta' => 'value' ),

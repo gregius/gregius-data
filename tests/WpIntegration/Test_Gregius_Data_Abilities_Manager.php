@@ -26,20 +26,13 @@ class Test_Gregius_Data_Abilities_Manager extends WP_UnitTestCase {
 	}
 
 	public function test_abilities_registered_on_api_init() {
-		$registered_before = function_exists( 'wp_list_abilities' )
-			? wp_list_abilities()
-			: array();
-
-		$this->manager->register_abilities();
-		$registered_after = function_exists( 'wp_list_abilities' )
-			? wp_list_abilities()
-			: array();
-
-		$this->assertIsArray( $registered_after );
+		// The plugin registers abilities on wp_abilities_api_init during bootstrap.
+		$this->assertTrue( function_exists( 'wp_has_ability' ) );
+		$this->assertTrue( wp_has_ability( 'gregius-data/answer' ) );
 	}
 
 	public function test_categories_registered() {
-		$this->manager->register_categories();
-		$this->assertTrue( true );
+		$this->assertTrue( function_exists( 'wp_has_ability_category' ) );
+		$this->assertTrue( wp_has_ability_category( 'ai' ) );
 	}
 }

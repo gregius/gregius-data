@@ -6,7 +6,7 @@
  * via WordPress options.
  */
 
-class Test_Gregius_Data_Connection_Health extends WP_UnitTestCase {
+class Test_Gregius_Data_Connection_Health_Wp extends WP_UnitTestCase {
 
 	protected $health;
 

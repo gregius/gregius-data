@@ -40,8 +40,6 @@ class Gregius_Data_Provider_Factory {
 		// Legacy aliases for backward compatibility.
 		'pdo'        => 'Gregius_Data_PostgreSQL_Provider',
 		'supabase'   => 'Gregius_Data_PostgREST_Provider',
-		// 'neon'     => 'Gregius_Data_PostgREST_Provider', // Future: Neon also uses PostgREST.
-		// 'mysql'    => 'Gregius_Data_MySQL_Provider', // Future: MySQL 9.0+ support.
 	);
 
 	/**

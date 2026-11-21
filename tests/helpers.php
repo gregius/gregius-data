@@ -74,7 +74,7 @@ function gregius_data_test_stub_common_functions() {
 	Brain\Monkey\Functions\when( 'sanitize_key' )->alias( 'strval' );
 	Brain\Monkey\Functions\when( 'wp_date' )->alias(
 		function ( $format ) {
-			return date( $format );
+			return gmdate( $format );
 		}
 	);
 	Brain\Monkey\Functions\when( 'plugin_dir_path' )->alias(
@@ -84,6 +84,7 @@ function gregius_data_test_stub_common_functions() {
 	);
 	Brain\Monkey\Functions\when( 'maybe_unserialize' )->alias(
 		function ( $value ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize -- Emulates WP maybe_unserialize(), which uses @unserialize().
 			$unserialized = @unserialize( $value );
 			if ( false !== $unserialized ) {
 				return $unserialized;

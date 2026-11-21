@@ -29,6 +29,7 @@ class Gregius_Data_Cron_Manager {
 	 * @since 1.0.0
 	 */
 	public static function register_schedules() {
+		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- Every-minute retry-queue processing is intentional.
 		add_filter( 'cron_schedules', array( __CLASS__, 'add_custom_schedules' ) );
 	}
 

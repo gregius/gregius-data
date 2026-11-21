@@ -33,7 +33,7 @@ class Test_Gregius_Data_Activator extends PHPUnit\Framework\TestCase {
 
 	public function test_check_version_runs_upgrade_when_older_installed() {
 		Functions\when( 'get_option' )->alias(
-			function ( $name, $default = false ) {
+			function ( $name ) {
 				if ( 'gregius_data_db_version' === $name ) {
 					return '0.0.0';
 				}
@@ -58,7 +58,7 @@ class Test_Gregius_Data_Activator extends PHPUnit\Framework\TestCase {
 
 	public function test_check_version_skips_upgrade_when_same_version() {
 		Functions\when( 'get_option' )->alias(
-			function ( $name, $default = false ) {
+			function ( $name ) {
 				if ( 'gregius_data_db_version' === $name ) {
 					return '1.0.0';
 				}
@@ -79,14 +79,14 @@ class Test_Gregius_Data_Activator extends PHPUnit\Framework\TestCase {
 		$called = array();
 
 		Functions\when( 'get_option' )->alias(
-			function ( $name, $default = false ) use ( &$called ) {
+			function ( $name, $default_value = false ) use ( &$called ) {
 				$called[] = $name;
-				return $default;
+				return $default_value;
 			}
 		);
 
 		Functions\when( 'update_option' )->alias(
-			function ( $name, $value ) use ( &$called ) {
+			function ( $name, $value ) use ( &$called ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- update_option stub signature.
 				$called[] = $name;
 			}
 		);
@@ -104,11 +104,11 @@ class Test_Gregius_Data_Activator extends PHPUnit\Framework\TestCase {
 
 	public function test_init_default_sync_settings_is_idempotent() {
 		Functions\when( 'get_option' )->alias(
-			function ( $name, $default = false ) {
+			function ( $name, $default_value = false ) {
 				if ( str_starts_with( $name, 'gregius_data_sync_' ) ) {
 					return 'already_set';
 				}
-				return $default;
+				return $default_value;
 			}
 		);
 

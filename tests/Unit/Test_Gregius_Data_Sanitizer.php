@@ -22,7 +22,7 @@ class Test_Gregius_Data_Sanitizer extends PHPUnit\Framework\TestCase {
 				if ( ! is_string( $str ) ) {
 					return $str;
 				}
-				return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) );
+				return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Emulates WP sanitize_text_field(), which uses strip_tags() internally.
 			}
 		);
 		Monkey\Functions\when( 'wp_kses_post' )->alias( 'strval' );
@@ -45,9 +45,18 @@ class Test_Gregius_Data_Sanitizer extends PHPUnit\Framework\TestCase {
 	}
 
 	public function test_preserves_int_keys() {
-		$input  = array( 3 => 'a', 'B' => 'c' );
+		$input  = array(
+			3   => 'a',
+			'B' => 'c',
+		);
 		$result = Gregius_Data_Sanitizer::sanitize( $input );
-		$this->assertSame( array( 3 => 'a', 'b' => 'c' ), $result );
+		$this->assertSame(
+			array(
+				3   => 'a',
+				'b' => 'c',
+			),
+			$result
+		);
 	}
 
 	public function test_strips_malicious_key() {
@@ -116,7 +125,10 @@ class Test_Gregius_Data_Sanitizer extends PHPUnit\Framework\TestCase {
 	}
 
 	public function test_drops_keys_that_sanitize_to_empty() {
-		$input  = array( '!!!' => 'x', 'ok' => 'y' );
+		$input  = array(
+			'!!!' => 'x',
+			'ok'  => 'y',
+		);
 		$result = Gregius_Data_Sanitizer::sanitize( $input );
 		$this->assertSame( array( 'ok' => 'y' ), $result );
 	}
@@ -144,15 +156,30 @@ class Test_Gregius_Data_Sanitizer extends PHPUnit\Framework\TestCase {
 
 	public function test_sanitize_messages_allowlists_roles() {
 		$messages = array(
-			array( 'role' => 'user', 'content' => 'hi' ),
-			array( 'role' => 'system', 'content' => 'evil' ),
-			array( 'role' => 'assistant', 'content' => 'yo' ),
+			array(
+				'role'    => 'user',
+				'content' => 'hi',
+			),
+			array(
+				'role'    => 'system',
+				'content' => 'evil',
+			),
+			array(
+				'role'    => 'assistant',
+				'content' => 'yo',
+			),
 		);
 		$result   = Gregius_Data_Sanitizer::sanitize_messages( $messages );
 		$this->assertSame(
 			array(
-				array( 'role' => 'user', 'content' => 'hi' ),
-				array( 'role' => 'assistant', 'content' => 'yo' ),
+				array(
+					'role'    => 'user',
+					'content' => 'hi',
+				),
+				array(
+					'role'    => 'assistant',
+					'content' => 'yo',
+				),
 			),
 			$result
 		);
@@ -160,22 +187,37 @@ class Test_Gregius_Data_Sanitizer extends PHPUnit\Framework\TestCase {
 
 	public function test_sanitize_messages_reindexes() {
 		$messages = array(
-			0 => array( 'role' => 'user', 'content' => 'a' ),
-			1 => array( 'role' => 'hacker', 'content' => 'x' ),
-			2 => array( 'role' => 'assistant', 'content' => 'b' ),
+			0 => array(
+				'role'    => 'user',
+				'content' => 'a',
+			),
+			1 => array(
+				'role'    => 'hacker',
+				'content' => 'x',
+			),
+			2 => array(
+				'role'    => 'assistant',
+				'content' => 'b',
+			),
 		);
 		$result   = Gregius_Data_Sanitizer::sanitize_messages( $messages );
 		$this->assertSame( array( 0, 1 ), array_keys( $result ) );
 	}
 
 	public function test_sanitize_metadata_filter_allowlists_operator() {
-		$filter = array( 'filter_operator' => 'OR', 'post_type' => 'page' );
+		$filter = array(
+			'filter_operator' => 'OR',
+			'post_type'       => 'page',
+		);
 		$result = Gregius_Data_Sanitizer::sanitize_metadata_filter( $filter );
 		$this->assertSame( 'OR', $result['filter_operator'] );
 	}
 
 	public function test_sanitize_metadata_filter_invalid_operator_defaults_and() {
-		$filter = array( 'filter_operator' => 'evil; DROP', 'post_type' => 'page' );
+		$filter = array(
+			'filter_operator' => 'evil; DROP',
+			'post_type'       => 'page',
+		);
 		$result = Gregius_Data_Sanitizer::sanitize_metadata_filter( $filter );
 		$this->assertSame( 'AND', $result['filter_operator'] );
 	}

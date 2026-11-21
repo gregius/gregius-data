@@ -48,7 +48,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 
 		Functions\when( 'taxonomy_exists' )->justReturn( true );
 		Functions\when( 'wp_get_object_terms' )->alias(
-			function ( $id, $taxonomy, $args = array() ) {
+			function ( $id, $taxonomy, $args = array() ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- wp_get_object_terms() stub signature.
 				return array( 'system' );
 			}
 		);
@@ -76,7 +76,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 		);
 
 		Functions\when( 'get_posts' )->alias(
-			function ( $args ) {
+			function ( $args ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- get_posts() stub signature.
 				return array( 10, 20 );
 			}
 		);
@@ -97,7 +97,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 
 		Functions\when( 'taxonomy_exists' )->justReturn( true );
 		Functions\when( 'wp_get_object_terms' )->alias(
-			function ( $id, $taxonomy, $args = array() ) {
+			function ( $id, $taxonomy, $args = array() ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- wp_get_object_terms() stub signature.
 				return array( 'system' );
 			}
 		);
@@ -152,7 +152,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 
 		Functions\when( 'taxonomy_exists' )->justReturn( true );
 		Functions\when( 'wp_get_object_terms' )->alias(
-			function ( $id, $taxonomy, $args = array() ) {
+			function ( $id, $taxonomy, $args = array() ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- wp_get_object_terms() stub signature.
 				return array( 'system' );
 			}
 		);
@@ -166,7 +166,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 
 		Functions\when( 'wp_date' )->alias(
 			function ( $format ) {
-				return date( $format );
+				return gmdate( $format );
 			}
 		);
 
@@ -174,7 +174,7 @@ class Test_Gregius_Data_Prompt_Resolver extends PHPUnit\Framework\TestCase {
 		$reflection->setAccessible( true );
 
 		$result = $reflection->invoke( $resolver, 'Today is {{date}}.' );
-		$this->assertStringContainsString( date( 'F' ), $result );
+		$this->assertStringContainsString( gmdate( 'F' ), $result );
 		$this->assertStringNotContainsString( '{{date}}', $result );
 	}
 

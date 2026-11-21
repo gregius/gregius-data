@@ -27,7 +27,7 @@ class Test_Gregius_Data_Content_Processor extends PHPUnit\Framework\TestCase {
 	public function test_clean_content_strips_html() {
 		Functions\when( 'wp_strip_all_tags' )->alias(
 			function ( $text ) {
-				return strip_tags( $text );
+				return strip_tags( $text ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Emulates wp_strip_all_tags() using the PHP builtin.
 			}
 		);
 		Functions\when( 'strip_shortcodes' )->returnArg();

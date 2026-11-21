@@ -823,33 +823,6 @@ if ( ! class_exists( 'Gregius_Data_DB' ) ) {
 		}
 
 		/**
-		 * Delete term relationships for a post and taxonomy
-		 *
-		 * @param int    $post_id  Post ID.
-		 * @param string $taxonomy Taxonomy.
-		 * @return bool Success or failure.
-		 */
-		public function delete_term_relationships( $post_id, $taxonomy ) {
-			$conn = $this->get_connection();
-			if ( ! $conn || ! is_object( $conn ) ) {
-				$this->logger->log( 'Failed to get database connection. Connection: ' . gettype( $conn ), 'error', 'connection' );
-				return false;
-			}
-
-			try {
-				$term_relationships_table = $this->get_table_name( 'term_relationships' );
-				$sql                      = "DELETE FROM $term_relationships_table WHERE object_id = :post_id";
-				$stmt                     = $conn->prepare( $sql );
-				// phpcs:ignore WordPress.DB.RestrictedClasses.mysql__PDO -- PDO is required for PostgreSQL connections, $wpdb does not support PostgreSQL
-				$stmt->bindParam( ':post_id', $post_id, PDO::PARAM_INT );
-				return $stmt->execute();
-			} catch ( PDOException $e ) {
-				$this->logger->log( 'Error deleting term relationships: ' . $e->getMessage(), 'error', 'connection' );
-				return false;
-			}
-		}
-
-		/**
 		 * Insert or update a term taxonomy in PostgreSQL
 		 *
 		 * @param int         $term_taxonomy_id Term taxonomy ID.

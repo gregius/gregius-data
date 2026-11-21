@@ -100,6 +100,7 @@ if ( $has_config ) {
 	if ( file_exists( $bootstrap_file ) ) {
 		require_once $bootstrap_file;
 	} else {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI bootstrap error, no HTML context.
 		echo "Error: wp-phpunit bootstrap not found at {$bootstrap_file}\n";
 		exit( 1 );
 	}

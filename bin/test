@@ -13,6 +13,7 @@
 #   TEST_DB_USER          (required)
 #   TEST_DB_PASSWORD      (required)
 #   TEST_DB_HOST          (default: 127.0.0.1)
+#   WP_VERSION            (default: 7.1.5 — WordPress version under test)
 #
 # The database must already exist (this runner does not create it; CI uses a
 # mysql service container, locally use your docker-compose MySQL).
@@ -31,7 +32,7 @@ if [ "$WP_FLAG" = "--wp" ]; then
 
 	echo "=== Installing WordPress test suite (first run only) ==="
 	WP_INSTALL_TESTS_SKIP_UPDATE_CHECK=true bash bin/install-wp-tests.sh \
-		"$DB_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_HOST" latest true
+		"$DB_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_HOST" "${WP_VERSION:-7.1.5}" true
 
 	echo ""
 	echo "=== Running WpIntegration tests ==="

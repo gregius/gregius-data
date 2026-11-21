@@ -474,6 +474,7 @@ class Gregius_Data_REST_Schema_Controller extends WP_REST_Controller {
 			}
 
 			// Read SQL content.
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reads a local SQL file, not a remote URL.
 			$sql_content = file_get_contents( $sql_file );
 
 			if ( false === $sql_content ) {

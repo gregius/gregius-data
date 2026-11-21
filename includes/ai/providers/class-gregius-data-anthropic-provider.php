@@ -261,6 +261,7 @@ class Gregius_Data_Anthropic_Provider implements Gregius_Data_AI_Provider_Interf
 			);
 		}
 
+		// phpcs:ignore Squiz.PHP.CommentedOutCode.Found -- JSON response shape documented in prose, not commented-out code.
 		// Validate response structure.
 		// Anthropic response: { content: [{ type: "text", text: "..." }], usage: {...} }.
 		if ( ! isset( $data['content'][0]['text'] ) || ! isset( $data['usage'] ) ) {
