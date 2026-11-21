@@ -73,4 +73,5 @@ tests/wp-phpunit/
 *-public-documentation.html
 
 # Personal development tooling
-.github/
+.github/*
+!.github/ISSUE_TEMPLATE/

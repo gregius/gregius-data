@@ -1,0 +1,28 @@
+name: Feature request
+description: Something is missing or could be improved.
+title: "[Feature]: "
+labels: ["enhancement"]
+type: feature
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this solve, and for whom? Describe the need, not the solution.
+      placeholder: "As a site editor, I want to ... so that ..."
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: (Optional) How you think it should work.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: (Optional) How we will know it is done.
+    validations:
+      required: false
