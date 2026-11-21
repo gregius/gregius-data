@@ -68,6 +68,7 @@ const EXCLUDE_PATTERNS = [
 	// Git files
 	'.gitignore',
 	'.gitattributes',
+	'CODEOWNERS',
 
 	// Build output directory (where zip is created) - ROOT LEVEL ONLY
 	'build',
@@ -99,6 +100,7 @@ const EXCLUDE_PATTERNS = [
 	'phpunit.xml',
 	'phpunit.xml.dist',
 	'phpunit-wp.xml.dist',
+	'phpcs.xml.dist',
 	'.phpunit.result.cache',
 
 	// Dev dependencies and metadata

@@ -78,6 +78,7 @@ const EXCLUDE_PATTERNS = [
 	// Git and IDE
 	'.gitignore',
 	'.gitattributes',
+	'CODEOWNERS',
 	'.idea',
 	'.vscode',
 
@@ -104,6 +105,7 @@ const EXCLUDE_PATTERNS = [
 	'phpunit.xml',
 	'phpunit.xml.dist',
 	'phpunit-wp.xml.dist',
+	'phpcs.xml.dist',
 	'.phpunit.result.cache',
 	'vendor',
 	'composer.json',
