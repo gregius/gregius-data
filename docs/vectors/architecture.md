@@ -156,7 +156,7 @@ Vector generator selects strategy by supports_model()
 Structured response and operational logging
 ```
 
-### 4.3 Connection-Model Runtime Flow
+### 4.2 Connection-Model Runtime Flow
 
 ```
 GET/POST/DELETE /connections/{connection}/vectors/models
@@ -171,7 +171,7 @@ Read/update connection-model associations
 Return sanitized model payloads and status messaging
 ```
 
-### 4.4 Batch Delete Runtime Flow
+### 4.3 Batch Delete Runtime Flow
 
 ```
 POST /gregius-data/v1/vectors/batch-delete
