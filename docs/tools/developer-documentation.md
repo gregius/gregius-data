@@ -102,13 +102,14 @@ array(
         'embedding_model' => 'text-embedding-3-small',
         'llm_model'       => 'gpt-4o-mini',
         'execution_time'  => 1245,  // milliseconds
-        'tokens_used'     => array( 'input' => 450, 'output' => 120 ),
+        'usage'           => array( 'input' => 450, 'output' => 120 ),
     ),
 )
 ```
 
 **Parameters in Tool Selection:**
-- `search_query` (string, optional) — Optimized search query (may differ from original)
+- `search_query` (string, required) — Optimized search query (may differ from original)
+- `metadata_filter` (object, optional) — JSON metadata filter applied during retrieval (JSONB containment)
 
 ---
 
@@ -150,16 +151,15 @@ array(
     'answer'   => 'We discussed password reset procedures and security best practices...',
     'sources'  => array(),  // No external sources; based on conversation
     'metadata' => array(
-        'turns_summarized' => 8,
         'llm_model'        => 'gpt-4o-mini',
         'execution_time'   => 850,
-        'tokens_used'      => array( 'input' => 650, 'output' => 95 ),
+        'usage'            => array( 'input' => 650, 'output' => 95 ),
     ),
 )
 ```
 
 **Parameters in Tool Selection:**
-- (none — uses `messages` from options)
+- `reason` (string, optional) — Brief reason for selecting this tool
 
 ---
 
@@ -203,10 +203,11 @@ array(
     'answer'   => 'Hello! I\'m here to help answer questions about...',
     'sources'  => array(),
     'metadata' => array(
-        'tool_type'      => 'direct_response',
+        'tool'           => 'respond_directly',
+        'tool_selected'  => 'respond_directly',
         'llm_model'      => 'gpt-4o-mini',
         'execution_time' => 280,
-        'tokens_used'    => array( 'input' => 50, 'output' => 45 ),
+        'usage'          => array( 'input' => 50, 'output' => 45 ),
     ),
 )
 ```
@@ -245,7 +246,7 @@ array(
  * @param string $clarification_type   Type: 'simpler', 'detailed', 'example', 'rephrase'.
  * @return array {
  *     'answer'   => string,           // Reformatted previous response
- *     'sources'  => array,            // Same sources as original
+ *     'sources'  => array,            // Always empty (no retrieval)
  *     'metadata' => array,
  * }
  */
@@ -255,15 +256,12 @@ array(
 ```php
 array(
     'answer'   => 'In simpler terms: you change your password by...',
-    'sources'  => array(
-        // Same as original response
-    ),
+    'sources'  => array(),
     'metadata' => array(
-        'clarification_type' => 'simpler',
-        'based_on_turn'      => 3,      // Conversation turn number
+        'type'               => 'simpler',
         'llm_model'          => 'gpt-4o-mini',
         'execution_time'     => 620,
-        'tokens_used'        => array( 'input' => 400, 'output' => 80 ),
+        'usage'              => array( 'input' => 400, 'output' => 80 ),
     ),
 )
 ```
@@ -286,7 +284,7 @@ array(
 ```json
 {
   "tool": "compare_content",
-  "items": ["password reset", "two-factor authentication"],
+  "entities": ["password reset", "two-factor authentication"],
   "reason": "user asking for comparison"
 }
 ```
@@ -299,7 +297,7 @@ array(
  * @param string $query        Comparison query.
  * @param string $llm_model_id LLM model to use.
  * @param array  $options      RAG options.
- * @param array  $tool_selection Tool selection result (includes items).
+ * @param array  $tool_selection Tool selection result (includes entities).
  * @return array {
  *     'answer'   => string,           // Comparison (table or narrative)
  *     'sources'  => array,            // Sources for both items
@@ -317,17 +315,19 @@ array(
         array( 'title' => 'Two-Factor Authentication', ... ),
     ),
     'metadata' => array(
-        'items_compared'  => 2,
+        'entities'        => array( 'password reset', 'two-factor authentication' ),
         'embedding_model' => 'text-embedding-3-small',
         'llm_model'       => 'gpt-4o-mini',
         'execution_time'  => 1890,
-        'tokens_used'     => array( 'input' => 520, 'output' => 180 ),
+        'usage'           => array( 'input' => 520, 'output' => 180 ),
     ),
 )
 ```
 
 **Parameters in Tool Selection:**
-- `items` (array, optional) — List of items/topics to compare
+- `entities` (array, required) — The entities/topics to compare (minimum 2)
+- `aspects` (array, optional) — Specific aspects to compare (e.g., "cost", "eligibility")
+- `search_query` (string, optional) — The original compare phrasing for fallback search
 
 ---
 
@@ -396,6 +396,7 @@ array(
 - No automatic fallback to `search_content`; the caller / agentic loop handles re-routing.
 
 **Retrieval & Grounding:**
+- The tool definition and handler are registered by `Gregius_Data_Entity_Content_Tool::init()` via the `gregius_data_rag_tools` and `gregius_data_rag_tool_search_entity_content` filters.
 - Content is fetched by direct id lookup (`wp_posts_clean` → `get_post` fallback), uncapped, with a 24,000-character overflow guardrail. No vector/embedding search.
 - The current entity is injected into the tool-selection prompt by `Gregius_Data_Entity_Grounding` (`gregius_data_rag_tool_selection_system_prompt`).
 - `metadata.suggestions_title` (short framing heading) and `metadata.suggested_questions` (question list) are produced by the shared `Gregius_Data_RAG_Service::generate_suggestions()` helper (one LLM call returning `{ title, questions }`; input = content + title + user prompt).
@@ -422,7 +423,7 @@ All tools receive the same execution context via the `gregius_data_rag_tool_{nam
  *     @type array    $options {
  *         @type array        $messages            Conversation history.
  *         @type string       $connection_name     Database connection name.
- *         @type string       $rewrite_model       Agentic model ID.
+ *         @type string       $agentic_model       Agentic model ID.
  *         @type int          $num_chunks          Number of chunks to retrieve.
  *         @type array        $post_types          Post types to include.
  *         @type callable|null $progress_callback  Callback for SSE progress.
@@ -433,6 +434,8 @@ All tools receive the same execution context via the `gregius_data_rag_tool_{nam
  *         @type string   $reason              Why this tool was selected.
  *         @type string   $search_query        Optimized search query (for search_content).
  *         @type string   $clarification_type  Type of clarification (for clarify_previous).
+ *         @type array    $entities            Entities/topics to compare (for compare_content).
+ *         @type array    $aspects             Specific aspects to compare (for compare_content).
  *     }
  *     @type string   $trigger            'llm' = agentic selection, 'direct' = fallback.
  *     @type string   $connection_name    Connection name (same as in options).
@@ -542,7 +545,8 @@ add_filter( 'gregius_data_rag_tool_wiki_search', function( $result, $tool_name, 
         'answer'   => rtrim( $answer, ', '),
         'sources'  => $sources,
         'metadata' => array(
-            'tool_type'      => 'external_api',
+            'tool'           => 'wiki_search',
+            'tool_selected'  => 'wiki_search',
             'wiki_results'   => count( $wiki_data['results'] ?? array() ),
             'execution_time' => intval( $context['options']['progress_callback'] ?? 0 ),
         ),
@@ -718,7 +722,7 @@ Detection logic:
    }, 10);
    ```
 
-2. ✓ Does the agentic model (rewrite_model) exist and have provider support?
+2. ✓ Does the agentic model (agentic_model) exist and have provider support?
    - Verify the model is registered in the catalog (`Gregius_Data_Model_Registry::get_model('gregius-data', $model_id)`)
    - Provider must be in: openai, anthropic, gemini, deepseek
 
@@ -740,8 +744,8 @@ Detection logic:
 **Solution:**
 1. Verify agentic model is configured:
    ```php
-   if (!empty($options['rewrite_model'])) {
-       error_log('Agentic model: ' . $options['rewrite_model']);
+   if (!empty($options['agentic_model'])) {
+       error_log('Agentic model: ' . $options['agentic_model']);
    } else {
        error_log('No agentic model configured');
    }
@@ -750,7 +754,7 @@ Detection logic:
 2. Check model in registry:
    ```php
    $registry = new Gregius_Data_Model_Registry();
-   $model = $registry->get_model('gregius-data', $options['rewrite_model']);
+   $model = $registry->get_model('gregius-data', $options['agentic_model']);
    if (!$model) {
        error_log('Model not found in registry');
    }
@@ -797,7 +801,9 @@ Detection logic:
 
 ## 7. API Reference
 
-### Gregius_Data_RAG_Service::select_tool()
+### Gregius_Data_RAG_Service::select_tool() (internal — private)
+
+> **Note:** This method is `private` and is not part of the public API or extension contract; it is shown here for internal reference only.
 
 ```php
 /**

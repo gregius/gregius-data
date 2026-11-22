@@ -2,7 +2,7 @@
 
 Standard: ISO/IEC/IEEE 42010:2022
 Component: Tools and Tool Selection Subsystem
-Version: 1.0.0
+Version: 1.0.1
 Date: 2026-04-25
 Upstream Specification: [srs.md](srs.md)
 
@@ -134,7 +134,7 @@ Canonical Contracts
 **Tool Category: Comparison**
 - `compare_content` — Side-by-side comparison of topics
   - Selection criteria: "compare X and Y", "difference between X and Y"
-  - Parameters: items to compare
+  - Parameters: entities (array, required) to compare
   - Returns: structured comparison (table or narrative)
 
 **Tool Category: Entity Grounding**
@@ -229,7 +229,7 @@ Phase E: Premium tool provider initializes on gregius_data_intelligence_init hoo
 ```
 generate_answer(query, llm_model_id, options)
   │
-  ├─ options['rewrite_model'] exists?
+  ├─ options['agentic_model'] exists?
   │  ├─ YES → Proceed with agentic tool selection
   │  │   │
   │  │   ├─ Get agentic model from registry
@@ -361,7 +361,7 @@ Deployment is transparent to developers:
 - Contract methods must remain stable across minor versions (backward compatible)
 - Premium tool providers depend on foundation v1.0+; foundation changes require careful versioning
 - All premium tools follow same registration pattern (gregius_data_rag_tools filter + gregius_data_rag_tool_{name} filter)
-- Foundation tool definitions are removed from defaults; now registered via filter by premium plugins
+- The five core foundation tools (search_content, summarize_conversation, respond_directly, clarify_previous, compare_content) remain hardcoded in `Gregius_Data_RAG_Service::get_tool_definitions()`; premium/custom tools register via the `gregius_data_rag_tools` filter
 
 **Related Architectural Decisions:**
 - AD-T02 (Hook-Based Tool Registration) — uses gregius_data_rag_tools filter
@@ -411,5 +411,5 @@ Deployment is transparent to developers:
 
 | Version | Date | Author | Summary |
 |---|---|---|---|
-| 1.1 | 2026-04-26 | Gregius | Added v1 extension contract; moved premium tools to gregius-intelligence; generic forced-tool routing; Phase A-D implementation |
+| 1.0.1 | 2026-04-26 | Gregius | Added v1 extension contract; moved premium tools to gregius-intelligence; generic forced-tool routing; Phase A-D implementation |
 | 1.0 | 2026-04-25 | Gregius | Initial architecture for tools subsystem |

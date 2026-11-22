@@ -89,6 +89,8 @@ The tool subsystem sits at the heart of agentic RAG workflows. When a user submi
 - includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php
 - includes/ai/strategies/class-gregius-data-tool-strategy-factory.php
 - includes/rag/class-gregius-data-rag-service.php (tool selection and execution)
+- includes/rag/class-gregius-data-entity-content-tool.php (`search_entity_content` tool)
+- includes/rag/class-gregius-data-entity-grounding.php (tool-selection system prompt grounding)
 
 ## 3. Software Requirements
 
@@ -116,12 +118,12 @@ Requirement notation:
 
 | Built-in Tool | Tier | Status | Signature |
 |---|---|---|---|
-| `search_content` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
-| `summarize_conversation` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
-| `respond_directly` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
-| `clarify_previous` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
-| `compare_content` | 1 | Approved | `(query, messages, model_id) → {answer, sources, metadata}` |
-| `search_entity_content` | 1 | Approved | `(query, tool_context, model_id) → {answer, sources, metadata}` |
+| `search_content` | 1 | Approved | `(query, llm_model_id, options) → {answer, sources, metadata}` |
+| `summarize_conversation` | 1 | Approved | `(query, llm_model_id, options) → {answer, sources, metadata}` |
+| `respond_directly` | 1 | Approved | `(query, llm_model_id, options, reason) → {answer, sources, metadata}` |
+| `clarify_previous` | 1 | Approved | `(query, llm_model_id, options, clarification_type) → {answer, sources, metadata}` |
+| `compare_content` | 1 | Approved | `(query, llm_model_id, options, tool_selection) → {answer, sources, metadata}` |
+| `search_entity_content` | 1 | Approved | `(result, tool_name, tool_context) → {answer, sources, metadata}` |
 
 ### 3.3 Hook Catalog Requirements
 
@@ -167,7 +169,43 @@ Tool subsystem is complete when:
 8. ✓ Tool selection latency is acceptable (< 500ms excluding LLM time)
 9. ✓ System degrades gracefully when agentic model is unavailable
 
-## 5. Change Log
+## 5. Traceability
+
+| Requirement | Source |
+|---|---|
+| FR-T01 — built-in tools with stable Tier 1 signatures | includes/rag/class-gregius-data-rag-service.php:2514 |
+| FR-T02 — custom tool registration via hooks | includes/rag/class-gregius-data-rag-service.php:2619 |
+| FR-T03 — multiple LLM providers, unified interface | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:26 |
+| FR-T04 — prompt-based fallback for unsupported providers | includes/ai/strategies/class-gregius-data-tool-strategy-factory.php:57 |
+| FR-T05 — post-selection tool routing override filter | includes/ai/strategies/class-gregius-data-openai-tool-strategy.php:103 |
+| FR-T06 — consistent {answer, sources, metadata} response | includes/rag/class-gregius-data-rag-service.php:154 |
+| FR-T07 — per-tool execution hooks | includes/rag/class-gregius-data-rag-service.php:1573 |
+| FR-T08 — tool execution context emitted to handlers | includes/rag/class-gregius-data-rag-service.php:1453 |
+| FR-T09 — built-in tools documented | docs/tools/developer-documentation.md:50 |
+| FR-T10 — tool parameter validation (JSON Schema) | includes/rag/class-gregius-data-rag-service.php:2517 |
+| `search_content` | includes/rag/class-gregius-data-rag-service.php:2514 |
+| `summarize_conversation` | includes/rag/class-gregius-data-rag-service.php:2533 |
+| `respond_directly` | includes/rag/class-gregius-data-rag-service.php:2546 |
+| `clarify_previous` | includes/rag/class-gregius-data-rag-service.php:2559 |
+| `compare_content` | includes/rag/class-gregius-data-rag-service.php:2574 |
+| `search_entity_content` | includes/rag/class-gregius-data-entity-content-tool.php:60 |
+| `gregius_data_rag_tools` | includes/rag/class-gregius-data-rag-service.php:2619 |
+| `gregius_data_rag_tool_selection` | includes/ai/strategies/class-gregius-data-openai-tool-strategy.php:103 |
+| `gregius_data_rag_tool_selection_system_prompt` | includes/rag/class-gregius-data-entity-grounding.php:42 |
+| `gregius_data_rag_tool_{name}` | includes/rag/class-gregius-data-rag-service.php:1573 |
+| `gregius_data_rag_tool_executed` | includes/rag/class-gregius-data-rag-service.php:1480 |
+| FR-T-STRAT-01 — strategies implement interface | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:26 |
+| FR-T-STRAT-02 — `select_tool(query, messages, tools, model_id)` | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:46 |
+| FR-T-STRAT-03 — `format_tools(tools)` | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:56 |
+| FR-T-STRAT-04 — `parse_response(response)` | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:73 |
+| FR-T-STRAT-05 — `get_id()` | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:82 |
+| FR-T-STRAT-06 — graceful fallback on provider errors | includes/ai/strategies/class-gregius-data-openai-tool-strategy.php:87 |
+| NFR-T01 — selection latency < 500ms | includes/rag/class-gregius-data-rag-service.php:1211 |
+| NFR-T02 — provider-agnostic (no vendor lock-in) | includes/ai/strategies/class-gregius-data-tool-strategy-factory.php:33 |
+| NFR-T03 — custom tools must not impact built-in tools | includes/rag/class-gregius-data-rag-service.php:1573 |
+| NFR-T04 — graceful degradation when agentic model unavailable | includes/rag/class-gregius-data-rag-service.php:1377 |
+
+## 6. Change Log
 
 | Version | Date | Author | Summary |
 |---|---|---|---|
