@@ -28,7 +28,7 @@ The WP-CLI subsystem includes:
 - Sync command family for posts, terms, and full sync workflows
 - Vector command family for generate and rebuild workflows
 - RAG answer command and optional prompt override behavior
-- Evaluation command family for running RAG content-quality evaluations (Ragas via gregius-eval)
+- Evaluation command family for running RAG content-quality evaluations (Ragas)
 - Listing commands for configured connections and available models
 - Logs command family for list, export, purge, and stats workflows
 - Output formatting contracts for table/json/csv and deterministic automation usage
@@ -111,7 +111,7 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| CLI-OR-01 | Commands that accept `--connection` MUST validate that the connection exists in configured settings before delegated execution. | Must |
+| CLI-OR-01 | Sync, vectors, and answer commands that accept `--connection` MUST validate that the connection exists in configured settings before delegated execution. | Must |
 | CLI-OR-02 | Sync and vectors commands MUST validate `--batch-size` and clamp invalid values to safe defaults or bounded maxima. | Must |
 | CLI-OR-03 | Sync and vectors commands SHOULD perform memory cleanup between batches. | Should |
 | CLI-OR-04 | Batch-oriented commands SHOULD report progress using WP-CLI progress bars or equivalent progress output. | Should |
@@ -147,8 +147,8 @@ Acceptance baseline:
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
 | CLI-FR-01, CLI-QR-05 | `includes/cli/class-gregius-data-cli.php` | Namespace and command registration contracts |
-| CLI-FR-02, CLI-DR-01, CLI-OR-01..04 | `includes/cli/class-gregius-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
-| CLI-FR-03, CLI-DR-02, CLI-OR-01..04 | `includes/cli/class-gregius-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
+| CLI-FR-02, CLI-DR-01, CLI-OR-01..04, CLI-QR-03 | `includes/cli/class-gregius-data-cli-sync.php` | Sync subcommands, validation, batching, progress, memory cleanup |
+| CLI-FR-03, CLI-DR-02, CLI-OR-01..04, CLI-QR-03 | `includes/cli/class-gregius-data-cli-vectors.php` | Vector commands, batch bounds, summary output |
 | CLI-FR-04, CLI-DR-03, CLI-OR-01, CLI-OR-05, CLI-QR-04 | `includes/cli/class-gregius-data-cli-answer.php` | Query contract, prompt override handling, errors |
 | CLI-FR-01, CLI-QR-02 | `includes/cli/class-gregius-data-cli-evaluation.php` | Evaluation command family (run, list_prompts, validate_config, adapters) delegation |
 | CLI-FR-05, CLI-DR-04, CLI-DR-07 | `includes/cli/class-gregius-data-cli-list-connections.php`, `includes/cli/class-gregius-data-cli-list-models.php` | Connections/models inventory command contracts and optional list-connections enrichment flags |

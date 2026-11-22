@@ -295,7 +295,7 @@ logs list/export/purge/stats
 
 | ID | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R-01 | Large workloads can produce long-running CLI jobs. | Medium | Tune batch size and use progress/summaries for observability. |
+| R-01 | Large workloads can produce long-running CLI jobs. | Medium | Tune batch size and use progress/summaries for status visibility. |
 | R-02 | Downstream manager contract changes can break CLI output assumptions. | Medium | Maintain parity checks and update developer docs with command changes. |
 | R-03 | Automation scripts may rely on unstable free-text output. | Medium | Prefer `--format=json`/`--format=csv` for automation use cases. |
 

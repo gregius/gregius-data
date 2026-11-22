@@ -4,7 +4,7 @@
 
 ## Overview
 
-Gregius Data ships a full WP-CLI command surface under `wp gregius-data` — seven command families covering sync, vectors, RAG answers, evaluation, listing, and logs. Every subcommand accepts a `--format` flag (table, json, or csv), producing deterministic output for scripts and CI/CD pipelines.
+Gregius Data ships a full WP-CLI command surface under `wp gregius-data` — seven command families covering sync, vectors, RAG answers, evaluation, listing, and logs. Most subcommands accept a `--format` flag, but its allowed values are per-command — `table`/`json`/`csv`, `table`/`json`, or `csv`/`json` — producing deterministic output for scripts and CI/CD pipelines.
 
 Automation and scripting are a site operator's most reliable tools. Without a command-line interface, routine tasks — syncing content after a migration, rebuilding vectors after a model change, auditing logs — require dashboard clicks or REST calls that compound into brittle workflows. The `wp gregius-data` namespace turns these into repeatable, versionable one-liners.
 
@@ -14,7 +14,7 @@ By the end of this page, you will know every command family, its subcommands, fl
 
 - WP-CLI installed and configured for the target WordPress site
 - Gregius Data plugin installed and activated
-- At least one data connection configured and active (for sync, vectors, answer, and listing commands)
+- At least one data connection configured and active (for sync, vectors, and answer commands)
 - AI models registered (for vector generation and RAG answer commands)
 
 ---
@@ -34,11 +34,11 @@ wp gregius-data list-models --help
 wp gregius-data logs --help
 ```
 
-All subcommands produce output in one of three formats controlled by `--format`:
+`--format` output is per-command: `sync`/`vectors`/`list-connections`/`list-models`/`logs list` accept `table`/`json`/`csv`; `answer` and `logs stats` accept `table`/`json`; `logs export` accepts `csv`/`json`; `evaluation list_prompts` accepts `table`/`json`/`csv`. The other `evaluation` subcommands (`run`, `validate_config`, `adapters`) and `logs purge` accept no `--format` flag.
 
 | Format | Use case |
 |---|---|
-| `table` | Interactive terminal use (default) |
+| `table` | Interactive terminal use (the default where applicable) |
 | `json` | Script consumption, API bridges, jq pipelines |
 | `csv` | Spreadsheet import, reporting pipelines |
 
@@ -136,7 +136,7 @@ wp gregius-data answer <query>
 | `--evaluation-prompt` | (none) | Prompt post ID for evaluation criteria |
 | `--answer-model` | `gpt-4o-mini` | Model for answer generation |
 | `--prompt-id` | (none) | Specific prompt ID (numeric) |
-| `--prompt` | (none) | Prompt by slug or exact title |
+| `--prompt` | (none) | Prompt by post ID, slug, or exact title |
 | `--format` | `table` | `table` or `json` |
 
 ### Examples
@@ -175,6 +175,8 @@ Evaluation commands produce framework-ready evaluation datasets from pre-collect
 | `--only` | (none) | Run a single prompt by ID |
 | `--framework` | config value | Override framework (e.g. `ragas`) |
 | `--output-dir` | uploads-based path | Artifact output directory |
+| `--format` | `table` | Output format for `list_prompts`: `table`, `json`, or `csv` |
+| `--skip-connection-check` | off | Skip connection validation (`validate_config`, for CI without a live connection) |
 
 ### Examples
 
@@ -210,7 +212,7 @@ Listing commands discover the configured data connections and registered AI mode
 | `--format` | `table` | `table`, `json`, or `csv` |
 | `--with-embedding-models` | off | Include embedding model context (connections) |
 | `--with-model-details` | off | Include full model details (connections; implies `--with-embedding-models`) |
-| `--connection` | `gregius-data` | Connection scope (models) |
+| `--connection` | `gregius-data` | Accepted but currently ignored — `list-models` always lists the global model registry, not per-connection |
 | `--type` | (all) | Filter by model type: `embeddings`, `llm`, `rerank`, or `evaluator` (models) |
 
 ### Examples
@@ -244,11 +246,10 @@ Logs commands browse, export, purge, and summarize plugin operational logs. Desi
 |---|---|---|
 | `--level` | (all) | Filter by severity: `debug`, `info`, `warning`, `error`, `critical` |
 | `--component` | (all) | Filter by source: `rag`, `search`, `sync`, `vectors`, `connection`, `model`, `cron`, `system` |
-| `--connection` | (all) | Filter by data connection name |
 | `--limit` | `50` | Max entries returned (list) |
 | `--days` | `30` | Age threshold for purge (must be ≥ 1) |
 | `--yes` | off | Skip confirmation prompt (purge) |
-| `--format` | `table` (list, stats), `csv` (export) | `table`, `json`, or `csv` |
+| `--format` | `table` (list, stats), `csv` (export) | list: `table`/`json`/`csv` · export: `csv`/`json` · stats: `table`/`json` |
 
 ### Examples
 
@@ -270,15 +271,19 @@ wp gregius-data logs stats --format=json
 
 ## Permissions
 
-| Command | Required capability | Notes |
-|---|---|---|
-| `sync` | `manage_options` | Writes to PostgreSQL |
-| `vectors` | `manage_options` | Generates and stores embeddings |
-| `answer` | `read` | Reads via Abilities API |
-| `evaluation` | `manage_options` | Executes RAG pipeline |
-| `list-connections` | `manage_options` | Reads connection configuration |
-| `list-models` | `manage_options` | Reads model registry |
-| `logs` | `manage_options` | Reads and manages operational logs |
+Gregius Data's WP-CLI commands perform no WordPress capability checks (`current_user_can`). Command access is governed by the WP-CLI execution context itself: whoever can run `wp` against the site with shell access is treated as an operator. This mirrors the architectural decision that the CLI relies on shell access and WordPress bootstrap rather than replicating HTTP-style capability/nonce checks.
+
+| Command | Notes |
+|---|---|
+| `sync` | Writes to PostgreSQL |
+| `vectors` | Generates and stores embeddings |
+| `answer` | Runs the RAG answer via the Abilities manager (mirrors the `gregius-data/answer` ability) |
+| `evaluation` | Executes RAG pipeline |
+| `list-connections` | Reads connection configuration |
+| `list-models` | Reads model registry |
+| `logs` | Reads and manages operational logs |
+
+Harden access by restricting shell/WP-CLI access to the site, not by relying on per-command capability gates.
 
 ---
 
