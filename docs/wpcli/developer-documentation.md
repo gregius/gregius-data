@@ -224,6 +224,7 @@ Options:
   - `--format=table|json|csv` (default `table`)
 - `validate_config`:
   - `--config=<path>`
+  - `--skip-connection-check`
 - `adapters`:
   - no command-specific options
 
@@ -234,6 +235,8 @@ Implementation notes:
 - Shipped template path remains inside the plugin at `includes/cli/resources/evaluation/rag-evaluation-config.example.json`.
 - `run` writes raw artifacts, canonical `prompts.jsonl`, framework adapter output, and `manifest.json`.
 - Supported framework discovery is exposed through `adapters`; current supported framework is `ragas`.
+
+[SRS: CLI-FR-01, CLI-QR-02]
 
 ### 5.6 Logs Commands (`Gregius_Data_CLI_Logs`)
 
