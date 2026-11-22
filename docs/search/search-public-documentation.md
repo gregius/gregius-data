@@ -108,7 +108,7 @@ Trigram matching (`pg_trgm`) powers typo tolerance for the algorithmic (hashingt
 
 - Check extension availability: `GET /wp-json/gregius-data/v1/search/trigram-status`
 
-Short queries where every word is under 4 characters skip trigram automatically for performance and precision.
+Short queries where no word exceeds 2 characters skip trigram automatically for performance and precision.
 
 ### Manage Search Language
 
