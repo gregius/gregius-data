@@ -82,7 +82,7 @@ Mapping:
 1. **Plugin Bootstrap (`gregius-data.php`)**
 - Registers activation/deactivation hooks.
 - Registers admin-init version check callback.
-- Provides `GREGIUS_DATA_VERSION` constant consumed by upgrade/status comparisons.
+- Defines `GREGIUS_DATA_VERSION` (plugin version) and `GREGIUS_DATA_SCHEMA_VERSION` (decoupled schema version) constants consumed by upgrade/status comparisons.
 
 2. **Activator (`Gregius_Data_Activator`)**
 - Runs upgrade dispatcher during activation and version mismatch checks.
@@ -94,7 +94,7 @@ Mapping:
 - Retrieves and sets per-connection schema versions.
 - Migrates legacy option-backed schema versions to settings-backed storage.
 - Executes create and upgrade operations.
-- Calculates schema status contracts and update flags.
+- Calculates schema status contracts and update flags against the decoupled `GREGIUS_DATA_SCHEMA_VERSION` constant.
 - Applies provider-aware routing (direct PostgreSQL vs postgrest).
 
 4. **Schema REST Controller (`Gregius_Data_REST_Schema_Controller`)**
@@ -139,7 +139,7 @@ Activation or admin_init
 POST /gregius-data/v1/schema/upgrade
    -> permission check (manage_options)
    -> Schema_Manager::upgrade_schema_to_latest(connection)
-   -> read current schema version
+   -> read current schema version (target = GREGIUS_DATA_SCHEMA_VERSION)
    -> if current >= target: return upgraded=false
    -> begin transaction
    -> run idempotent migration methods
@@ -161,7 +161,7 @@ GET /gregius-data/v1/schema/sql
 
 POST /gregius-data/v1/schema/verify
    -> query provider schema version
-   -> return ready/not_created status and version
+   -> return not_created/outdated/newer/ready status and version
 ```
 
 ### 4.4 Schema Status and Update Banner Flow
@@ -170,7 +170,7 @@ POST /gregius-data/v1/schema/verify
 GET /gregius-data/v1/schema/status
    -> resolve provider path
    -> compute schema completeness and schema_version
-   -> compare with plugin_version
+   -> derive schema_status (missing/current/update_available/schema_newer) against GREGIUS_DATA_SCHEMA_VERSION
    -> return requires_update / update_available flags
 ```
 
@@ -197,7 +197,7 @@ Rationale:
 - Plugin updates should not force immediate schema mutation on all connections.
 
 Consequences:
-- UI and status endpoints must compare plugin and schema versions explicitly.
+- Status endpoints derive `schema_status` by comparing `schema_version` to `required_schema_version` (`GREGIUS_DATA_SCHEMA_VERSION`); `plugin_version` is informational only and is not the comparison basis.
 
 Linked requirements:
 - AD-01 -> UPD-FR-02, UPD-FR-04, UPD-FR-08, UPD-DR-01, UPD-DR-02
@@ -286,7 +286,7 @@ Linked requirements:
 
 | ID | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R-01 | Failed migrations can leave schema behind plugin version. | High | Transaction rollback, explicit error payloads, and retryable upgrade action. |
+| R-01 | Failed migrations can leave schema behind the required schema version. | High | Transaction rollback, explicit error payloads, and retryable upgrade action. |
 | R-02 | Misconfigured or missing connection entries block update operations. | Medium | Early connection validation and clear 404/400 response contracts. |
 | R-03 | Legacy schema-version fallback may hide stale state if not migrated consistently. | Medium | Automatic migration to settings-backed storage during version read. |
 
@@ -297,7 +297,7 @@ Linked requirements:
 | Architecture Item | Requirement IDs Covered |
 |---|---|
 | AV-01 | UPD-FR-01..08, UPD-OR-01..06 |
-| AV-02 | UPD-FR-02..08, UPD-DR-01..06, UPD-OR-04..06 |
+| AV-02 | UPD-FR-02..08, UPD-DR-01..06, UPD-OR-04..06, UPD-QR-03..05 |
 | AV-03 | UPD-FR-02..08, UPD-DR-04..06, UPD-OR-01..06, UPD-QR-01..04 |
 | AD-01 | UPD-FR-02, UPD-FR-04, UPD-FR-08, UPD-DR-01, UPD-DR-02 |
 | AD-02 | UPD-OR-02, UPD-OR-03, UPD-QR-01 |

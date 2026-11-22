@@ -38,6 +38,8 @@ $runtime_version   = GREGIUS_DATA_VERSION;
 
 $schema_manager = new Gregius_Data_Schema_Manager();
 $schema_version = $schema_manager->get_schema_version( 'default' );
+
+$required_schema_version = GREGIUS_DATA_SCHEMA_VERSION;
 ```
 
 [SRS: UPD-FR-02, UPD-FR-04, UPD-DR-01, UPD-DR-02]
@@ -71,7 +73,7 @@ Source: `includes/class-gregius-data-activator.php`
 Constants:
 - `VERSION_OPTION` (`gregius_data_db_version`)
 
-Runtime plugin version is the `GREGIUS_DATA_VERSION` constant defined in `gregius-data.php`.
+Runtime plugin version is the `GREGIUS_DATA_VERSION` constant defined in `gregius-data.php`. The decoupled schema version is the `GREGIUS_DATA_SCHEMA_VERSION` constant (same file), bumped only when `includes/sql/postgrest-schema.sql` changes and never above the plugin version.
 
 Key methods:
 - `activate()`
@@ -96,12 +98,13 @@ Key methods:
 - `upgrade_schema_to_latest( $connection_name = 'default' )`
 
 Upgrade flow internals:
-- Reads `current_version` and compares to `GREGIUS_DATA_VERSION`.
+- Reads `current_version` (DB meta-table stamp first, falling back to the stored per-connection setting) and compares to `GREGIUS_DATA_SCHEMA_VERSION`.
 - Returns early with `upgraded => false` when already current.
 - Runs transaction-wrapped migration path:
   - `migrate_postmeta_table()`
   - `migrate_posts_table_for_sync()`
   - `install_pgvector_extension()`
+  - `create_schema_meta_table()` / `set_schema_version_in_db()`
 - Commits and updates schema version on success.
 - Rolls back and returns error payload on exceptions.
 
@@ -134,9 +137,13 @@ Key response fields:
 - `connected`
 - `connection_name`
 - `schema_version`
+- `required_schema_version` (`GREGIUS_DATA_SCHEMA_VERSION`)
+- `schema_status` (`missing` / `current` / `update_available` / `schema_newer`)
 - `plugin_version`
 - `requires_update`
 - `update_available`
+
+`requires_update` and `update_available` are `true` only when `schema_status === 'update_available'` (schema version lower than `required_schema_version`).
 
 [SRS: UPD-FR-06, UPD-FR-08, UPD-DR-04]
 
@@ -174,11 +181,14 @@ Purpose:
 
 Args:
 - `connection` (required)
+- `expected_version` (optional, default `GREGIUS_DATA_SCHEMA_VERSION`)
 
 Behavior:
 - Only accepts connection types `postgrest` or `supabase`.
-- Returns `status: ready` when schema version is found.
-- Returns `status: not_created` when schema is missing.
+- Returns `status: not_created` when the schema version is `0.0.0`/`unknown`.
+- Returns `status: outdated` when the version is lower than `expected_version`.
+- Returns `status: newer` when the version is higher than `expected_version`.
+- Returns `status: ready` when the version matches, persisting `schema_version`/`schema_status` on the connection.
 
 [SRS: UPD-FR-07, UPD-DR-06]
 
