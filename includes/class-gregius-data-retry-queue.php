@@ -260,7 +260,10 @@ class Gregius_Data_Retry_Queue {
 
 				case 'delete_post':
 					// Retry post deletion.
-					return $db->delete_post( $item['entity_id'], $item['connection_name'] );
+					return $db->delete_post(
+						$item['entity_id'],
+						null // connection_name - will use default connection logic.
+					);
 
 				case 'delete_meta':
 					// Retry meta deletion.
