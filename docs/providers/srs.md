@@ -41,7 +41,7 @@ The provider architecture operates as a foundational layer within the Gregius Da
 #### 1.3.2 System Functions Summary
 
 - Define and enforce DB provider interface contracts for all database backend implementations.
-- Instantiate and cache DB provider instances via a factory, supporting runtime third-party extension.
+- Instantiate and cache DB provider instances via a factory with a built-in type map.
 - Define and enforce AI provider interface contracts for all AI service implementations.
 - Register and resolve AI provider instances via a registry, supporting third-party extension through WordPress filters.
 - Provide a fluent AI client facade for plugin-internal and third-party developer use.
@@ -53,7 +53,7 @@ The provider architecture operates as a foundational layer within the Gregius Da
 | User Class | Technical Level | Primary Interaction Point |
 |---|---|---|
 | Plugin Developer | Technical | Provider interfaces and AI client facade |
-| Third-party Integrator | Technical | Factory registration, filter-based AI provider registration |
+| Third-party Integrator | Technical | Filter-based AI provider registration |
 | Site Administrator | Technical/Operational | Connection configuration via admin UI |
 
 ### 1.4 Definitions
@@ -62,7 +62,7 @@ The provider architecture operates as a foundational layer within the Gregius Da
 |---|---|
 | DB provider | A software component that implements the database provider interface and encapsulates all communication with one database backend type |
 | AI provider | A software component that implements the AI provider interface and encapsulates all communication with one AI service |
-| Provider factory | A registry and instantiation mechanism for DB provider classes, keyed by named type string |
+| Provider factory | A type map and instantiation mechanism for DB provider classes, keyed by named type string |
 | AI registry | A lookup and instantiation mechanism for AI provider instances, extensible via WordPress filter |
 | Client facade | The single developer-facing entry point for AI requests, exposing a fluent request builder |
 | Tool calling strategy | A per-provider adapter that translates abstract tool definitions and responses to and from a specific AI provider's native function/tool calling API format |
@@ -159,6 +159,7 @@ Requirement notation:
 | PA-DR-04 | AI provider text generation responses MUST return either an array containing at minimum `text`, `tokens_used`, and `model` fields, or a `WP_Error` instance on failure. | Must |
 | PA-DR-05 | Chunk production MUST remain provider-agnostic. Chunk boundaries and chunk content MUST NOT vary based on which DB provider is active for a given connection. | Must |
 | PA-DR-06 | The `supabase` DB provider factory type alias MUST resolve to the same HTTP-based PostgREST provider as the `postgrest` alias. | Must |
+| PA-DR-07 | The `pdo` DB provider factory type alias MUST resolve to the same direct PDO-based PostgreSQL provider as the `postgresql` alias. | Must |
 | PA-DR-08 | For any validation or summary operation that requires multiple sequential HTTP calls on the PostgREST provider, the software SHOULD provide a single-call RPC equivalent that returns all required data in one server round trip. | Should |
 | PA-DR-09 | Runtime PostgREST/Supabase operations MUST resolve credentials from canonical keys only: `project_url`, `publishable_key`, and `secret_key`. | Must |
 | PA-DR-10 | Legacy Supabase key aliases (`api_key`, `service_role_key`) MAY be accepted only at configuration ingestion boundaries and MUST be normalized to canonical keys before runtime provider use. | Must |
@@ -183,7 +184,7 @@ Requirement notation:
 | PA-QR-02 | All DB provider implementations MUST use parameterized queries or equivalent prepared statements for all SQL execution to prevent injection attacks. | Code review |
 | PA-QR-03 | All outbound HTTP requests in the HTTP-based DB provider MUST validate the response status code and handle WordPress HTTP API error return values gracefully without causing fatal errors. | Code review + integration test |
 | PA-QR-04 | Registering a new third-party DB or AI provider via the defined extension points MUST NOT require changes to existing provider implementations, the factory, or the registry. | Code review |
-| PA-QR-05 | The provider architecture MUST NOT cause performance regressions in existing sync or search operations when a new provider is registered via an extension point. | Benchmark and profiling review |
+| PA-QR-05 | The provider architecture MUST NOT cause performance regressions in existing sync or search operations when a new provider is registered via an extension point. | Profiling and load-test review |
 
 ## 4. Verification and Acceptance
 
@@ -199,19 +200,55 @@ Requirement notation:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement ID | Source (file:line) | Notes |
 |---|---|---|
-| PA-FR-01 to PA-FR-10 | docs/providers/architecture.md (Database Providers, Interface Design Decisions, Factory Pattern Implementation) | DB interface, factory, and concrete provider requirements |
-| PA-FR-11 to PA-FR-17 | docs/providers/architecture.md (AI Provider Architecture, Key Components, Implementing an AI Provider) | AI interface, registry, and client facade requirements |
-| PA-FR-18 to PA-FR-23 | docs/providers/architecture.md (Tool Calling Strategy Architecture, Strategy Interface, Strategy Factory) | Tool calling strategy layer requirements |
-| PA-FR-24 to PA-FR-25 | docs/providers/architecture.md (Connection Manager Integration, Provider Lifecycle) | Connection manager requirements |
-| PA-DR-01 to PA-DR-04 | docs/providers/architecture.md (Standardized Return Formats, AI Provider Architecture) | Response contract requirements |
-| PA-DR-05 | docs/providers/architecture.md (Shared Chunk Contract Across Providers) | Chunking independence requirement |
-| PA-DR-06 | docs/providers/architecture.md (Factory Type Aliases, backward compatibility note under Key Components) | DB provider type alias requirement |
-| PA-DR-08 | docs/providers/architecture.md (RPC Functions for Performance Optimization, Validation RPC Pattern) | RPC consolidation requirement |
-| PA-DR-09 to PA-DR-10 | docs/providers/architecture.md (Interface Constraints, Connection Key Normalization Contract) | Canonical runtime key usage and ingestion-boundary normalization |
-| PA-OR-01 to PA-OR-07 | docs/providers/architecture.md (HTTP-Based Providers, Direct Connection Providers, Performance Considerations, Security Considerations) | Operational and environment constraint requirements |
-| PA-QR-01 to PA-QR-05 | docs/providers/architecture.md (Testing Strategy, Security Considerations, Performance Considerations) | Testability, security, and extensibility quality requirements |
+| PA-FR-01 | includes/providers/interface-gregius-data-db-provider.php:28 | `Gregius_Data_DB_Provider` interface declaration |
+| PA-FR-02 | includes/providers/interface-gregius-data-db-provider.php:59, :75, :96 | `connect()`, `disconnect()`, `test_connection()` |
+| PA-FR-03 | includes/providers/interface-gregius-data-db-provider.php:130, :149, :161, :171, :180 | `sync_post()`, `delete_post()`, `get_ids()`, `delete_ids()`, `delete_term_relationship()` |
+| PA-FR-04 | includes/providers/interface-gregius-data-db-provider.php:20-27 | Scope docblock: connection + sync + schema; no search/vector methods |
+| PA-FR-05 | includes/providers/interface-gregius-data-db-provider.php:197, :226 | `get_schema_version()`, `create_schema()` |
+| PA-FR-06 | includes/providers/class-gregius-data-provider-factory.php:60 | `create_provider()` |
+| PA-FR-07 | — (no implementation in 1.0.3) | Static `$supported_providers` map only; no runtime registration |
+| PA-FR-08 | includes/providers/class-gregius-data-provider-factory.php:70-79 | Throws `Exception` for unsupported type |
+| PA-FR-09 | includes/providers/class-gregius-data-postgresql-provider.php:27 | PDO PostgreSQL provider implements the interface |
+| PA-FR-10 | includes/providers/class-gregius-data-postgrest-provider.php:30 | HTTP PostgREST provider implements the interface |
+| PA-FR-11 | includes/interfaces/interface-gregius-data-ai-provider.php:26 | `Gregius_Data_AI_Provider_Interface` declaration |
+| PA-FR-12 | includes/interfaces/interface-gregius-data-ai-provider.php:34, :42, :50, :73, :81, :92, :116, :124, :146, :154 | Ten interface methods |
+| PA-FR-13 | includes/ai/class-gregius-data-llm-registry.php:59 | `get_provider()` resolves by id |
+| PA-FR-14 | includes/ai/class-gregius-data-llm-registry.php:46 | `apply_filters( 'gregius_data_llm_providers', … )` |
+| PA-FR-15 | includes/ai/class-gregius-data-ai-client.php:31 | `prompt()` returns a fluent `Ai_Request` |
+| PA-FR-16 | includes/ai/class-gregius-data-ai-request.php:125, :57 | `usingConnection()` + `$connection = 'default'` |
+| PA-FR-17 | gregius-data.php:286-310 | Seven providers registered via `gregius_data_register_providers()` |
+| PA-FR-18 | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:26 | Strategy interface declaration |
+| PA-FR-19 | includes/ai/strategies/interface-gregius-data-tool-calling-strategy.php:46, :56, :73, :82 | `select_tool()`, `format_tools()`, `parse_response()`, `get_id()` |
+| PA-FR-20 | includes/ai/strategies/class-gregius-data-tool-strategy-factory.php:90, :50 | `create_for_model()`, `create()` |
+| PA-FR-21 | includes/ai/strategies/class-gregius-data-tool-strategy-factory.php:57-59, :73-76 | Prompt fallback when unsupported |
+| PA-FR-22 | includes/ai/strategies/class-gregius-data-tool-strategy-factory.php:33-38, :62-76 | Native providers `openai`/`deepseek`/`anthropic`/`gemini` |
+| PA-FR-23 | includes/ai/strategies/class-gregius-data-prompt-tool-strategy.php:27 | `Gregius_Data_Prompt_Tool_Strategy` |
+| PA-FR-24 | includes/class-gregius-data-connection-manager.php:70-118 | `get_provider()` caches per name |
+| PA-FR-25 | includes/class-gregius-data-connection-manager.php:70, :99 | Retrieval + factory instantiation |
+| PA-DR-01 | includes/providers/interface-gregius-data-db-provider.php:50-57 | Return contract: `success` + `message` |
+| PA-DR-02 | includes/providers/class-gregius-data-postgresql-provider.php:160-168 | Error path: `success=false` + `message` |
+| PA-DR-03 | includes/providers/class-gregius-data-postgresql-provider.php:154-158 | Success path: `success=true` + payload |
+| PA-DR-04 | includes/interfaces/interface-gregius-data-ai-provider.php:65-73 | `generate_text()` returns `text`/`tokens_used`/`model` or `WP_Error` |
+| PA-DR-05 | includes/providers/interface-gregius-data-db-provider.php:20-27 | No chunk/vector methods in the DB interface (provider-agnostic) |
+| PA-DR-06 | includes/providers/class-gregius-data-provider-factory.php:42 | `supabase` → PostgREST alias |
+| PA-DR-07 | includes/providers/class-gregius-data-provider-factory.php:41 | `pdo` → PostgreSQL alias |
+| PA-DR-08 | includes/providers/class-gregius-data-postgrest-provider.php:659-681 | `execute_rpc()` single-call |
+| PA-DR-09 | includes/providers/class-gregius-data-postgrest-provider.php:584-601, :611-624 | Canonical keys + header builder |
+| PA-DR-10 | — (no implementation in 1.0.3) | No legacy `api_key`/`service_role_key` mapping |
+| PA-OR-01 | includes/providers/class-gregius-data-postgrest-provider.php:153 | `wp_safe_remote_get()`; no DB extension |
+| PA-OR-02 | includes/providers/class-gregius-data-postgresql-provider.php:83-85, :100 | `pdo_pgsql` extension check |
+| PA-OR-03 | includes/class-gregius-data-settings-manager.php:643 | Sensitive-key redaction list |
+| PA-OR-04 | includes/class-gregius-data-connection-manager.php:61, :289 | `shutdown` → `cleanup_connections()` |
+| PA-OR-05 | includes/providers/class-gregius-data-postgrest-provider.php:101-118 | Lazy connection (no connection at construct) |
+| PA-OR-06 | gregius-data.php:8 | `Requires PHP: 8.2` |
+| PA-OR-07 | includes/providers/class-gregius-data-postgrest-provider.php:9 | HTTP provider works without DB TCP access |
+| PA-QR-01 | includes/providers/interface-gregius-data-db-provider.php:28 | Interface is mockable |
+| PA-QR-02 | includes/providers/class-gregius-data-postgresql-provider.php:462 | `prepare()` + bound parameters |
+| PA-QR-03 | includes/providers/class-gregius-data-postgrest-provider.php:161-199 | `is_wp_error()` + status-code validation |
+| PA-QR-04 | includes/ai/class-gregius-data-llm-registry.php:46 | AI filter only; DB factory has no extension point in 1.0.3 |
+| PA-QR-05 | — (verification method only) | No measurable performance baseline codified |
 
 ## 6. Appendices
 
@@ -220,7 +257,7 @@ Requirement notation:
 - This SRS is produced in SRS-first mode without separate BRS, StRS, or SyRS artifacts.
 - Requirements are reverse-engineered from `docs/providers/architecture.md` and the verified codebase state as of 2026-03-30. The architecture doc is treated as the authoritative design record.
 - The MySQL 9.0+ provider described as a future enhancement in the architecture doc is out of scope for this SRS. Requirements will be added in a future revision when implementation planning for that phase begins.
-- Third-party integrators are assumed to have PHP developer-level access to the plugin codebase to register custom providers via the defined extension points.
+- Third-party integrators are assumed to have PHP developer-level access to the plugin codebase to register custom AI providers via the `gregius_data_llm_providers` filter. The DB provider factory exposes no runtime registration in 1.0.3.
 
 ### 6.2 Open Issues
 

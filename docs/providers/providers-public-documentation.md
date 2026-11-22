@@ -61,7 +61,7 @@ Key facts:
 - Works on any WordPress hosting environment, including shared hosting
 - Uses `wp_remote_post()` for all outbound requests
 - RPC functions handle bulk operations and complex queries efficiently
-- Supports `postgrest` and `supabase` as alias type names (both resolve to the PostgREST provider)
+- Supports the `postgrest` type name and the legacy `supabase` alias (both resolve to the PostgREST provider)
 
 <!-- IMAGE: database provider selection screen showing PostgreSQL and PostgREST options -->
 
