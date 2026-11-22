@@ -21,7 +21,7 @@ In scope:
 - Request fields `manifest` and `forced_tool`
 - Manifest normalization behavior and compatibility rules
 - Deterministic override precedence
-- Observability fields emitted in metadata and persisted by interactions
+- Metadata fields emitted in metadata and persisted by interactions
 
 Out of scope:
 - Full retrieval policy documentation
@@ -47,32 +47,41 @@ Out of scope:
 
 ## 4. Canonical Manifest Shape
 
-Manifest payloads are normalized to a canonical schema version before tool execution.
+Manifest payloads are normalized to a canonical schema (version `1.0.0`) before tool execution.
 
 Example normalized shape:
 
 ```json
 {
-  "schema_version": "1.0",
+  "manifest_version": "1.0.0",
+  "state": {
+    "conversation_id": "",
+    "journey_depth_turns": 0,
+    "is_historical_resume": false,
+    "active_mode": "default",
+    "recent_mixed_initiatives": []
+  },
   "entity": {
     "id": 377,
-    "type": "page"
+    "type": "page",
+    "status": "",
+    "title": { "raw": "", "rendered": "" },
+    "dates": { "created_gmt": "", "modified_gmt": "" },
+    "author": { "id": 0, "name": "" },
+    "taxonomies": {},
+    "meta": {},
+    "raw_context": {}
   },
-  "taxonomy": {
-    "terms": [
-      {
-        "taxonomy": "category",
-        "term_id": 12,
-        "term_slug": "dementia-care",
-        "term_name": "Dementia Care"
-      }
-    ]
+  "search_capabilities": {
+    "primary_index": "wp_posts_clean",
+    "supported_filters": [],
+    "fallback_strategies": []
   }
 }
 ```
 
 Notes:
-- Producers may send partial payloads.
+- Producers may send partial payloads; missing fields are filled with safe defaults.
 - Normalization drops unknown or malformed blocks instead of failing the turn.
 - Consumers should depend on normalized outputs, not producer-specific raw shapes.
 
@@ -97,7 +106,7 @@ High-level order:
 
 This preserves backward compatibility for callers that do not send `manifest` or `forced_tool`.
 
-## 7. Observability and Persistence Contract
+## 7. Metadata and Persistence Contract
 
 When manifest context is present, metadata may include:
 - `manifest`
@@ -117,7 +126,7 @@ This applies to REST and SSE transport surfaces so deterministic behavior does n
 
 ## 9. Compatibility and Versioning
 
-- Current contract version: `1.0`
+- Current contract version: `1.0.0`
 - Additive changes should be backward compatible where possible.
 - Any key/type change to canonical fields requires migration notes in this document and linked SRS/architecture docs.
 - Deprecated fields should be documented with transition guidance before removal.
@@ -129,7 +138,7 @@ This applies to REST and SSE transport surfaces so deterministic behavior does n
 | `docs/rag/*` | Canonical contract ownership and runtime behavior |
 | `docs/tools/*` | Implementer onboarding summary and integration examples |
 | `docs/rest-api/*` | Request/transport contract references and endpoint payload notes |
-| `docs/interactions/*` | Persistence and telemetry observability behavior |
+| `docs/interactions/*` | Persistence and telemetry metadata behavior |
 
 ## 11. Traceability
 

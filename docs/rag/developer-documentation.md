@@ -109,8 +109,8 @@ $result = $rag->generate_answer(
 			'post_id' => 377,
 		),
 		'manifest'        => array(
-			'schema_version' => '1.0',
-			'entity'         => array(
+			'manifest_version' => '1.0.0',
+			'entity'           => array(
 				'id'   => 377,
 				'type' => 'page',
 			),
@@ -128,14 +128,22 @@ Source: [includes/rag/class-gregius-data-rag-service.php](../../includes/rag/cla
 Public constructor:
 - `new Gregius_Data_RAG_Service( $connection_name, $embedding_model_key )`
 
-Primary public methods:
+Public methods:
 - `retrieve_chunks( $query, $options = array() )`
 - `generate_answer( $query, $llm_model_id, $options = array() )`
+- `stream_llm( $prompt, $llm_model_id, $system_prompt, $progress_callback = null, $options = array() )`
+- `append_manifest_metadata( $result, $options )`
+- `get_available_tools()`
+- `get_entity_content_full( $entity_id )`
+- `generate_suggestions( $content, $title, $query, $llm_model_id, $post_id = 0, $exclude_questions = array() )`
 
 Behavior notes:
 - `retrieve_chunks()` resolves backend-specific retrieval and falls back when needed.
 - `generate_answer()` orchestrates tool routing, retrieval, governance, and answer generation.
-- Both methods depend on configured connection and model registry data.
+- `stream_llm()`, `append_manifest_metadata()`, and `get_available_tools()` form the stable v1 extension contract for custom tool handlers.
+- `get_entity_content_full()` returns the uncapped current-entity content used by the `search_entity_content` tool.
+- `generate_suggestions()` produces follow-up questions for the current document.
+- Retrieval and generation methods (`retrieve_chunks()`, `generate_answer()`, `stream_llm()`, `get_entity_content_full()`, `generate_suggestions()`) depend on configured connection and model registry data. `append_manifest_metadata()` (pure array/hash manipulation) and `get_available_tools()` (static registry passed through the `gregius_data_rag_tools` filter) do not.
 
 Conversation memory buffer:
 - When `generate_answer()` receives a `conversation_id`, it populates `$options['messages']` from the server transcript (`Gregius_Data_Interaction::get_conversation_transcript`) via `build_conversation_buffer()`, so routing and the answer share one authoritative history.
@@ -148,6 +156,13 @@ Use this class when you need plugin-internal access to the full RAG pipeline wit
 ### 4.2 Coverage Gate
 
 Source: [includes/rag/class-gregius-data-coverage-gate.php](../../includes/rag/class-gregius-data-coverage-gate.php)
+
+Public API:
+- `new Gregius_Data_Coverage_Gate( $relevance_threshold = 0.0 )`
+- `evaluate( $chunks, $intent, $slots )`
+
+`evaluate()` maps each required slot to qualifying evidence chunks and returns a decision payload:
+`{ intent, required_slots, slot_entities, covered_slots, uncovered_slots, chunks_per_slot, primary_chunks_per_slot, decision, evidence_count, threshold_used, fallback_used }`, where `decision` is `full`, `partial`, or `abstain`. `$intent` is `compare` or `single`; `$slots` is a slot-name → entity-string map.
 
 Purpose:
 - Evaluate evidence coverage for supported intents.
@@ -199,6 +214,56 @@ Relevant filters: `gregius_data_rag_evaluator_threshold` (float, default 0.5), `
 - **Runtime evaluator model** (site owner, block selector, fires automatically on the single search path) is distinct from the **`gregius-data evaluation` CLI** (developer QA / ragas artifact generation — see `docs/rag-evaluation`).
 - **Rerank** (a ranking model scoring candidate relevance) is distinct from the **evaluator** (a go/no-go sufficiency judgment). Both are optional and independent.
 
+### 4.5 Citation Resolver
+
+Source: [includes/rag/class-gregius-data-citation-resolver.php](../../includes/rag/class-gregius-data-citation-resolver.php)
+
+Public API:
+- `Gregius_Data_Citation_Resolver::resolve_references( $content, $citation_sources = array(), $sources = array() )` (static)
+
+Builds an ordered server-side reference list from `[Source N]` markers in the answer content, mirroring the frontend citation logic so references stay portable across consumers. Prefers the ordered `citation_sources` array and falls back to `sources`; returns `{ citationIndex, title, url }` entries.
+
+### 4.6 Entity Content Tool
+
+Source: [includes/rag/class-gregius-data-entity-content-tool.php](../../includes/rag/class-gregius-data-entity-content-tool.php)
+
+Registers the `search_entity_content` tool (single-document, grounded retrieval for the current entity).
+
+Public API:
+- `Gregius_Data_Entity_Content_Tool::init()`
+- `register_tools( $tools )`
+- `handle_search_entity_content( $result, $tool_name, $tool_context )`
+
+`init()` wires the tool definition (`gregius_data_rag_tools`) and its handler (`gregius_data_rag_tool_search_entity_content`). Constant `MAX_CONTENT_CHARS = 24000` caps the document content sent to the answer model.
+
+### 4.7 Entity Grounding
+
+Source: [includes/rag/class-gregius-data-entity-grounding.php](../../includes/rag/class-gregius-data-entity-grounding.php)
+
+Grounds tool routing in the current entity (the post/page the RAG block is rendered on).
+
+Public API:
+- `new Gregius_Data_Entity_Grounding()`
+- `capture_entity( $query, $options, $user_id )`
+- `inject_routing_grounding( $system_prompt )`
+
+The constructor registers `capture_entity()` on `gregius_data_rag_request` (priority 10) and `inject_routing_grounding()` on `gregius_data_rag_tool_selection_system_prompt` (priority 20). It injects a "currently viewing" descriptor that instructs the router to use `search_entity_content` only for questions about the current document.
+
+### 4.8 Manifest Validator
+
+Source: [includes/rag/class-gregius-data-manifest-validator.php](../../includes/rag/class-gregius-data-manifest-validator.php)
+
+Canonical validator for the RAG request manifest contract.
+
+Public API (all static):
+- `Gregius_Data_Manifest_Validator::normalize( $raw )`
+- `Gregius_Data_Manifest_Validator::is_supported_version( $version )`
+- `Gregius_Data_Manifest_Validator::empty_manifest()`
+
+Constants: `SCHEMA_VERSION = '1.0.0'`, `MIN_VERSION = '1.0.0'`.
+
+`normalize()` returns a fully-normalized manifest array with safe defaults for `manifest_version`, `state`, `entity`, and `search_capabilities`; it never throws. See [manifest-contract.md](manifest-contract.md).
+
 ## 5. REST API Entry Points
 
 ### 5.1 `POST /wp-json/gregius-data/v1/rag/chat`
@@ -217,9 +282,14 @@ Optional request fields:
 - `temperature`
 - `agentic_model`
 - `rerank_model_id`
+- `evaluator_model`
 - `conversation_id`
 - `prompt_id`
+- `security_prompt_id`
+- `evaluation_prompt_id`
+- `source_turn_index`
 - `messages`
+- `source`
 - `metadata_filter`
 - `metadata_manifest`
 - `manifest`
@@ -253,6 +323,7 @@ Optional request fields:
 - `params`
 - `conversation_id`
 - `messages`
+- `manifest`
 
 Key behavior:
 - Uses the same tool-definition registry as agentic routing.
@@ -561,10 +632,10 @@ Check:
 ### 7.5 Unexpected public endpoint exposure in production
 
 Cause:
-- Access-level settings or filters were changed to public.
+- The `gregius_data_rag_access_level` filter was changed to `public`.
 
 Fix:
-- Confirm and enforce `logged_in` or capability-gated access through settings or filters.
+- Confirm and enforce `logged_in` or capability-gated access through the `gregius_data_rag_access_level` filter.
 
 ### 7.6 `gregius_data_rate_limited` (HTTP 429)
 
@@ -640,23 +711,28 @@ The RAG Assistant is the foundation Gutenberg block that exposes the RAG endpoin
 
 ### 8.2 `requireLogin` — Block-Level Access Control
 
-When `requireLogin` is `true`, `render.php` checks `is_user_logged_in()` before rendering the block or any markup. Guests receive a login link with a redirect back to the current page:
+`render.php` resolves the site-wide access level via the `gregius_data_rag_access_level` filter, computes `$guest_allowed`, and renders a login link (with a redirect back to the current page) only when the visitor is not logged in and not a permitted guest:
 
 ```php
-if ( $require_login && ! is_user_logged_in() ) {
+$access_level = (string) apply_filters( 'gregius_data_rag_access_level', 'logged_in' );
+$guest_allowed = ( 'capability' !== $access_level )
+	&& ( 'public' === $access_level || ! $require_login );
+
+if ( ! is_user_logged_in() && ! $guest_allowed ) {
     $login_url = wp_login_url( get_permalink() );
     echo '<div class="gregius-rag-login-required">...<a href="...">Sign in</a>...</div>';
     return;
 }
 ```
 
-**Important:** Render behavior also honors the effective API access policy. Guests are gated when either `requireLogin=true` **or** the global RAG access level is not `public`.
+**Important:** Render behavior also honors the effective API access policy. A block rendered with `requireLogin=false` grants guests access (a guest-access nonce is issued at render) unless the site-wide RAG access level is `capability` — the hard ceiling for guests.
 
-Access-level resolution is site-aware: render logic reads `rag_access_level` through `Gregius_Data_Settings_Manager` (stored in the current site's `*_gregius_data_settings` table) and then applies the `gregius_data_rag_access_level` filter. This works correctly for both single-site and multisite without hardcoding a site ID or options table.
+Access level is resolved through the `gregius_data_rag_access_level` filter with a fail-closed `logged_in` default (`Gregius_Data_RAG_Security_Hooks::get_access_level()`). Render logic applies the same filter, so block and API stay aligned without hardcoding a site ID or options table.
 
 - `requireLogin=true` + any non-public API access level → guest sign-in prompt at render time ✅
-- `requireLogin=false` + API default `ACCESS_LOGGED_IN` → guest sign-in prompt at render time (prevents submit-then-401 flow)
+- `requireLogin=false` + API default `ACCESS_LOGGED_IN` → block renders for guests; the issued guest-access nonce admits the request ✅
 - `requireLogin=false` + API set to `public` (via `gregius_data_rag_access_level` filter) → fully public block and API ✅
+- `requireLogin=false` + API set to `capability` → guest sign-in prompt at render time (`capability` is the only hard ceiling for guests)
 
 To make a block public end-to-end, both the block attribute and the API access level must be aligned:
 
@@ -684,7 +760,7 @@ npm run build
 
 - Core service usage implements [SRS: RAG-FR-05 to RAG-FR-17]
 - REST chat endpoint implements [SRS: RAG-FR-01 to RAG-FR-04, RAG-FR-18, RAG-DR-01 to RAG-DR-11]
-- Metadata-bearing request and observability contracts implement [SRS: RAG-FR-23, RAG-DR-12]
+- Metadata-bearing request and response contracts implement [SRS: RAG-FR-23, RAG-DR-12]
 - Custom tool registration and action execution implement [SRS: RAG-FR-19 to RAG-FR-21, RAG-DR-09, RAG-DR-10]
 - Access-control customization implements [SRS: RAG-OR-01, RAG-OR-02, RAG-QR-08]
 

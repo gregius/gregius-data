@@ -41,7 +41,7 @@ Canonical contract reference:
 | Plugin Developers | Clear boundaries between retrieval, governance, and generation so subsystem changes remain localized | High |
 | Site Administrators | Configurable models, access policy, and predictable fallback behavior without source edits | High |
 | Frontend and API Integrators | Stable response and metadata contracts with extension hooks | High |
-| Operations | Observability into retrieval, governance, and acceptance behavior for release validation | High |
+| Operations | Visibility into retrieval, governance, and acceptance behavior for release validation | High |
 | Security Reviewers | Ability to tighten public access and preserve explicit denial behavior | High |
 
 ---
@@ -148,7 +148,7 @@ Search Layer  Prompt Layer  AI Client Layer  Security / Settings Layer
    - Uses provider abstraction for answer generation.
    - Respects per-model limits and token accounting.
    - Returns answer text and source/reference payloads as separate structures.
-    - Emits manifest observability metadata (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`) for diagnostics and interaction persistence.
+    - Emits manifest metadata (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`) for diagnostics and interaction persistence.
 
 6. **Security and Extension Layer**
    - Applies endpoint access policy defaults and overrides.
@@ -332,7 +332,7 @@ The runtime model prioritizes deterministic safety over best-effort synthesis. G
 
 **Alternatives Considered:**
 - Basic answer-only responses
-- Internal logs without response-level observability
+- Internal logs without response-level diagnostics
 
 **Rationale:**
 - Supports debugging, evaluation, and governance review.
