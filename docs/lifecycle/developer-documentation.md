@@ -24,6 +24,14 @@ Gregius_Data_Cron_Manager::register_schedules();
 
 This ordering matters: custom cron schedules must be registered before activation logic attempts to schedule events.
 
+Runtime initialization is wired on `plugins_loaded` in `gregius-data.php`:
+
+```php
+add_action( 'plugins_loaded', 'gregius_data_init' );
+```
+
+`gregius_data_init()` constructs `Gregius_Data` and calls `init()`. `Gregius_Data::init()` calls `init_lifecycle_hooks()`, which constructs `Gregius_Data_Lifecycle_Hooks` and invokes `Gregius_Data_Lifecycle_Hooks::schedule_orphan_cleanup()` to schedule the daily `gregius_data_orphan_cleanup` task.
+
 ## 2. Public APIs and Constants
 
 ### `Gregius_Data_Activator`
@@ -31,7 +39,6 @@ This ordering matters: custom cron schedules must be registered before activatio
 Relevant public API:
 
 ```php
-const VERSION = '1.0.0';
 const VERSION_OPTION = 'gregius_data_db_version';
 
 public static function activate();
@@ -42,7 +49,7 @@ Internal helper methods used by those public entry points:
 
 ```php
 private static function run_upgrades();
-private static function seed_default_prompt();
+private static function seed_default_prompts();
 private static function migrate_factory_prompt_to_placeholders();
 private static function init_default_sync_settings();
 ```
@@ -56,7 +63,7 @@ Activation behavior summary:
 - seeds the factory prompt when missing.
 
 Version-check behavior summary:
-- compares `gregius_data_db_version` with `Gregius_Data_Activator::VERSION`,
+- compares `gregius_data_db_version` with `GREGIUS_DATA_VERSION`,
 - runs upgrades when the installed version is older,
 - invokes prompt seeding and placeholder migration on every admin-init path, guarded by options.
 
@@ -104,7 +111,7 @@ Retention flag storage: a site option on multisite (`get_site_option` / `update_
 Uninstall behavior summary:
 - `run()` preserves all plugin data by default (flag unset),
 - always clears cron (Action Scheduler + WP-Cron) and deletes the `gregius_data_clear_localstorage` transient,
-- when the flag is set: deletes `gregius_data_*`/`gregius_data_*` options and transients, drops `gregius_data_settings`, `gregius_data_sync_metadata`, and `gregius_data_logs`, deletes `gregius_prompt` posts/terms/meta, and (multisite) `sitemeta` keys,
+- when the flag is set: deletes `gregius_data_*` options and transients, drops `gregius_data_settings`, `gregius_data_sync_metadata`, and `gregius_data_logs`, deletes `gregius_prompt` and `gregius_interaction` posts/terms/meta, and (multisite) `sitemeta` keys,
 - never touches the external PostgreSQL/Supabase mirror.
 
 ### `Gregius_Data_REST_Data_Retention_Controller`
@@ -127,13 +134,13 @@ protected $rest_base  = 'data-retention';
 |---|---|
 | `gregius_data_sync_enabled_post_types` | `array()` |
 | `gregius_data_sync_enabled_statuses` | `array()` |
-| `gregius_data_sync_real_time_sync` | `false` |
+| `gregius_data_sync_real_time_sync` | `true` |
 | `gregius_data_sync_sync_meta` | `true` |
 | `gregius_data_sync_sync_terms` | `true` |
 
 Design intent:
 - post types and statuses start empty so administrators explicitly opt in,
-- real-time sync starts disabled,
+- real-time sync starts enabled,
 - meta and term sync support is enabled for later use once core sync is configured.
 
 ---
@@ -146,14 +153,15 @@ Design intent:
 |---|---|---|
 | `gregius_data_check_connection_health` | `gregius_data_every_five_minutes` | Connection health monitoring |
 | `gregius_data_daily_validation` | `daily` | Sync validation |
+| `gregius_data_daily_log_retention_purge` | `daily` | Log retention purge |
 
 ### Cleared on Deactivation
 
 Active hooks:
-- `gregius_data_check_vector_indexes`
 - `gregius_data_process_retry_queue`
 - `gregius_data_check_connection_health`
 - `gregius_data_daily_validation`
+- `gregius_data_daily_log_retention_purge`
 
 Deprecated hooks kept for cleanup:
 - `gregius_data_cleanup_logs`
@@ -182,13 +190,14 @@ Fallback when Action Scheduler is unavailable:
 Always (flag on or off):
 1. Clear cron (Action Scheduler actions, or WP-Cron fallbacks).
 2. Delete the `gregius_data_clear_localstorage` transient.
+3. Delete the retention flag option/site option.
+4. Flush the object cache.
 
 When the flag is enabled (opt-in removal):
-1. Delete `gregius_data_*` and `gregius_data_*` options.
+1. Delete `gregius_data_*` options.
 2. Delete matching transients and transient timeouts.
 3. Drop `{prefix}gregius_data_settings`, `{prefix}gregius_data_sync_metadata`, and `{prefix}gregius_data_logs`.
-4. Delete prompt data: `gregius_prompt` posts, `_gregius_prompt_*` meta, and `gregius_prompt_type` terms.
-5. Flush object cache.
+4. Delete prompt data (`gregius_prompt` posts, `_gregius_prompt_*` meta, and `gregius_prompt_type` terms) and interaction data (`gregius_interaction` posts and metadata).
 
 Multisite additions:
 1. Query all blog IDs.
@@ -212,7 +221,7 @@ set_transient( 'gregius_data_clear_localstorage', true, HOUR_IN_SECONDS );
 
 ### Browser-Side Bridge
 
-`assets/assets.php` attaches to `admin_head` and checks the transient:
+`assets/assets.php` attaches to `admin_enqueue_scripts` and checks the transient:
 
 ```php
 function gregius_data_clear_localstorage_script() {
@@ -221,7 +230,7 @@ function gregius_data_clear_localstorage_script() {
         // output script that removes localStorage keys prefixed with gregius_data_
     }
 }
-add_action( 'admin_head', 'gregius_data_clear_localstorage_script' );
+add_action( 'admin_enqueue_scripts', 'gregius_data_clear_localstorage_script' );
 ```
 
 The injected script removes all browser localStorage keys whose names start with `gregius_data_`.
@@ -257,8 +266,8 @@ Operational note:
 
 ### Uninstall
 
-1. Deactivate with "Keep" (default) and delete the plugin: confirm options, tables, and prompt data remain; only cron, the capability, and the transient are removed.
-2. Deactivate with "Remove" and delete the plugin: confirm `gregius_data_*`/`gregius_data_*` options, the three tables (`gregius_data_settings`, `gregius_data_sync_metadata`, `gregius_data_logs`), prompt data, and (multisite) `sitemeta` keys are removed.
+1. Deactivate with "Keep" (default) and delete the plugin: confirm options, tables, and prompt and interaction data remain; only cron, the retention flag, and the transient are removed.
+2. Deactivate with "Remove" and delete the plugin: confirm `gregius_data_*` options, the three tables (`gregius_data_settings`, `gregius_data_sync_metadata`, `gregius_data_logs`), prompt and interaction data, and (multisite) `sitemeta` keys are removed.
 3. In both cases, confirm the external PostgreSQL/Supabase mirror remains intact.
 
 ---
@@ -278,15 +287,6 @@ Resolution:
 1. Visit a WordPress admin page after deactivation.
 2. Confirm the transient has been consumed.
 
-### Symptom: Capability appears to remain after deactivation
-
-Likely cause:
-- administrator role state was not refreshed after deactivation/reactivation.
-
-Resolution:
-1. Reactivate the plugin to re-apply lifecycle capability handling.
-2. Verify access behavior using `manage_options`-protected admin and REST routes.
-
 ### Symptom: Uninstall left data behind in multisite
 
 Root cause:
@@ -294,7 +294,7 @@ Root cause:
 
 Resolution:
 1. Re-run uninstall through WordPress-managed flow.
-2. Inspect remaining `gregius_data_*` and `gregius_data_*` keys manually if needed.
+2. Inspect remaining `gregius_data_*` keys manually if needed.
 
 ### Symptom: Delete dialog says "will also delete its data" but data remains
 

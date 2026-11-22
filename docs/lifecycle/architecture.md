@@ -54,7 +54,6 @@ WordPress Plugin Lifecycle
         │    ├─ create settings / sync metadata / logs tables
         │    ├─ initialize default sync settings
         │    ├─ schedule cron events
-        │    ├─ add administrator capability
         │    └─ seed factory prompt
         │
         ├─ Active Admin Request
@@ -101,18 +100,17 @@ Mapping:
    - Registers activation and deactivation hooks.
    - Registers the admin-init version-check callback.
    - Registers cron schedules before event scheduling occurs.
+   - Hooks `gregius_data_init()` on `plugins_loaded`; it constructs `Gregius_Data` and calls `init()`, which reaches `init_lifecycle_hooks()` and schedules the orphan-cleanup task.
 
 2. **Activator Component** (`Gregius_Data_Activator`)
    - Performs upgrades and version tracking.
    - Creates settings, sync metadata, and logs tables via collaborating managers.
    - Initializes default sync options under `gregius_data_sync_*` keys.
    - Schedules connection-health and daily-validation cron events.
-   - Adds administrator capability.
    - Seeds and migrates factory prompt content through guarded helper methods.
 
 3. **Deactivator Component** (`Gregius_Data_Deactivator`)
    - Clears active and deprecated cron hooks.
-   - Removes an administrator capability according to current implementation.
    - Sets the transient consumed by the admin-side localStorage cleanup bridge.
    - Preserves plugin state by design.
 
@@ -121,7 +119,7 @@ Mapping:
    - Provides schedule metadata for runtime use and debugging.
 
 5. **Assets Cleanup Bridge** (`gregius_data_clear_localstorage_script()`)
-   - Runs on `admin_head`.
+   - Runs on `admin_enqueue_scripts`.
    - Detects `gregius_data_clear_localstorage` transient.
    - Injects JavaScript to remove `gregius_data_*` localStorage keys.
 
@@ -153,7 +151,7 @@ Plugin activated
 register_activation_hook → Gregius_Data_Activator::activate()
     │
     ├─ run_upgrades()
-    │   └─ update_option('gregius_data_db_version', VERSION)
+    │   └─ update_option('gregius_data_db_version', GREGIUS_DATA_VERSION)
     │
     ├─ create settings tables for all sites
     ├─ create sync metadata tables for all sites
@@ -163,7 +161,10 @@ register_activation_hook → Gregius_Data_Activator::activate()
     │   └─ only update missing gregius_data_sync_* options
     ├─ schedule gregius_data_check_connection_health when missing
     ├─ schedule gregius_data_daily_validation when missing
-    └─ seed_default_prompt() (guarded by option)
+    ├─ schedule gregius_data_daily_log_retention_purge when missing
+    ├─ ensure_prompt_infrastructure()
+    ├─ ensure_prompt_type_terms()
+    └─ seed_default_prompts() (guarded by option)
 ```
 
 ### 4.2 Version-Check Flow
@@ -175,10 +176,10 @@ admin_init
 Gregius_Data_Activator::check_version()
     │
     ├─ installed_version = get_option('gregius_data_db_version', '0.0.0')
-    ├─ version_compare(installed_version, VERSION, '<')?
+    ├─ version_compare(installed_version, GREGIUS_DATA_VERSION, '<')?
     │   ├─ YES → run_upgrades()
     │   └─ NO  → continue
-    ├─ seed_default_prompt() (guarded)
+    ├─ seed_default_prompts() (guarded)
     └─ migrate_factory_prompt_to_placeholders() (guarded)
 ```
 
@@ -198,7 +199,7 @@ Gregius_Data_Deactivator::deactivate()
 Next admin request
     │
     ▼
-admin_head → gregius_data_clear_localstorage_script()
+admin_enqueue_scripts → gregius_data_clear_localstorage_script()
     │
     ├─ transient exists?
     │   ├─ NO → no-op
@@ -222,13 +223,14 @@ uninstall.php → Gregius_Data_Uninstaller::run()
     │   ├─ clear cron (Action Scheduler when available, else WP-Cron)
     │   ├─ delete gregius_data_clear_localstorage transient
     │   ├─ if retention flag enabled:
-    │   │   ├─ delete gregius_data_* and gregius_data_* options
+    │   │   ├─ delete gregius_data_* options
     │   │   ├─ delete transient and site transient keys
     │   │   ├─ drop gregius_data_settings, gregius_data_sync_metadata, and gregius_data_logs tables
-    │   │   └─ delete gregius_prompt posts, _gregius_prompt_* meta, and gregius_prompt_type terms
+    │   │   └─ delete gregius_prompt posts/terms/meta and gregius_interaction posts/meta
     │   └─ restore_current_blog() when multisite
     ├─ delete retention flag
-    └─ if flag enabled: delete network-level sitemeta keys; flush object cache
+    ├─ delete network-level sitemeta keys when flag enabled
+    └─ flush object cache (unconditional)
 
 Note: the external PostgreSQL/Supabase mirror is never removed.
 ```
@@ -263,7 +265,7 @@ Linked requirements:
 ### AD-02: Empty Sync Defaults Require Explicit Opt-In
 
 Decision:
-- Activation initializes empty post-type and status defaults and keeps real-time sync disabled by default.
+- Activation initializes empty post-type and status defaults and enables real-time, meta, and term sync by default.
 
 Rationale:
 - Prevents accidental mass sync immediately after install.
@@ -358,7 +360,6 @@ Linked requirements:
 
 | Risk ID | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R-01 | Capability add/remove names diverge in current implementation. | Medium | Medium | Document as implementation caveat and track separately for code fix. |
 | R-02 | Guarded prompt routines still execute on every admin-init path. | Medium | Low | Keep guards intact and document the repeated invocation pattern. |
 | R-03 | Sites with disabled or low-traffic admin activity may delay deferred browser cleanup. | Low | Low | Document operational expectation and rely on subsequent admin requests. |
 | R-04 | Multisite uninstall can remove plugin state across all blogs unintentionally if invoked without full awareness. | Low | High | Document uninstall behavior clearly and keep destructive work scoped to uninstall only. |

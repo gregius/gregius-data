@@ -25,7 +25,7 @@ This SRS defines what the Gregius Data lifecycle subsystem must do to bootstrap 
 
 ### 1.2 System Scope
 
-The subsystem includes activation and deactivation hook behavior, admin-init version checks, default sync settings initialization, cron schedule registration and cleanup, capability setup and removal behavior, multisite uninstall cleanup, and the deferred localStorage cleanup bridge.
+The subsystem includes activation and deactivation hook behavior, admin-init version checks, runtime initialization (plugins_loaded → `Gregius_Data::init()` → orphan-cleanup scheduling), default sync settings initialization, cron schedule registration and cleanup, multisite uninstall cleanup, and the deferred localStorage cleanup bridge.
 
 Software identifier: gregius-data-lifecycle
 
@@ -35,7 +35,7 @@ Repository path: public/wp-content/plugins/gregius-data
 
 #### 1.3.1 System Context
 
-The lifecycle subsystem sits at the plugin boundary. It is responsible for establishing required plugin-owned tables, options, scheduled events, and administrative capabilities, and for cleaning up or preserving those resources according to the current lifecycle phase.
+The lifecycle subsystem sits at the plugin boundary. It is responsible for establishing required plugin-owned tables, options, and scheduled events, and for cleaning up or preserving those resources according to the current lifecycle phase.
 
 #### 1.3.2 System Functions Summary
 
@@ -78,9 +78,14 @@ The lifecycle subsystem sits at the plugin boundary. It is responsible for estab
 
 - docs/lifecycle/architecture.md
 - gregius-data.php
+- includes/class-gregius-data.php
 - includes/class-gregius-data-activator.php
 - includes/class-gregius-data-deactivator.php
 - includes/class-gregius-data-cron-manager.php
+- includes/class-gregius-data-log-retention.php
+- includes/class-gregius-data-uninstaller.php
+- includes/hooks/class-gregius-data-lifecycle-hooks.php
+- includes/api/class-gregius-data-rest-data-retention-controller.php
 - assets/assets.php
 - uninstall.php
 
@@ -100,9 +105,9 @@ Requirement notation:
 | LIFE-FR-03 | The software MUST run a version check during admin requests and trigger upgrade routines when the installed version is older than the code version. | Must |
 | LIFE-FR-04 | Activation MUST create or initialize plugin-owned settings, sync metadata, and logs tables for all sites where the implementation supports all-site creation. | Must |
 | LIFE-FR-05 | Activation MUST initialize default sync settings only when those option values do not already exist. | Must |
-| LIFE-FR-06 | Default sync settings MUST start with empty post types, empty statuses, disabled real-time sync, enabled meta sync, and enabled term sync. | Must |
+| LIFE-FR-06 | Default sync settings MUST start with empty post types, empty statuses, enabled real-time sync, enabled meta sync, and enabled term sync. | Must |
 | LIFE-FR-07 | Activation MUST schedule connection health and daily validation cron events when they are not already scheduled. | Must |
-| LIFE-FR-08 | Activation MUST add the plugin administrative capability to the administrator role. | Must |
+| LIFE-FR-08 | Lifecycle-sensitive administrative operations MUST require `manage_options` authorization on single-site and `manage_network_options` on multisite. | Must |
 | LIFE-FR-09 | Activation and version-check flows MUST ensure the factory default prompt seed and prompt placeholder migration routines remain idempotent. | Must |
 | LIFE-FR-10 | Deactivation MUST clear active and deprecated plugin-owned scheduled cron hooks without deleting plugin data. | Must |
 | LIFE-FR-11 | Deactivation MUST set a transient that triggers browser-side localStorage cleanup on the next admin page load. | Must |
@@ -111,7 +116,7 @@ Requirement notation:
 | LIFE-FR-14 | Uninstall MUST clean up multisite blog data for each site and remove network-level plugin metadata when the retention flag is enabled. | Must |
 | LIFE-FR-15 | Deactivation MUST surface a keep/remove data-retention choice and persist it to `gregius_data_remove_data_on_uninstall`. | Must |
 | LIFE-FR-16 | The retention flag MUST be stored as a site option on multisite and a blog option on single-site. | Must |
-| LIFE-FR-17 | Uninstall removal MUST also drop the logs table and delete plugin-owned prompt data (`gregius_prompt` posts, `_gregius_prompt_*` meta, and `gregius_prompt_type` terms). | Must |
+| LIFE-FR-17 | Uninstall removal MUST also drop the logs table and delete plugin-owned prompt data (`gregius_prompt` posts, `_gregius_prompt_*` meta, and `gregius_prompt_type` terms) and interaction data (`gregius_interaction` posts and metadata). | Must |
 | LIFE-FR-18 | The retention preference MUST be writable through the REST endpoint `POST /gregius-data/v1/data-retention`. | Must |
 
 ### 3.2 Data and Contract Requirements
@@ -121,7 +126,7 @@ Requirement notation:
 | LIFE-DR-01 | The lifecycle version contract MUST use the option key `gregius_data_db_version` to track installed lifecycle version state. | Must |
 | LIFE-DR-02 | Default sync settings contracts MUST use option keys prefixed with `gregius_data_sync_`. | Must |
 | LIFE-DR-03 | The deferred localStorage cleanup contract MUST use the transient key `gregius_data_clear_localstorage`. | Must |
-| LIFE-DR-04 | Uninstall cleanup contracts MUST remove option keys matching both `gregius_data_*` and `gregius_data_*`. | Must |
+| LIFE-DR-04 | Uninstall cleanup contracts MUST remove option keys matching the `gregius_data_*` prefix. | Must |
 | LIFE-DR-05 | Cron schedule contracts MUST define `gregius_data_every_minute` as 60 seconds and `gregius_data_every_five_minutes` as 300 seconds. | Must |
 | LIFE-DR-06 | The lifecycle subsystem MUST preserve clear ownership boundaries for plugin-managed settings, sync metadata, and logs tables. | Must |
 | LIFE-DR-07 | The data-retention contract MUST use the option/site-option key `gregius_data_remove_data_on_uninstall`. | Must |
@@ -134,7 +139,7 @@ Requirement notation:
 | LIFE-OR-02 | Uninstall MUST check for `WP_UNINSTALL_PLUGIN` before executing destructive cleanup. | Must |
 | LIFE-OR-03 | The lifecycle subsystem SHOULD remain idempotent when activation or version-check routines are invoked multiple times. | Should |
 | LIFE-OR-04 | Multisite uninstall cleanup MUST switch site context per blog before deleting site-scoped data and restore context afterward. | Must |
-| LIFE-OR-05 | The lifecycle subsystem MUST flush object cache during uninstall cleanup after destructive operations are executed. | Must |
+| LIFE-OR-05 | The lifecycle subsystem MUST flush the object cache during uninstall cleanup regardless of the retention flag. | Must |
 | LIFE-OR-06 | Uninstall MUST NOT remove the external PostgreSQL/Supabase mirror, regardless of the retention flag. | Must |
 | LIFE-OR-07 | On multisite, the retention flag MUST be a single network-wide site option governing all blogs. | Must |
 
@@ -146,7 +151,7 @@ Requirement notation:
 | LIFE-QR-02 | Deactivation behavior MUST align with WordPress expectation that data is preserved unless the plugin is uninstalled. | Manual deactivation/reactivation tests |
 | LIFE-QR-03 | Uninstall cleanup SHOULD leave no plugin-owned options or custom tables behind for either single-site or multisite installs. | Database inspection after uninstall |
 | LIFE-QR-04 | Deferred localStorage cleanup SHOULD execute on the next admin request without requiring direct user scripting actions. | Browser-based admin verification |
-| LIFE-QR-05 | With the flag off, uninstall MUST leave options, tables, and prompt data intact; with the flag on, uninstall MUST remove them; the external mirror MUST remain intact in both cases. | Database inspection after uninstall (keep and remove) |
+| LIFE-QR-05 | With the flag off, uninstall MUST leave options, tables, prompt data, and interaction data intact; with the flag on, uninstall MUST remove them; the external mirror MUST remain intact in both cases. | Database inspection after uninstall (keep and remove) |
 
 ## 4. Verification and Acceptance
 
@@ -167,10 +172,11 @@ Acceptance baseline:
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
 | LIFE-FR-01 to LIFE-FR-03 | gregius-data.php, includes/class-gregius-data-activator.php | Bootstrap hook registration and admin-init version check |
-| LIFE-FR-04 to LIFE-FR-09, LIFE-DR-01 to LIFE-DR-02, LIFE-OR-03, LIFE-QR-01 | includes/class-gregius-data-activator.php | Activation setup, defaults, versioning, prompt seeding, idempotent guards |
-| LIFE-FR-10 to LIFE-FR-11, LIFE-DR-03, LIFE-OR-01, LIFE-QR-02, LIFE-QR-04 | includes/class-gregius-data-deactivator.php, assets/assets.php | Deactivation preservation and deferred localStorage cleanup |
+| Runtime init (orphan-cleanup scheduling) | gregius-data.php, includes/class-gregius-data.php, includes/hooks/class-gregius-data-lifecycle-hooks.php | `gregius_data_init()` (plugins_loaded) → `Gregius_Data::init()` → `init_lifecycle_hooks()` → `schedule_orphan_cleanup()` (schedules `gregius_data_orphan_cleanup`) |
+| LIFE-FR-04 to LIFE-FR-07, LIFE-FR-09, LIFE-DR-01 to LIFE-DR-02, LIFE-OR-03, LIFE-QR-01 | includes/class-gregius-data-activator.php, includes/class-gregius-data-log-retention.php | Activation setup, defaults, versioning, prompt seeding, log-retention scheduling, idempotent guards |
+| LIFE-FR-10 to LIFE-FR-11, LIFE-DR-03, LIFE-OR-01, LIFE-QR-02, LIFE-QR-04 | includes/class-gregius-data-deactivator.php, includes/class-gregius-data-log-retention.php, assets/assets.php | Deactivation preservation, log-retention clearing, and deferred localStorage cleanup |
 | LIFE-FR-12 to LIFE-FR-14, LIFE-FR-16 to LIFE-FR-17, LIFE-DR-04, LIFE-DR-07, LIFE-OR-02, LIFE-OR-04, LIFE-OR-05, LIFE-OR-06, LIFE-OR-07, LIFE-QR-03, LIFE-QR-05 | uninstall.php, includes/class-gregius-data-uninstaller.php | Uninstall cleanup, retention flag gate, Action Scheduler fallback, multisite cleanup, cache flush |
-| LIFE-FR-15, LIFE-FR-18 | includes/api/class-gregius-data-rest-data-retention-controller.php, assets/src/scripts/deactivation-modal.js, assets/assets.php | Retention preference surface and REST endpoint |
+| LIFE-FR-08, LIFE-FR-15, LIFE-FR-18 | includes/api/class-gregius-data-rest-data-retention-controller.php, assets/src/scripts/deactivation-modal.js, assets/assets.php | Authorization, retention preference surface, and REST endpoint |
 | LIFE-DR-05 | includes/class-gregius-data-cron-manager.php | Custom schedule intervals and cron ownership |
 | LIFE-DR-06 | includes/class-gregius-data-activator.php, uninstall.php | Table ownership boundaries |
 
@@ -187,8 +193,7 @@ Acceptance baseline:
 
 | ID | Section | Issue | Owner | Target Date |
 |---|---|---|---|---|
-| LIFE-TBD-01 | 3.1 | Capability add/remove behavior is inconsistent in the current implementation and should be tracked separately from documentation migration. | Engineering | TBD |
-| LIFE-TBD-02 | 3.1 | Prompt seeding and placeholder migration run on every admin version-check path even though they are guarded; operational cost has not been benchmarked. | Engineering | TBD |
+| LIFE-TBD-02 | 3.1 | Prompt seeding and placeholder migration run on every admin version-check path even though they are guarded; operational cost has not been measured. | Engineering | TBD |
 
 ### 6.3 Decisions Log
 
