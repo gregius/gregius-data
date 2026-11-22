@@ -75,6 +75,7 @@ The vectors subsystem consumes cleaned and chunked content from sync contracts a
 - includes/vectors/class-gregius-data-vector-generator.php
 - includes/vectors/interface-gregius-data-vector-strategy.php
 - includes/vectors/strategies/class-gregius-data-api-embeddings-strategy.php
+- includes/vectors/strategies/class-gregius-data-hashingtf-strategy.php
 - includes/vectors/class-gregius-data-hashingtf-embeddings.php
 - includes/class-gregius-data-model-registry.php
 - includes/class-gregius-data-connection-model-manager.php
@@ -141,7 +142,7 @@ Requirement notation:
 |---|---|---|
 | VEC-QR-01 | Vector generation pathways SHOULD preserve deterministic model-to-strategy routing for equivalent model metadata. | Routing behavior tests |
 | VEC-QR-02 | The subsystem MUST preserve row-level deduplication guarantees through storage uniqueness constraints. | Schema and integration checks |
-| VEC-QR-03 | API embeddings pathways SHOULD preserve token observability for operator reporting. | Payload and stats checks |
+| VEC-QR-03 | API embeddings pathways SHOULD preserve token usage metrics for operator reporting. | Payload and stats checks |
 | VEC-QR-04 | Provider-path behavior for generation SHOULD remain parity-aligned between direct and HTTP-backed connections. | Cross-provider parity checks |
 | VEC-QR-05 | Vector status and posts-list endpoints SHOULD remain responsive under normal operational batch sizes. | Endpoint runtime measurement |
 | VEC-QR-06 | The subsystem MUST avoid hard failures in Search/RAG consumers when a specific model table is unavailable and fallback conditions are met upstream. | Integration tests with degraded model availability |
@@ -169,10 +170,11 @@ Acceptance baseline for migration phase:
 | VEC-FR-01 to VEC-FR-03, VEC-FR-08 | includes/vectors/class-gregius-data-vector-generator.php, includes/vectors/interface-gregius-data-vector-strategy.php | Strategy orchestration and model routing behavior |
 | VEC-FR-04 to VEC-FR-07, VEC-FR-10, VEC-FR-12 | includes/api/class-gregius-data-rest-vector-queue-controller.php, includes/vectors/class-gregius-data-hashingtf-embeddings.php | Queue/generation/status/delete behavior and row-per-embedding model |
 | VEC-FR-11 | includes/vectors/class-gregius-data-hashingtf-embeddings.php, includes/vectors/strategies/class-gregius-data-hashingtf-strategy.php | Stateless internal model — no vocabulary preparation required |
+| VEC-FR-09 | includes/vectors/class-gregius-data-hashingtf-embeddings.php:712, includes/class-gregius-data-schema-manager.php:1744 | Embedding + query-vector contract stability consumed by Search (search-integration.php:1057) and RAG (rag-service.php:378) |
 | VEC-FR-06, VEC-DR-06 | includes/api/class-gregius-data-rest-connection-models-controller.php, includes/class-gregius-data-connection-model-manager.php | Connection-model management and response masking |
 | VEC-DR-01 to VEC-DR-10 | includes/vectors/interface-gregius-data-vector-strategy.php, REST controllers, model registry and embeddings contracts | Data and payload obligations |
 | VEC-OR-01 to VEC-OR-08 | REST controllers, vector generator | Permissions, operations, and lifecycle constraints |
-| VEC-QR-01 to VEC-QR-08 | docs/vectors/architecture.md, implementation files listed in References | Quality, parity, observability, and extension expectations |
+| VEC-QR-01 to VEC-QR-08 | docs/vectors/architecture.md, implementation files listed in References | Quality, parity, reporting, and extension expectations |
 
 ## 6. Appendices
 
@@ -188,7 +190,7 @@ Acceptance baseline for migration phase:
 |---|---|---|---|---|
 | VEC-TBD-01 | 3.4 | Batch-throughput SLO thresholds are not yet codified as release-level limits. | Product and engineering | TBD |
 | VEC-TBD-02 | 3.2 | Standardized request/response fixtures for all vector routes should be consolidated in developer documentation examples. | Engineering | TBD |
-| VEC-TBD-03 | 3.3 | Provider-path parity evidence for large datasets should be added to recurring benchmark checks. | Engineering | TBD |
+| VEC-TBD-03 | 3.3 | Provider-path parity evidence for large datasets should be added to recurring verification checks. | Engineering | TBD |
 
 ### 6.3 Decisions Log
 

@@ -102,6 +102,24 @@ Dimensions: 1024
 Provider: `internal`
 Vector table: `wp_posts_hashingtf_murmur3_1024`
 
+### 3.6 API Embeddings Strategy (`Gregius_Data_API_Embeddings_Strategy`)
+
+Source: [../../includes/vectors/strategies/class-gregius-data-api-embeddings-strategy.php](../../includes/vectors/strategies/class-gregius-data-api-embeddings-strategy.php)
+
+Core responsibilities:
+- Generate embeddings via external provider APIs (OpenAI, Cohere, etc.).
+- Use true batch embedding calls when the provider implements `generate_embeddings_batch()`, with sequential per-post fallback otherwise.
+- Target both PDO (direct PostgreSQL) and Supabase/PostgREST provider paths.
+- Write row-per-embedding rows under the same `post_id + field_type + chunk_index` contract as HashingTF.
+
+Strategy identity:
+- `get_id()` returns `api-embeddings`.
+- `get_name()` returns `API Embeddings (OpenAI, Cohere, etc)`.
+
+`supports_model()` rule:
+- `provider` is set and is not `internal`.
+- `dimensions` is set and is greater than `0`.
+
 ## 4. REST Route Catalog (Vectors)
 
 Base namespace: `/wp-json/gregius-data/v1`
@@ -141,15 +159,13 @@ Model contract keys expected by vector strategies:
 - `model_key`
 - `provider`
 - `provider_model_id`
-- `model_type`
 - `dimensions`
 - `vector_table_name`
-- `status`
 - `config`
 
 Behavior notes:
 - `vector_table_name` determines target embedding table per model.
-- `provider` and `model_type` drive strategy selection.
+- `provider` (plus `dimensions` for API embeddings and `model_key` for HashingTF) drives strategy selection via `supports_model()`.
 - Connection-model association controls which models are active for a connection.
 - Internal models that use `tokenizer_version` (e.g. HashingTF) trigger regeneration by bumping the version constant, not by content invalidation.
 
