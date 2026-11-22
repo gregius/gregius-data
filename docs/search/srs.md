@@ -100,9 +100,9 @@ Requirement notation:
 | SEARCH-FR-01 | The software MUST support enhanced search as an opt-in site-wide capability controlled by settings. | Must |
 | SEARCH-FR-02 | When enhanced search is enabled, the software MUST intercept WordPress main search queries and route retrieval through subsystem search orchestration. | Must |
 | SEARCH-FR-03 | The software MUST determine retrieval coverage by combining synced post types for PostgreSQL search with MySQL coverage for unsynced or broader public post types. | Must |
-| SEARCH-FR-04 | The software MUST execute PostgreSQL-backed retrieval through SQL function calls with configurable search language, trigram threshold, and vector-search capability flags. | Must |
+| SEARCH-FR-04 | The software MUST execute PostgreSQL-backed retrieval through SQL function calls with configurable search language and capability-gated trigram and vector-search flags. | Must |
 | SEARCH-FR-05 | The software MUST support both PDO PostgreSQL and PostgREST provider execution paths for search requests. | Must |
-| SEARCH-FR-06 | The software MUST support orchestrator-mode SQL execution and fallback to legacy SQL entrypoints when orchestrators are disabled. | Must |
+| SEARCH-FR-06 | The software MUST execute native search through the `search_native_orchestrate` SQL orchestrator as the sole native entry point. | Must |
 | SEARCH-FR-07 | The software MUST maintain relevance ordering across WordPress result rendering when PostgreSQL results are returned. | Must |
 | SEARCH-FR-08 | The software MUST expose a search schema creation flow that provisions the required SQL search functions. | Must |
 | SEARCH-FR-09 | The software MUST expose health monitoring and health-reset controls for search fallback behavior. | Must |
@@ -121,7 +121,7 @@ Requirement notation:
 | SEARCH-DR-02 | SQL search function contracts MUST return match-type metadata that identifies retrieval source behavior. | Must |
 | SEARCH-DR-03 | REST search management endpoints MUST return structured success/error payloads with explicit status messaging. | Must |
 | SEARCH-DR-04 | Search health telemetry MUST include total-search counts, success/failure counters, and last error/latency fields. | Must |
-| SEARCH-DR-05 | Typo-tolerance settings contracts MUST validate threshold values and reject out-of-range updates with client errors. | Must |
+| SEARCH-DR-05 | Trigram status contracts MUST report pg_trgm extension availability as a boolean capability flag and persist the derived per-connection `trigram_supported` setting. | Must |
 | SEARCH-DR-06 | Language-status contracts MUST return stored and current language values plus mismatch indicators. | Must |
 | SEARCH-DR-07 | Search schema status contracts MUST return function readiness and connection state indicators. | Must |
 | SEARCH-DR-08 | Provider-path contracts for PostgREST execution MUST pass equivalent search parameters to RPC calls as PDO path execution. | Must |
@@ -137,8 +137,8 @@ Requirement notation:
 | SEARCH-OR-02 | The subsystem MUST preserve site availability when PostgreSQL search fails by executing fallback-safe behavior and avoiding fatal query interruption. | Must |
 | SEARCH-OR-03 | Health tracking MUST capture consecutive failure conditions and support alert-oriented operational status transitions. | Must |
 | SEARCH-OR-04 | The subsystem SHOULD support connection-specific search execution for multi-connection deployments. | Should |
-| SEARCH-OR-06 | The subsystem MUST disable vector-search execution when required capabilities (extension/table/data availability) are not present. | Must |
-| SEARCH-OR-07 | The subsystem MUST avoid executing trigram typo tolerance for all-short-word queries where trigram behavior is intentionally suppressed for performance and precision. | Must |
+| SEARCH-OR-05 | The subsystem MUST disable vector-search execution when required capabilities (extension/table/data availability) are not present. | Must |
+| SEARCH-OR-06 | The subsystem MUST avoid executing trigram typo tolerance for all-short-word queries where trigram behavior is intentionally suppressed for performance and precision. | Must |
 
 ### 3.4 Quality and Non-Functional Requirements
 
@@ -147,10 +147,10 @@ Requirement notation:
 | SEARCH-QR-01 | The subsystem SHOULD preserve fast-path lexical performance when fallback tiers are unnecessary. | Runtime measurement + query profiling |
 | SEARCH-QR-02 | The subsystem MUST preserve deterministic result ordering from retrieval output through WordPress query rendering. | Result-order validation |
 | SEARCH-QR-03 | The subsystem MUST avoid duplicate post IDs when composing PostgreSQL and MySQL result sets. | Contract inspection + integration tests |
-| SEARCH-QR-04 | The subsystem SHOULD provide retrieval observability sufficient to diagnose source behavior and fallback status. | Log and status inspection |
+| SEARCH-QR-04 | The subsystem SHOULD provide retrieval diagnostics sufficient to diagnose source behavior and fallback status. | Log and status inspection |
 | SEARCH-QR-05 | Provider-path behavior (PDO vs PostgREST) SHOULD remain parity-aligned for equivalent search inputs. | Cross-provider parity tests |
 | SEARCH-QR-06 | The subsystem MUST avoid hard failure when vector or trigram capabilities are unavailable and continue with supported retrieval behavior. | Capability-variation testing |
-| SEARCH-QR-07 | SQL orchestration contracts SHOULD remain backward compatible with legacy wrapper entrypoints during migration windows. | SQL function compatibility checks |
+| SEARCH-QR-07 | SQL orchestration contracts SHOULD remain stable across the shared native (`search_native_orchestrate`) and RAG-oriented (`search_rag_orchestrate`) call sites. | SQL function compatibility checks |
 | SEARCH-QR-08 | Search-management endpoints SHOULD return operator-actionable messages for troubleshooting. | Response contract review |
 | SEARCH-QR-09 | The subsystem MUST preserve empty-filter serialization parity across provider paths so equivalent no-filter requests do not regress to zero-result behavior. | Cross-provider parity tests |
 
@@ -175,8 +175,8 @@ Acceptance baseline for migration phase:
 | SEARCH-FR-01 to SEARCH-FR-07, SEARCH-FR-13 to SEARCH-FR-15 | includes/search/class-gregius-data-search-integration.php, includes/sql/postgrest-schema.sql | WordPress interception, SQL execution, retrieval-mode behavior, ranking behavior, and metadata-filter parity |
 | SEARCH-FR-08 to SEARCH-FR-11 | includes/search/class-gregius-data-search-schema.php, includes/api/class-gregius-data-rest-search-controller.php, includes/search/class-gregius-data-search-language.php | Schema provisioning and search-management endpoint behavior |
 | SEARCH-FR-12, SEARCH-DR-01 to SEARCH-DR-11 | includes/search/class-gregius-data-search-integration.php, includes/search/class-gregius-data-search-fallback.php, includes/providers/class-gregius-data-postgresql-provider.php, includes/class-gregius-data-schema-manager.php, includes/class-gregius-data-content-cleaner.php | Event emission, response contracts, contextual source metadata, health telemetry, provider path parity, and metadata-manifest contracts |
-| SEARCH-OR-01 to SEARCH-OR-07 | includes/api/class-gregius-data-rest-search-controller.php, includes/search/class-gregius-data-search-fallback.php, includes/search/class-gregius-data-search-integration.php | Permissions, fallback operations, and runtime controls |
-| SEARCH-QR-01 to SEARCH-QR-09 | docs/search/architecture.md, includes/sql/postgrest-schema.sql, implementation files listed in References | Performance, compatibility, observability, and parity expectations |
+| SEARCH-OR-01 to SEARCH-OR-06 | includes/api/class-gregius-data-rest-search-controller.php, includes/search/class-gregius-data-search-fallback.php, includes/search/class-gregius-data-search-integration.php | Permissions, fallback operations, and runtime controls |
+| SEARCH-QR-01 to SEARCH-QR-09 | docs/search/architecture.md, includes/sql/postgrest-schema.sql, implementation files listed in References | Performance, compatibility, diagnostics, and parity expectations |
 
 ## 6. Appendices
 
@@ -192,7 +192,7 @@ Acceptance baseline for migration phase:
 |---|---|---|---|---|
 | SEARCH-TBD-01 | 3.4 | Query-performance SLO targets are described narratively but not codified as formal release thresholds in this package. | Product and engineering | TBD |
 | SEARCH-TBD-02 | 3.2 | Endpoint payload examples for all search management routes should be consolidated in canonical developer docs with tested request/response fixtures. | Engineering | TBD |
-| SEARCH-TBD-03 | 3.1, 3.4 | Cross-provider parity evidence (PDO vs PostgREST) should be continuously tracked in benchmark-style regression checks. | Engineering | TBD |
+| SEARCH-TBD-03 | 3.1, 3.4 | Cross-provider parity evidence (PDO vs PostgREST) should be continuously tracked in automated regression checks. | Engineering | TBD |
 
 ### 6.3 Decisions Log
 

@@ -19,7 +19,7 @@ Scope includes:
 - SQL function orchestration for lexical, trigram, and vector-capable retrieval
 - JSONB metadata filtering contracts for deterministic scoped retrieval
 - Provider-path routing for PDO and PostgREST execution
-- Health fallback and observability behavior
+- Health fallback and monitoring behavior
 - Search management REST endpoints (status/schema/language/trigram-status)
 
 Explicitly excluded:
@@ -189,7 +189,7 @@ Structured success/error response
 
 Mapping:
 - AV-03 -> SEARCH-FR-02, SEARCH-FR-03, SEARCH-FR-07, SEARCH-FR-09 to SEARCH-FR-12
-- AV-03 -> SEARCH-OR-02, SEARCH-OR-03, SEARCH-OR-05 to SEARCH-OR-07
+- AV-03 -> SEARCH-OR-02, SEARCH-OR-03, SEARCH-OR-05 to SEARCH-OR-06
 
 ---
 
@@ -276,7 +276,7 @@ Consequences:
 - `semantic_activation_threshold` no longer exists — vector eligibility is purely capability-driven.
 
 Linked requirements:
-- AD-05 -> SEARCH-FR-11, SEARCH-OR-06, SEARCH-OR-07, SEARCH-QR-06
+- AD-05 -> SEARCH-FR-11, SEARCH-OR-05, SEARCH-OR-06, SEARCH-QR-06
 
 ### AD-06: Metadata Filter Contract Uses JSONB Object Default
 
@@ -329,7 +329,7 @@ Linked requirements:
 | AD-02 Provider Parity | SEARCH-FR-05, SEARCH-DR-08, SEARCH-QR-05 |
 | AD-03 WP Filter Integration | SEARCH-FR-02, SEARCH-FR-07, SEARCH-QR-02 |
 | AD-04 Availability Guardrail | SEARCH-OR-02, SEARCH-OR-03, SEARCH-QR-04 |
-| AD-05 Capability Gating | SEARCH-FR-11, SEARCH-OR-06, SEARCH-OR-07, SEARCH-QR-06 |
+| AD-05 Capability Gating | SEARCH-FR-11, SEARCH-OR-05, SEARCH-OR-06, SEARCH-QR-06 |
 | AD-06 JSONB Metadata Filter Contract | SEARCH-FR-13, SEARCH-DR-09, SEARCH-DR-10, SEARCH-QR-09 |
 
 ---

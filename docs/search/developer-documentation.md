@@ -74,6 +74,21 @@ Core responsibilities:
 - Support schema creation, language checks/updates, and trigram status checks.
 - Enforce administrative permission callbacks for management operations.
 
+### 3.5 Search Language (`Gregius_Data_Search_Language`)
+
+Source: [../../includes/search/class-gregius-data-search-language.php](../../includes/search/class-gregius-data-search-language.php)
+
+Core responsibilities:
+- Map WordPress locales to PostgreSQL text search configurations.
+- Resolve the current site's search language from the active locale.
+- Report supported languages and validate language codes.
+
+Public API (all static):
+- `map_locale_to_pg_language( $locale = '' )` — maps a locale to a PostgreSQL text search config, falling back to `simple`.
+- `get_site_search_language()` — returns the current site's PostgreSQL search config.
+- `get_supported_languages()` — returns supported language codes and localized names.
+- `is_language_supported( $language )` — returns true when a language config is supported.
+
 ## 4. SQL Function Contract
 
 Source: [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql)
@@ -143,7 +158,7 @@ search_rag_orchestrate(
 
 Both functions use **GiST-optimized trigram matching** via the `<<->` distance operator with separate ORDER BY + LIMIT pushdown on `post_title_clean` and `post_content_clean`. This replaces the earlier GIN-based `word_similarity()` + `%` WHERE approach, avoiding planner conflicts between GIN and GiST index types and enabling index-accelerated distance sorting.
 
-**Short-word suppression:** Both orchestrators disable trigram when every word in the query is under 4 characters (e.g. "wp", "ai"). Short queries have poor trigram selectivity and degrade result quality, so they fall back to FTS-only or vector-only matching. This is checked in the SQL function body, not in PHP.
+**Short-word suppression:** Both orchestrators disable trigram when no word in the query exceeds 2 characters (e.g. "wp", "ai"). Short queries have poor trigram selectivity and degrade result quality, so they fall back to FTS-only or vector-only matching. This is checked in the SQL function body, not in PHP.
 
 Supporting helpers:
 - `search_core_fuse_rrf(integer, integer)` — reciprocal rank fusion scoring
@@ -167,6 +182,9 @@ Expected output shape from all orchestrators:
 - `post_type`
 - `post_status`
 - `match_type` (one of `blended_rrf`, `vector`, `trigram`, `fts`)
+- `has_fts` (boolean — result contributed by the FTS leg)
+- `has_trigram` (boolean — result contributed by the trigram leg)
+- `has_vector` (boolean — result contributed by the vector leg)
 
 ## 5. REST Route Catalog (Search)
 
@@ -193,6 +211,12 @@ All search management routes use admin-style permission checks in controller cal
 
 Global search settings source:
 - [../../includes/search/search-settings.php](../../includes/search/search-settings.php)
+
+Initialization functions:
+- `gregius_data_get_default_search_settings()` — returns the default settings array.
+- `gregius_data_init_search_settings()` — seeds search settings on activation (multisite-aware).
+- `gregius_data_init_search_settings_for_current_site()` — seeds settings for the current site.
+- `gregius_data_migrate_search_settings_scope()` — migrates legacy per-connection search rows to the global scope.
 
 Core keys (default values in parentheses):
 
@@ -289,7 +313,7 @@ EXISTS (
 )
 ```
 
-A post qualifies if its `metadata_manifest.taxonomy_manifest` array contains **any** of the filter terms. This enables broad NBA result pools that span multiple taxonomy categories.
+A post qualifies if its `metadata_manifest.taxonomy_manifest` array contains **any** of the filter terms. This enables broad result pools that span multiple taxonomy categories.
 
 **Applied in the single canonical SQL file, all three CTE branches:**
 
@@ -301,7 +325,7 @@ A post qualifies if its `metadata_manifest.taxonomy_manifest` array contains **a
 
 PostgREST file path: [`includes/sql/postgrest-schema.sql`](../../includes/sql/postgrest-schema.sql) — must be manually copied to Supabase SQL editor; no auto-deploy.
 
-**Wire format — PHP (`Gregius_Intelligence_RAG_Tools::resolve_nba_filter`):**
+**Wire format — PHP (metadata_filter input to `Gregius_Data_Sanitizer::sanitize_metadata_filter()`):**
 
 ```php
 [
@@ -313,10 +337,10 @@ PostgREST file path: [`includes/sql/postgrest-schema.sql`](../../includes/sql/po
 ]
 ```
 
-**Wire format — JavaScript (`buildMetadataFilterFromPill` in `rag-intelligence.js`):**
+**Wire format — client filter payload (passed via the `gregius_data_rag_pre_retrieval_filter` hook):**
 
 ```js
-// NBA pill click builds:
+// Filter payload example:
 {
     taxonomy_manifest: [
         { taxonomy: 'category', term_id: 12, term_slug: 'certification' }
@@ -324,8 +348,6 @@ PostgREST file path: [`includes/sql/postgrest-schema.sql`](../../includes/sql/po
     filter_operator: 'OR'
 }
 ```
-
-Legacy pills using `pill.anchor` (single `taxonomy:slug:id` string) are handled by a separate branch that produces a single-element `taxonomy_manifest` array without `filter_operator` (AND default).
 
 **Backward compatibility:** Existing queries without `filter_operator` are unaffected. AND containment remains the implicit default. Empty filter (`{}`) always passes both branches via the `metadata_filter = '{}'::jsonb` short-circuit.
 
@@ -440,9 +462,9 @@ Search SQL functions are shared across native (frontend search) and RAG-oriented
 
 | Method | Provider | Params | Notes |
 |---|---|---|---|
-| `retrieve_chunks()` / `retrieve_chunks_pdo()` | PDO | 10 params (no `rrf_k` — uses SQL default 60) | Main RAG retrieval path; supports `$options['disable_vector']` to skip vector search |
+| `retrieve_chunks()` / `retrieve_chunks_pdo()` | PDO | 11 params (incl. `rrf_k` = 60 and `precomputed_query_vector`) | Main RAG retrieval path; supports `$options['disable_vector']` to skip vector search |
 | `retrieve_chunks_fallback()` | WordPress native | N/A | Used when PDO/PostgREST are unavailable; no PostgreSQL function called |
-| PostgREST provider RPC call | PostgREST | 11 params | Supabase RPC invocation of `search_rag_orchestrate` |
+| PostgREST provider RPC call | PostgREST | 9 keys (+ optional `precomputed_query_vector` = max 10; no `rrf_k`) | Supabase RPC invocation of `search_rag_orchestrate` |
 
 **Search-adjacent RAG hooks:**
 
