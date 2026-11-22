@@ -12,11 +12,10 @@ Upstream Architecture: [architecture.md](architecture.md)
 
 ### Error Handler (`Gregius_Data_Error_Handler`)
 
-Stateless classifier. Call `classify_error()` with a raw error string to get a structured result:
+Stateless classifier (all methods static). Call `classify_error()` with a raw error string to get a structured result:
 
 ```php
-$handler = new Gregius_Data_Error_Handler();
-$result  = $handler->classify_error($error_message);
+$result = Gregius_Data_Error_Handler::classify_error($error_message);
 // $result = [
 //   'type'       => 'transient' | 'permanent' | 'unknown',
 //   'retry_safe' => true | false,
@@ -27,7 +26,7 @@ $result  = $handler->classify_error($error_message);
 Calculate retry delay for a given attempt number:
 
 ```php
-$delay = $handler->calculate_retry_delay($attempt_number);
+$delay = Gregius_Data_Error_Handler::calculate_retry_delay($attempt_number);
 // Attempt 1 → 5 seconds
 // Attempt 2 → 30 seconds
 // Attempt 3 → 300 seconds
@@ -66,6 +65,14 @@ $success = $queue->manual_retry($index); // Returns bool
 
 // Clear all dead letter items
 $cleared = $queue->clear_dead_letter_queue(); // Returns int (count cleared)
+
+// Schedule the WP-Cron retry processor (deferred to 'init' by the constructor)
+$queue->schedule_events();
+
+// (static) Unschedule the WP-Cron retry processor event. NOTE: this method is
+// public but currently not invoked by any call site — the live deactivation path
+// is Gregius_Data_Deactivator::deactivate() (gregius-data.php:200).
+Gregius_Data_Retry_Queue::deactivate();
 ```
 
 **Constants:**
@@ -192,19 +199,19 @@ All queue item fields, plus:
 
 | Category | Example Patterns |
 |---|---|
-| Connection failures | `connection refused`, `server closed the connection`, `lost connection` |
-| Timeouts | `connection timed out`, `statement timeout`, `query execution timeout` |
+| Connection failures | `connection refused`, `connection reset`, `lost connection`, `server has gone away`, `broken pipe`, `no route to host`, `could not connect to server`, `network error` |
+| Timeouts | `connection timeout`, `connection timed out`, `statement timeout`, `operation timed out`, `query timeout` |
 | Resource contention | `deadlock detected`, `too many connections`, `lock wait timeout` |
-| Temporary failures | `server has gone away`, `could not connect`, `temporary failure` |
+| Temporary failures | `temporary failure`, `try again later` |
 
 ### Permanent Errors (not retry-safe)
 
 | Category | Example Patterns |
 |---|---|
-| Schema errors | `column does not exist`, `relation does not exist`, `table does not exist` |
-| Constraint violations | `unique constraint`, `foreign key constraint`, `not null constraint`, `duplicate key` |
-| Data errors | `invalid input syntax`, `value too long`, `out of range` |
-| Permission errors | `permission denied`, `authentication failed`, `insufficient privilege` |
+| Schema errors | `column does not exist`, `table does not exist`, `relation does not exist`, `undefined column`, `undefined table`, `invalid schema` |
+| Constraint violations | `foreign key constraint`, `unique violation`, `not null violation`, `duplicate key value`, `check constraint` |
+| Data/syntax errors | `invalid input syntax`, `syntax error`, `invalid parameter` |
+| Permission errors | `permission denied`, `authentication failed` |
 
 ### Unknown Errors
 
@@ -236,7 +243,7 @@ Operation data passed includes the full payload array used by the originating DB
 | Schedule key | `gregius_data_every_minute` |
 | Interval | 60 seconds |
 | Callback | `Gregius_Data_Retry_Queue::process_queue()` |
-| Registered in | `Gregius_Data_Retry_Queue` constructor |
+| Registered in | `Gregius_Data_Retry_Queue::schedule_events()` (hooked on `init` from the constructor) |
 | Unscheduled on | Plugin deactivation (`Gregius_Data_Deactivator::deactivate()`) |
 | Cleaned up on | Plugin uninstall (`uninstall.php`) |
 

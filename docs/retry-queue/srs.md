@@ -160,19 +160,41 @@ Acceptance baseline:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement ID | Source (file:line) | Notes |
 |---|---|---|
-| RQ-FR-01, RQ-DR-05 | includes/class-gregius-data-error-handler.php | Error classification patterns and classify_error() return contract |
-| RQ-FR-02 to RQ-FR-08, RQ-DR-01 to RQ-DR-04 | includes/class-gregius-data-retry-queue.php | Queue item lifecycle, retry scheduling, dead letter management |
-| RQ-FR-09 to RQ-FR-11, RQ-DR-06 to RQ-DR-07 | includes/api/class-gregius-data-rest-retry-queue-controller.php | REST endpoint registration and response contracts |
-| RQ-FR-12 | includes/class-gregius-data-retry-queue.php (retry_operation method) | Queued operation-type dispatch |
-| RQ-FR-14 | includes/class-gregius-data-deactivator.php | WP-Cron event unscheduling on deactivation |
-| RQ-FR-15, RQ-OR-04 | uninstall.php, includes/class-gregius-data-uninstaller.php | wp_options cleanup on uninstall (retention-flag gated) |
-| RQ-FR-16, RQ-OR-06 | includes/class-gregius-data-retry-queue.php (logging calls) | Operational log coverage |
-| RQ-FR-05, RQ-OR-02 | includes/class-gregius-data-retry-queue.php (constructor, process_queue) | WP-Cron scheduling and background-only processing |
-| RQ-OR-01 | includes/api/class-gregius-data-rest-retry-queue-controller.php (permission_callback) | manage_options enforcement |
-| RQ-OR-05 | includes/class-gregius-data-retry-queue.php, includes/class-gregius-data-db.php | Sync metadata update deferred until retry success |
-| RQ-QR-01 to RQ-QR-05 | docs/retry-queue/architecture.md, implementation files listed in References | Quality, determinism, and boundary expectations |
+| RQ-FR-01 | includes/class-gregius-data-error-handler.php:96-127 | classify_error() transient/permanent/unknown routing |
+| RQ-FR-02 | includes/class-gregius-data-retry-queue.php:88-137 | queue_for_retry(); permanent errors not queued (:92-104) |
+| RQ-FR-03 | includes/class-gregius-data-error-handler.php:140-146 | calculate_retry_delay() 5s/30s/300s |
+| RQ-FR-04 | includes/class-gregius-data-retry-queue.php:29, :182-195 | MAX_RETRY_ATTEMPTS=3; dead-letter promotion gate |
+| RQ-FR-05 | includes/class-gregius-data-retry-queue.php:73-77, includes/class-gregius-data-cron-manager.php:46-49 | every-minute WP-Cron schedule |
+| RQ-FR-06 | includes/class-gregius-data-retry-queue.php:156-160 | skip items whose next_retry has not elapsed |
+| RQ-FR-07 | includes/class-gregius-data-retry-queue.php:182-195, :295-307 | dead-letter promotion with moved_to_dead_letter timestamp |
+| RQ-FR-08 | includes/class-gregius-data-retry-queue.php:301-304 | 100-item rolling window |
+| RQ-FR-09 | includes/api/class-gregius-data-rest-retry-queue-controller.php:44-54, :96-114 | GET queue status endpoint |
+| RQ-FR-10 | includes/api/class-gregius-data-rest-retry-queue-controller.php:57-74, :122-150 | POST manual retry endpoint |
+| RQ-FR-11 | includes/api/class-gregius-data-rest-retry-queue-controller.php:77-87, :158-181 | DELETE clear dead letter endpoint |
+| RQ-FR-12 | includes/class-gregius-data-retry-queue.php:243-288 | retry_operation() dispatch (sync_meta/delete_post/delete_meta) |
+| RQ-FR-14 | includes/class-gregius-data-deactivator.php:29 | wp_clear_scheduled_hook on deactivation |
+| RQ-FR-15 | includes/class-gregius-data-uninstaller.php:78-110, :169-181 | queue data removed only when retention flag set |
+| RQ-FR-16 | includes/class-gregius-data-retry-queue.php:94-102, :125-134, :172-180, :188-195, :206-216, :363-370, :386-389 | queueing/retry/dead-letter/manual logging |
+| RQ-DR-01 | includes/class-gregius-data-retry-queue.php:108-118 | queue item field construction |
+| RQ-DR-02 | includes/class-gregius-data-retry-queue.php:298 | moved_to_dead_letter appended to item |
+| RQ-DR-03 | includes/class-gregius-data-retry-queue.php:36, :106, :123 | OPTION_KEY gregius_data_retry_queue |
+| RQ-DR-04 | includes/class-gregius-data-retry-queue.php:43, :296, :306 | DEAD_LETTER_KEY gregius_data_dead_letter_queue |
+| RQ-DR-05 | includes/class-gregius-data-error-handler.php:96-127 | type/retry_safe/message return contract |
+| RQ-DR-06 | includes/class-gregius-data-retry-queue.php:321-331 | get_queue_status() field contract |
+| RQ-DR-07 | includes/api/class-gregius-data-rest-retry-queue-controller.php:100-113, :128-149, :162-181 | structured success/error payloads |
+| RQ-OR-01 | includes/api/class-gregius-data-rest-retry-queue-controller.php:189-211 | manage_options permission callbacks |
+| RQ-OR-02 | includes/class-gregius-data-retry-queue.php:62-66, :144-235 | WP-Cron-only background processing |
+| RQ-OR-03 | includes/class-gregius-data-deactivator.php:25-43 | deactivation clears cron hooks + transient only; queue options preserved |
+| RQ-OR-04 | includes/class-gregius-data-uninstaller.php:87, :90-92, :134-162, :169-181 | unconditional cron clear; conditional data removal |
+| RQ-OR-05 | includes/class-gregius-data-db.php:356, :479, :488, :529, includes/class-gregius-data-retry-queue.php:167-181 | sync metadata deferred until retry success |
+| RQ-OR-06 | includes/class-gregius-data-retry-queue.php:94-102, :125-134, :172-180, :188-195, :206-216, :363-370, :386-389 | operational log context |
+| RQ-QR-01 | includes/class-gregius-data-error-handler.php:96-127 | deterministic classification |
+| RQ-QR-02 | includes/class-gregius-data-retry-queue.php:106, :123, :221 | pending queue has no hard size cap |
+| RQ-QR-03 | includes/class-gregius-data-retry-queue.php:301-304 | dead-letter rolling window cap of 100 |
+| RQ-QR-04 | includes/class-gregius-data-retry-queue.php:147-149 | early return when queue empty |
+| RQ-QR-05 | includes/api/class-gregius-data-rest-retry-queue-controller.php:96-181 | synchronous REST response for manual operations |
 
 ## 6. Appendices
 
