@@ -27,6 +27,8 @@ This feature enables **site administrators** to manage Gregius Data plugin featu
   - [Navigation Between Tabs](#navigation-between-tabs)
   - [State Management](#state-management)
 - [Error Handling and Troubleshooting](#error-handling-and-troubleshooting)
+  - [Quick Troubleshooting](#quick-troubleshooting)
+- [Permissions](#permissions)
 - [Known Limitations](#known-limitations)
 - [Next Steps](#next-steps)
 
@@ -34,9 +36,9 @@ This feature enables **site administrators** to manage Gregius Data plugin featu
 
 ## Access the Dashboard
 
-Navigate to the **Gregius Data** menu in the WordPress admin sidebar. The dashboard appears as the main admin page for the plugin.
+Navigate to the **Data** menu in the WordPress admin sidebar. The dashboard appears as the main admin page for the plugin.
 
-<!-- IMAGE: WordPress admin sidebar showing the Gregius Data menu item -->
+<!-- IMAGE: WordPress admin sidebar showing the Data menu item -->
 
 [SRS: IF-FR-01]
 
@@ -72,7 +74,7 @@ When the dashboard loads, it performs an automatic connectivity check against th
 
 ### Navigation Between Tabs
 
-Click any tab to switch between feature pages. Some areas of the plugin can trigger tab navigation programmatically, ensuring consistent cross-feature workflows without leaving the dashboard.
+Click any tab to switch between feature pages. The dashboard also listens for a `gg-navigate-to-tab` custom event, allowing integrations to switch the active tab programmatically without leaving the dashboard.
 
 [SRS: IF-FR-07]
 
@@ -98,10 +100,24 @@ The dashboard handles errors at multiple levels:
 
 | Issue | What to check |
 |---|---|
-| Dashboard does not appear | Confirm the Gregius Data menu is visible in the admin sidebar |
+| Dashboard does not appear | Confirm the Data menu is visible in the admin sidebar |
 | Tabs show loading state without resolving | Check that the WordPress REST API is accessible and you are logged in |
 | Tab content does not switch | Refresh the page and try navigating again |
 | Error notices on load | Check browser console for details and confirm API routes are registered |
+
+---
+
+## Permissions
+
+| Action | Required capability | Notes |
+|---|---|---|
+| Access and view the dashboard | `manage_options` | Standard WordPress admin capability for plugin settings pages |
+| Read settings and status | `manage_options` | All dashboard tabs require this capability |
+| Perform data operations through dashboard | `manage_options` | Backend REST controllers enforce permission checks independently |
+
+Permission errors returned by the REST API are displayed as visible notices in the dashboard interface.
+
+[SRS: IF-OR-03]
 
 ---
 
