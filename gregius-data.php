@@ -3,7 +3,7 @@
  * Plugin Name:       Gregius Data
  * Plugin URI:        https://gregius.com/gregius-data
  * Description:       Multi-provider AI orchestration for WordPress. RAG pipelines, agentic workflows, and vector search.
- * Version:           1.0.3
+ * Version:           1.0.4
  * Requires at least: 6.9
  * Requires PHP:      8.2
  * Author:            Hector Jarquin, Gregius
@@ -56,7 +56,7 @@ if ( version_compare( $GLOBALS['wp_version'], '6.9', '<' ) ) {
 
 // Define plugin constants.
 // GREGIUS_DATA_VERSION must match the plugin header Version in gregius-data.php.
-define( 'GREGIUS_DATA_VERSION', '1.0.3' );
+define( 'GREGIUS_DATA_VERSION', '1.0.4' );
 // Schema version is decoupled from the plugin version: bump it only when
 // includes/sql/postgrest-schema.sql changes, and never above the plugin version.
 // Invariant: schema X.Y.Z requires plugin >= X.Y.Z.

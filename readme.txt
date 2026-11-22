@@ -3,7 +3,7 @@ Contributors: hectorjarquin, gregiusteam
 Tags: ai, rag, semantic search, postgresql, embeddings
 Requires at least: 6.9
 Tested up to: 7.1
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -170,6 +170,11 @@ Visit the contributor profiles on WordPress.org:
 
 == Changelog ==
 
+= 1.0.4 =
+* Fixed the retry queue so a failed post deletion retries through the default connection instead of an undefined connection key
+* Removed a duplicated option prefix from the uninstaller cleanup
+* Removed an unused test stub file
+
 = 1.0.3 =
 * Coding standards compliance and internal cleanup — no user-facing behavior change
 * Removed an unused internal database method (`Gregius_Data_DB::delete_term_relationships()`) that had no callers
@@ -211,6 +216,9 @@ https://github.com/gregius/gregius-data
 This plugin uses composer for PHP dependency management and @wordpress/scripts for asset compilation. Source JavaScript lives in `assets/src/` and compiles to `assets/build/`. All PHP source is human-readable.
 
 == Upgrade Notice ==
+
+= 1.0.4 =
+No action required — no schema or database changes. This is a maintenance release.
 
 = 1.0.3 =
 No action required — no schema or database changes. This is a maintenance release.

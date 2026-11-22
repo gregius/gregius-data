@@ -5,6 +5,15 @@ All notable changes to Gregius Data will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-11-22
+
+### Fixed
+- Retry queue: a queued `delete_post` retry no longer references an undefined `connection_name` key and now uses the default connection, consistent with the other retry operations.
+- Uninstaller: removed a duplicated `gregius_data_` option prefix from the blog and network data cleanup loops.
+
+### Removed
+- Orphan `tests/wp-mock-functions.php` test stub (header docblock only, never required).
+
 ## [1.0.3] - 2026-11-21
 
 ### Changed
