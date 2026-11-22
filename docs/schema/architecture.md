@@ -189,7 +189,7 @@ POST /gregius-data/v1/schema/upgrade
 Permission check + resolve connection
     │
     ▼
-Compare stored schema version with plugin version
+Compare stored schema version with required schema version
     │
     ├─ up to date -> upgraded=false
     └─ needs upgrade
