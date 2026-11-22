@@ -88,7 +88,7 @@ Requirement notation:
 | IF-FR-04 | The dashboard MUST perform startup API connectivity checks and surface connection failures to users. | Must |
 | IF-FR-05 | The dashboard MUST expose loading states while initialization and settings fetch operations are in progress. | Must |
 | IF-FR-06 | The interface MUST integrate with existing `@wordpress/data` stores for settings and shared connection-related state where implemented. | Must |
-| IF-FR-07 | The interface MUST support event-driven tab navigation via custom navigation events used by dashboard components. | Must |
+| IF-FR-07 | The interface MUST listen for the `gg-navigate-to-tab` custom event and switch the active tab when the event is dispatched by integrations. | Must |
 | IF-FR-08 | The interface MUST support feature extension through documented tab/page/store + REST integration patterns. | Must |
 
 ### 3.2 Data and Contract Requirements
@@ -140,11 +140,12 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| IF-FR-01, IF-FR-02, IF-OR-01, IF-OR-02, IF-DR-05 | `assets/src/scripts/dashboard.js`, `includes/class-gregius-data-admin.php` | Dashboard bootstrap, middleware, fallback container, failure signaling |
-| IF-FR-03, IF-FR-04, IF-FR-05, IF-FR-07, IF-OR-04, IF-DR-04 | `assets/src/scripts/dashboard/components/App.js` | Tab shell, initialization check, event-driven navigation, page props |
-| IF-FR-06, IF-DR-02, IF-DR-03 | `assets/src/scripts/dashboard/stores/settings/index.js`, `assets/src/scripts/dashboard/stores/connections/index.js`, `assets/src/scripts/dashboard/stores/` | Store registration and state contracts |
-| IF-DR-01, IF-OR-03, IF-QR-04 | `assets/src/scripts/dashboard/utils/api.js`, `includes/api/class-gregius-data-rest-api.php` | REST namespace usage and interface/backend integration |
-| IF-FR-08, IF-OR-05, IF-QR-03, IF-QR-05 | `assets/src/scripts/dashboard/components/App.js`, `assets/src/scripts/dashboard/stores/`, `docs/interface/developer-documentation.md` | Feature integration guidance and scope-discipline expectations |
+| IF-FR-01, IF-FR-02, IF-OR-01, IF-OR-02, IF-DR-05 | `includes/class-gregius-data-admin.php:48-91`, `assets/src/scripts/dashboard.js:22-72,80-87` | Dashboard bootstrap, middleware, fallback container, failure signaling |
+| IF-FR-03, IF-FR-04, IF-FR-05, IF-FR-07, IF-OR-04, IF-DR-04 | `assets/src/scripts/dashboard/components/App.js:56-174,273-296` | Tab shell, initialization check, event-driven navigation, page props |
+| IF-FR-06, IF-DR-02, IF-DR-03 | `assets/src/scripts/dashboard/stores/settings/index.js:240`, `assets/src/scripts/dashboard/stores/connections/index.js:84`, `assets/src/scripts/dashboard/stores/connectionSelection/factory.js:107` | Store registration and state contracts |
+| IF-DR-01, IF-OR-03, IF-QR-04 | `assets/src/scripts/dashboard/utils/api.js:13,168,187`, `includes/api/class-gregius-data-rest-settings-controller.php:709-710` | REST namespace usage and interface/backend integration |
+| IF-QR-01, IF-QR-02 | `assets/src/scripts/dashboard/components/App.js:10-20,50-54`, `assets/src/scripts/dashboard/stores/` | `@wordpress/components` baseline + store-driven rendering |
+| IF-FR-08, IF-OR-05, IF-QR-03, IF-QR-05 | `assets/src/scripts/dashboard/components/App.js:102-145`, `docs/interface/developer-documentation.md:146-161,177-185` | Feature integration guidance and scope-discipline expectations |
 
 ## 6. Appendices
 
