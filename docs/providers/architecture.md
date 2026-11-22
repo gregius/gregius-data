@@ -18,7 +18,7 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
 - Database provider subsystem: interface, factory, concrete implementations (PostgreSQL direct, PostgREST/Supabase)
 - AI provider subsystem: interface, registry, client facade, per-provider implementations
 - Tool calling strategy layer: per-provider adapters for function calling formats
-- Extensibility mechanisms: factory registration (DB), filter-based registration (AI)
+- Extensibility mechanisms: built-in type map (DB), filter-based registration (AI)
 - Canonical PostgreSQL mirror naming: provider-facing table names resolve to the shared `wp_` mirror prefix rather than a runtime multisite suffix
 
 **Explicitly Excluded:**
@@ -33,7 +33,7 @@ This architecture describes how the Gregius Data plugin abstracts multiple backe
 |---|---|---|
 | **Plugin Developers** | Easy interface to add new DB/AI providers; clear extension contracts | High |
 | **Site Administrators** | Runtime selection of providers via admin UI; no code changes | High |
-| **Third-party Integrators** | Filter-based AI registration; factory-based DB registration without core edits | High |
+| **Third-party Integrators** | Filter-based AI registration; DB providers require a factory type-map change | High |
 | **Operations** | Deterministic contract parity across provider paths (PDO vs HTTP); error isolation | Medium |
 | **Security** | Credential isolation per provider; no cross-provider auth leakage | High |
 
@@ -101,7 +101,7 @@ The provider abstraction layer isolates upstream plugin components from backend-
 
 - **Separation of Concerns:** Sync, search, and RAG code remain unaware of DB/AI specifics
 - **Runtime Flexibility:** Administrators select providers without code changes
-- **Third-party Extensibility:** New providers can be registered without modifying core
+- **Third-party Extensibility:** New AI providers can be registered via filter without modifying core (DB providers require a type-map change)
 - **Error Isolation:** Provider failures are explicit and contained to provider operations
 - **Canonical Mirror Names:** PostgreSQL mirror tables are resolved through one shared naming contract, so PDO and PostgREST behave the same across sites
 
@@ -128,32 +128,31 @@ Connection Manager
          ▼                  ▼                  ▼
     Interface          Factory              Concrete Providers
  Gregius_Data_DB_Provider    (Instantiation)
-     (10 methods)         │              PostgreSQL (PDO)
+     (16 methods)         │              PostgreSQL (PDO)
                          │              Gregius_Data_PostgreSQL_Provider
-                    register()              - connect()
-                    create()                - sync_post()
-                    is_supported()
+                    create_provider()      - connect()
+                                            - sync_post()
                                             - schema version
                              
                               PostgREST (HTTP)
                               Gregius_Data_PostgREST_Provider
-                              - same 10-method interface
+                              - same 16-method interface
                               - HTTP via wp_remote_post()
                               - RPC calls for complex ops
 ```
 
 **Key Components:**
 
-1. **Interface** (`Gregius_Data_DB_Provider`) — defines contract (10 methods):
+1. **Interface** (`Gregius_Data_DB_Provider`) — defines contract (16 methods):
    - Connection: `connect()`, `disconnect()`, `test_connection()`
    - Data: `sync_post()`, `delete_post()`
    - Mirror maintenance: `get_ids()`, `delete_ids()`, `delete_term_relationship()`
    - Schema: `get_schema_version()`, `create_schema()`
+   - Query/CRUD: `count_records()`, `select()`, `insert()`, `delete()`, `bulk_insert()`, `upsert()`
 
 2. **Factory** (`Gregius_Data_Provider_Factory`) — handles instantiation:
-   - `create_provider($type, $config)` → provider instance
-   - `register_provider($type, $class)` → third-party registration
-   - `get_supported_types()` → active provider list
+   - `create_provider($database_type, $connection_config, $connection_name)` → provider instance
+   - Built-in type map (static): `postgresql` → PostgreSQL, `postgrest` → PostgREST; legacy aliases `pdo` → PostgreSQL, `supabase` → PostgREST
    - Error handling for unsupported types
 
 3. **PostgreSQL Provider** (`Gregius_Data_PostgreSQL_Provider`):
@@ -171,7 +170,7 @@ Connection Manager
    - Uses the same canonical mirror table names as the PDO provider
 
 **Mapping to Requirements:**
-- AV-02 → PA-FR-01, PA-FR-02, PA-FR-03, PA-FR-04, PA-FR-05, PA-FR-06, PA-FR-07, PA-FR-08, PA-FR-09, PA-FR-10
+- AV-02 → PA-FR-01, PA-FR-02, PA-FR-03, PA-FR-04, PA-FR-05, PA-FR-06, PA-FR-08, PA-FR-09, PA-FR-10
 
 ---
 
@@ -201,7 +200,7 @@ AI Registry
     │          │            │             │            │            │
     ▼          ▼            ▼             ▼            ▼            ▼
   OpenAI   Anthropic   Gemini      DeepSeek      Cohere     Internal   TypeSafe
-   (LLM)   (LLM)       (LLM+E)     (LLM)         (Rerank)   (Embed)    (Eval)
+   (LLM+E) (LLM)       (LLM+E)     (LLM)         (Emb+Rnk)  (Embed)    (Eval)
    │       │           │           │             │             │
    └───────┴───────────┴───────────┴─────────────┴─────────────┘
                  │
@@ -230,8 +229,8 @@ AI Registry
 
 2. **Registry** (`Gregius_Data_LLM_Registry`):
    - Manages provider instances
-   - `register_provider($id, $instance)` → add provider
-   - `get_provider($id)` → retrieve provider by ID
+   - `get_providers()` → all registered providers (lazily built from the `gregius_data_llm_providers` filter)
+   - `get_provider($id)` → retrieve provider by ID, or a `WP_Error` when not found
    - Extensible via `gregius_data_llm_providers` filter
 
 3. **Client Facade** (`Gregius_Data_Ai_Client`):
@@ -287,7 +286,7 @@ Admin UI (Dashboard)
     │    ▼ (if type ==)   ▼                 ▼
     │  'postgresql'    Factory              Error
     │    │             checks               │
-    │    ▼             registry             └─ return error
+    │    ▼             type map             └─ return error
     │  new Gregius_Data_PostgreSQL_Provider()        response
     │    │                                  
     │    ├─ $provider->construct()         
@@ -416,14 +415,14 @@ Plugin Code:
 **Rationale:**
 - Plugin must support PostgreSQL (direct PDO) and Supabase (PostgREST HTTP) with identical interface
 - Strategy pattern isolates implementation details; business logic references only interface
-- Factory pattern enables third-party provider registration without core changes
+- Factory pattern centralizes instantiation and type validation (see AD-02)
 
 **Consequences:**
-- Plus: Easy to add new DB providers; clear extension points
+- Plus: Concrete providers are swappable via the factory's type map
 - Plus: Runtime provider selection without code changes
 - Plus: Testable via mocks
 - Minus: Slight performance overhead from method indirection (negligible in practice)
-- Minus: Developers must implement all 10 interface methods
+- Minus: Developers must implement all 16 interface methods
 
 ---
 
@@ -432,25 +431,25 @@ Plugin Code:
 **Decision:** Implement a factory to control DB provider creation and lifecycle.
 
 **Status:** Decided  
-**Linked Requirements:** PA-FR-06, PA-FR-07, PA-FR-08
+**Linked Requirements:** PA-FR-06, PA-FR-08
 
 **Alternatives Considered:**
 1. **Direct instantiation** — upstream code calls `new Gregius_Data_PostgreSQL_Provider()`
    - Rejected: Tight coupling; upstream must know all provider class names
 2. **Service container/DI** — use a service locator
    - Rejected: Adds framework dependency; overkill for this scope
-3. **Factory pattern** ✅ — central registration and instantiation
-   - Chosen: Simple to understand; type-keyed lookup; third-party registration
+3. **Factory pattern** ✅ — central type-keyed instantiation
+   - Chosen: Simple to understand; type-keyed lookup; validation before instantiation
 
 **Rationale:**
 - Factory centralizes provider creation logic and validation
 - Enables runtime type validation (reject unsupported providers early)
-- Filter hook in WordPress conventions for third-party registration
+- The type map is a static private array (`postgresql`, `postgrest`; legacy aliases `pdo`, `supabase`) with no runtime registration in 1.0.3
 
 **Consequences:**
 - Plus: Type safety; clear error handling for unknown provider types
-- Plus: Third-party providers registered without core modifications
-- Plus: Easy to add pre-instantiation hooks (e.g., logging, monitoring)
+- Plus: Built-in types resolve deterministically via a single static map
+- Minus: Adding a third-party DB provider requires a core change to the type map (no filter/hook extension point)
 - Minus: Small indirection layer; minimal performance impact
 
 ---
@@ -560,9 +559,9 @@ Plugin Code:
 | Constraint | Impact | Rationale |
 |---|---|---|
 | DB provider interface is immutable | Breaking changes only in major versions | Third-party code depends on interface contract |
-| All DB providers must implement 10 methods | Implementation burden | Enables reliable contract; no optional methods |
+| All DB providers must implement 16 methods | Implementation burden | Enables reliable contract; no optional methods |
 | PostgREST runtime keys are canonical-only | Runtime reads use `project_url`, `publishable_key`, and `secret_key` only | Prevents alias drift and keeps provider behavior deterministic |
-| Legacy Supabase aliases are ingestion-only | `api_key` and `service_role_key` may be accepted only while saving config, then normalized | Preserves backward compatibility without runtime dependency on legacy keys |
+| Supabase key normalization is canonical-only | `normalize_connection_config()` re-assigns only the canonical `publishable_key`/`secret_key` fields; no legacy `api_key`/`service_role_key` mapping is performed | Runtime never depends on legacy aliases |
 | AI provider interface cannot drop methods | Backward compat required | Existing code and filters depend on method availability |
 | Chunk contract is immutable | Requires careful design | Chunks are persisted; changing schema is complex |
 | Tool strategy formats must align with provider APIs | Must update if provider APIs change | Native function calling is the contract with AI services |
@@ -604,21 +603,21 @@ Plugin Code:
 
 ---
 
-### Risk 2: Third-party Provider Registration Errors
+### Risk 2: Invalid Provider Type or Class Configuration Errors
 
-**Risk:** Developers register invalid providers; bad code crashes plugin.
+**Risk:** An invalid provider type string or a misconfigured provider class causes `create_provider()` to throw; a bad AI provider registered through the filter crashes the plugin.
 
 **Severity:** Medium  
 **Likelihood:** Medium
 
 **Impact:**
-- Plugin fails to load if provider registration throws
+- Plugin fails to load if provider creation throws
 - Admin UI inaccessible; no way to fix
 - User data could be at risk if sync/search fails
 
 **Mitigation:**
-- Factory validates provider type string exists in registry
-- `is_supported()` check before creation; return graceful error if missing
+- Factory validates the provider type against its built-in type map and throws an `Exception` for unsupported types
+- Callers catch the exception and return a graceful error
 - Try/catch in factory with logging
 - Provider interface type hints catch most errors during testing
 
@@ -683,7 +682,7 @@ Plugin Code:
 | PA-FR-04 (Interface scope) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-05 (Schema methods) | 3.1 Key Components #1 | ✅ Covered |
 | PA-FR-06 (Factory pattern) | 3.1 Key Components #2, AD-02 | ✅ Covered |
-| PA-FR-07 (Runtime registration) | 3.1 Key Components #2, AD-02 | ✅ Covered |
+| PA-FR-07 (Runtime registration) | 3.1 Key Components #2, AD-02 | ❌ Not covered — factory uses a static type map; no runtime registration in 1.0.3 |
 | PA-FR-08 (Error handling) | 3.1 Key Components #2, Risk #2 | ✅ Covered |
 | PA-FR-09 (PostgreSQL provider) | 3.1 PostgreSQL Provider | ✅ Covered |
 | PA-FR-10 (PostgREST provider) | 3.1 PostgREST Provider | ✅ Covered |
@@ -711,8 +710,10 @@ Plugin Code:
 | PA-DR-04 (AI text response contract) | 3.2 Key Components #1 | ✅ Covered |
 | PA-DR-05 (Chunk independence) | AD-05; 3.1 Shared Chunk | ✅ Covered |
 | PA-DR-06 (DB provider type alias) | 3.1 Factory, AD-02 | ✅ Covered |
+| PA-DR-07 (PDO type alias) | 3.1 Factory, AD-02 | ✅ Covered |
 | PA-DR-08 (RPC consolidation) | 3.1 PostgREST Provider, Risk #1 | ✅ Covered |
-| PA-DR-09–10 (Canonical runtime keys) | 6.2 Interface Constraints | ✅ Covered |
+| PA-DR-09 (Canonical runtime keys) | 6.2 Interface Constraints | ✅ Covered |
+| PA-DR-10 (Legacy alias ingestion normalization) | 6.2 Interface Constraints | ❌ Not covered — no legacy alias mapping in 1.0.3 |
 
 ### Operations Requirements Coverage
 
@@ -730,7 +731,7 @@ Plugin Code:
 | PA-QR-01 (Mockable interface) | 3.1 Interface, AD-01 | ✅ Covered |
 | PA-QR-02 (Parameterized queries) | 3.1 Providers | ✅ Covered |
 | PA-QR-03 (HTTP error handling) | 3.1 PostgREST Provider | ✅ Covered |
-| PA-QR-04 (Non-invasive extension) | AD-02, AD-03 | ✅ Covered |
+| PA-QR-04 (Non-invasive extension) | AD-03 (AI filter); DB factory has no extension point in 1.0.3 | ⚠️ Partial — AI filter only |
 | PA-QR-05 (No performance regression) | Risk #1, Constraint 6.3 | ✅ Covered |
 
 ---
