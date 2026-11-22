@@ -101,7 +101,7 @@ Requirement notation:
 | HOOKS-FR-09 | The software SHOULD document Tier 2 hooks with explicit caveats for compatibility expectations. | Should |
 | HOOKS-FR-10 | The software MAY expose Tier 3 internal hooks but MUST identify them as internal/non-contract surfaces in developer docs. | May |
 | HOOKS-FR-11 | The software MUST expose a retention-days filter hook for logs governance with site context. | Must |
-| HOOKS-FR-12 | The software MUST expose before/after retention purge action hooks for observability and extension points with site context. | Must |
+| HOOKS-FR-12 | The software MUST expose before/after retention purge action hooks for notification and extension points with site context. | Must |
 | HOOKS-FR-13 | The software MUST expose a pre-retrieval filter hook to allow exclusion of document types, date ranges, and taxonomy constraints before candidate search. | Must |
 | HOOKS-FR-14 | The software MUST expose an LLM response filter hook to allow post-processing of raw answer text before citation normalization. | Must |
 | HOOKS-FR-15 | The software MUST expose a feedback submission action hook to fire when user feedback is persisted on an interaction for RLHF signal collection. | Must |
@@ -167,6 +167,7 @@ Acceptance baseline:
 | HOOKS-FR-21 | includes/class-gregius-data-content-cleaner.php | Metadata manifest sync enrichment hook (Tier 1) |
 | HOOKS-FR-22 | includes/api/class-gregius-data-rest-sync-controller.php | Sync post types updated action hook (Tier 1) |
 | HOOKS-FR-24 | includes/api/class-gregius-data-rest-vector-queue-controller.php | Vector batch delete batch-size filter hook (Tier 1) |
+| HOOKS-FR-25 | includes/ai/strategies/class-gregius-data-{anthropic,openai,gemini,prompt}-tool-strategy.php | Tool-selection system prompt filter hook (Tier 1) |
 | HOOKS-DR-01 to HOOKS-DR-07 | docs/hooks/developer-documentation.md + emission source files | Hook signature, ordering, tier contract obligations |
 | HOOKS-OR-01 to HOOKS-OR-05 | docs/hooks package + docs/README rewiring | Governance and retirement policy obligations |
 | HOOKS-QR-01 to HOOKS-QR-04 | Canonical docs and repo reference checks | Parity and integrity quality obligations |

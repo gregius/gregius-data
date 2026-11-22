@@ -101,11 +101,11 @@ Mapping:
 
 7. **Provider and Auxiliary Hooks**
    - Examples: `gregius_data_llm_providers`, provider request/call filters/actions, streaming/rate hooks.
-   - Purpose: provider extensibility and observability.
+   - Purpose: provider extensibility and telemetry.
 
 8. **Log Governance Hooks**
    - Examples: `gregius_data_log_retention_days`, `gregius_data_before_purge_logs`, `gregius_data_after_purge_logs`.
-   - Purpose: retention policy extension, pre/post purge observability, and site-scoped governance.
+   - Purpose: retention policy extension, pre/post purge notifications, and site-scoped governance.
 
 - **Tier 1 (Public Stable):** core extension hooks documented with explicit contracts and examples.
 - **Tier 2 (Semi-Public):** advanced hooks with caveats; subject to tighter evolution controls than Tier 3.
