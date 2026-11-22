@@ -61,7 +61,7 @@ Element responsibilities:
 
 | Element | Responsibility |
 |---|---|
-| Prompt CPT + Taxonomy Registrar | Registers `gregius_prompt` post type, metadata schema, and `gregius_prompt_type` hierarchical taxonomy with 'system', 'security', and 'evaluation' terms. |
+| Prompt CPT + Taxonomy Registrar | Registers `gregius_prompt` post type, metadata schema, and `gregius_prompt_type` non-hierarchical taxonomy with 'system', 'security', and 'evaluation' terms. |
 | Prompt Resolver | Resolves effective prompt by fallback order, validity rules, token expansion, hash maintenance, and type-scoping (e.g., resolve('system') or resolve('security')). |
 | Prompt REST Controller | Exposes prompt CRUD + activate routes with capability checks, prompt_type parameter handling, type-scoped activation (deselects only prompts of same type). |
 | Security Gatekeeper Check | Pre-retrieval LLM-based query classifier; resolves 'security' prompt, invokes LLM with security prompt as system message, parses classify response (safe/unsafe), blocks unsafe queries. |
@@ -71,7 +71,7 @@ Element responsibilities:
 ### 4.2 Runtime Interaction View (AV-03)
 
 Type-scoped prompt resolution flow (used for system, security, or evaluation prompts):
-1. Consumer calls resolver with prompt type ('system' or 'security') and optional explicit prompt ID.
+1. Consumer calls resolver with prompt type ('system', 'security', or 'evaluation') and optional explicit prompt ID.
 2. Resolver filters candidates by type via taxonomy query.
 3. Resolver attempts explicit prompt (validated against requested type).
 4. If explicit prompt is unavailable/invalid for type, resolver attempts selected prompt marker (filtered by type).
@@ -86,7 +86,7 @@ Security gatekeeper query classification flow (pre-retrieval check in RAG):
 3. Gatekeeper resolves 'security' type prompt via type-scoped resolver.
 4. Gatekeeper invokes LLM with security prompt as system message, query as user message.
 5. Gatekeeper parses LLM response as JSON: `{"status":"safe|unsafe","reason":"..."}`.
-6. If status is unsafe, RAG returns short-circuit response: "I can't help with that request" + metadata.
+6. If status is unsafe, RAG returns short-circuit response: "I can't help with that request." + metadata.
 7. If status is safe, RAG proceeds to retrieval and normal answer generation.
 8. Security check result (status, reason, prompt, usage) stored in interaction metadata.
 
@@ -152,7 +152,7 @@ Persistence dependencies:
 - Consequences:
   - Positive: Centralized and locale-aware dynamic values.
   - Tradeoff: Token support set is explicit and finite.
-- Traceability: PROMPT-FR-05, PROMPT-QR-04.
+- Traceability: PROMPT-FR-06, PROMPT-QR-04.
 
 ### Decision AD-04: Idempotent factory seed and migration
 
@@ -165,7 +165,7 @@ Persistence dependencies:
 - Consequences:
   - Positive: Stable lifecycle behavior and low operational risk.
   - Tradeoff: Requires option-flag hygiene during debugging.
-- Traceability: PROMPT-FR-08, PROMPT-FR-09, PROMPT-OR-04.
+- Traceability: PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-OR-04.
 
 ### Decision AD-05: Type-scoped prompt resolution and activation
 
@@ -203,7 +203,7 @@ Constraints:
 - Type-scoped resolution requires taxonomy to exist; resolver gracefully degrades if taxonomy not registered.
 - REST management is administrator-only by design.
 - Prompt consumer integrations depend on resolver output shape and type parameter.
-- Security gatekeeper LLM call must complete successfully; timeout/error falls through to unsafe decision (fail-safe).
+- Security gatekeeper response parsing is fail-open: a non-JSON response defaults to 'safe' unless it contains a literal 'unsafe' substring; an LLM/network failure returns a `WP_Error` that halts the request without retrieval.
 
 Risks:
 - Direct manual edits to prompt metadata or term assignments may produce unexpected selected/factory state or type misalignment.
@@ -218,10 +218,10 @@ Risks:
 |---|---|
 | AV-01 Context Interfaces | PROMPT-FR-06, PROMPT-FR-10, PROMPT-FR-11, PROMPT-FR-14, PROMPT-FR-15 |
 | AV-02 Component Responsibilities | PROMPT-FR-01 to PROMPT-FR-15, PROMPT-DR-01 to PROMPT-DR-09 |
-| AV-03 Resolution + Lifecycle Flows | PROMPT-FR-03, PROMPT-FR-04, PROMPT-FR-05, PROMPT-FR-08, PROMPT-FR-09, PROMPT-FR-12, PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15 |
+| AV-03 Resolution + Lifecycle Flows | PROMPT-FR-03, PROMPT-FR-04, PROMPT-FR-05, PROMPT-FR-06, PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-FR-12, PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15 |
 | AD-01 | PROMPT-FR-03, PROMPT-FR-04, PROMPT-DR-03 |
 | AD-02 | PROMPT-FR-03, PROMPT-QR-01 |
-| AD-03 | PROMPT-FR-05, PROMPT-QR-04 |
-| AD-04 | PROMPT-FR-08, PROMPT-FR-09, PROMPT-OR-04 |
+| AD-03 | PROMPT-FR-06, PROMPT-QR-04 |
+| AD-04 | PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-OR-04 |
 | AD-05 | PROMPT-FR-12, PROMPT-FR-13, PROMPT-DR-07, PROMPT-OR-07 |
 | AD-06 | PROMPT-FR-14, PROMPT-FR-15, PROMPT-OR-05, PROMPT-OR-06 |
