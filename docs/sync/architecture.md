@@ -2,7 +2,7 @@
 
 Standard: ISO/IEC/IEEE 42010:2022  
 Component: Sync Orchestration Subsystem  
-Version: 1.0.0  
+Version: 1.0.3  
 Date: 2026-04-04  
 Upstream Specification: [srs.md](srs.md)
 
@@ -21,7 +21,7 @@ Scope includes:
 - Sync metadata tracking and drift validation
 - Deterministic provider contract execution (bulk-capable providers)
 - REST management endpoints for configuration and operations
-- Multisite configuration isolation for WordPress-side settings and sync state
+- Per-connection configuration isolation for WordPress-side settings and sync state
 - Canonical PostgreSQL mirror naming across providers; mirror tables do not vary by site prefix
 
 Explicitly excluded:
@@ -70,7 +70,7 @@ Explicitly excluded:
                   └─ PostgREST: Bulk-capable provider contract, canonical mirror naming
                             ▼
                   PostgreSQL (wp_posts, wp_posts_clean,
-                             wp_posts_chunks, sync_metadata)
+                             wp_posts_chunks, wp_gregius_data_sync_metadata_entities)
 ```
 
 Architecture intent:
@@ -90,18 +90,17 @@ Mapping:
 
 1. **Lifecycle Hooks Component** (`Gregius_Data_Lifecycle_Hooks`)
    - Registers WP action listeners for post/status/meta/term changes
-   - Checks sync configuration (enabled types, statuses, real-time flag)
-   - Routes to sync service; logs errors without raising exceptions
+   - Checks sync configuration (enabled types, statuses, real-time flag) per connection
+   - Dispatches to the provider (`sync_post`) plus content cleaner and metadata manager; logs errors without raising exceptions
 
-2. **Batch Processor Components** (`Gregius_Data_Post_Sync`, `Gregius_Data_Taxonomy_Sync`, `Gregius_Data_Postmeta_Sync`)
+2. **Batch Processor Components** (`Gregius_Data_Post_Sync`, `Gregius_Data_Taxonomy_Sync`, `Gregius_Data_Postmeta_Sync`, `Gregius_Data_Clean_Batch`)
    - Implements offset-based pagination loops
-   - Queries WordPress in batches; delegates to sync service per item
+   - Queries WordPress in batches; delegates to provider bulk-upsert and content cleaning per item
    - Aggregates counts and status; handles resumable operations
 
 3. **Sync Service Component** (`Gregius_Data_Sync_Service`)
-   - Facade and router; orchestrates upsert/delete for applicable entity
-   - Dispatches to content cleaner and chunker
-   - Calls metadata manager to record sync state
+   - Facade and router for batch orchestration; dispatches to the batch processors per entity type
+   - Invokes content cleaning, orphan cleanup, and validation entry points
 
 4. **Content Cleaner Component** (`Gregius_Data_Content_Cleaner`)
    - Strips HTML, calculates hash for change detection
@@ -109,18 +108,18 @@ Mapping:
    - Invokes chunker for further segmentation
 
 5. **Chunker Component** (`Gregius_Data_Chunker`)
-   - Selects strategy per connection and post type
+   - Resolves the chunking strategy per connection (context-aware)
    - Generates normalized chunk rows in wp_posts_chunks
    - Returns chunk count for metadata aggregation
 
 6. **Sync Metadata Manager** (`Gregius_Data_Sync_Metadata_Manager`)
-   - Reads/updates wp_gregius_data_sync_metadata table
+   - Reads/updates the wp_gregius_data_sync_metadata aggregate and wp_gregius_data_sync_metadata_entities tables
    - Tracks WordPress and PostgreSQL record counts
    - Calculates drift; supports fast UI queries
 
 7. **Sync Validator Component** (`Gregius_Data_Sync_Validator`)
-   - Metadata-based validation (fast, ~100ms, auto-loaded by dashboard UI)
-   - Full table-scan validation (comprehensive, 3–13s, backend/internal only — not exposed in dashboard)
+   - Full table-scan validation (comprehensive, 3–13s, operator/internal — not exposed in the dashboard)
+   - Fast metadata-based validation (~100ms, auto-loaded by the dashboard) is provided by the REST validator controller against the metadata aggregate
    - Reports orphaned and missing records
 
 8. **REST Controller Components** (`Gregius_Data_REST_Sync_Controller`, `Gregius_Data_REST_Sync_Validator_Controller`)
@@ -136,7 +135,7 @@ Mapping:
 - Upstream dependencies: WordPress lifecycle actions and settings storage
 - Downstream dependencies: Search and Vectors subsystems consuming wp_posts_clean and wp_posts_chunks
 - Provider boundary: equivalent contract semantics across providers
-- Mirror naming boundary: PostgreSQL table names are canonical and do not vary by multisite prefix
+- Mirror naming boundary: PostgreSQL table names are canonical and do not vary by site prefix
 
 Mapping:
 - AV-02 -> SYNC-FR-01 to SYNC-FR-09
@@ -154,15 +153,15 @@ WordPress Action Triggered
     ▼
 Lifecycle Hook Handler
     │
-    ├─ Check: is_synced_type? + is_enabled_status?
+    ├─ Check: is_post_type_synced? + is_post_status_synced?
     ├─ If not valid → exit (no-op)
     └─ If valid:
         ├─ try {
-      │   ├─ Sync Service.upsert ( post_id )
+      │   ├─ Provider.sync_post ( post_id )
         │   │   ├─ Content Cleaner ( HTML strip, hash )
         │   │   ├─ Chunker ( content segments )
         │   │   ├─ DB Operations ( insert/update )
-        │   │   └─ Metadata Manager ( mark_synced )
+        │   │   └─ Metadata Manager ( track_synced )
         │   │
         │   ├─ Sync postmeta (if enabled)
         │   ├─ Sync term relationships (if enabled)
@@ -180,7 +179,7 @@ Key property: **Non-blocking**. All errors logged but not raised.
 ### 4.2 Batch Sync Flow
 
 ```
-POST /gregius-data/v1/sync/post-type/{type}
+POST /gregius-data/v1/sync/batch-sync-post-type/{type}
     │
     ▼
 Permission check (manage_options)
@@ -202,7 +201,7 @@ Query WordPress (batch_size=100, offset=0)
    │   └─ bulk_upsert_posts() on active provider
     │
     ├─ Update Metadata aggregates
-    └─ Return: { processed, failed, has_more, total }
+    └─ Return: { success, processed, skipped, failed, has_more, total }
 ```
 
 Key property: **Pagination-friendly**. Loop controlled by caller.
@@ -220,9 +219,8 @@ Sync Service Invokes Content Cleaner
     │       ├─ Insert/update wp_posts_clean row
     │       └─ Invoke Chunker
     │
-    └─ Chunker invokes per-connection strategy
-       ├─ Chunking strategy A (fixed-size)
-       ├─ Chunking strategy B (semantic)
+    └─ Chunker invokes the resolved per-connection strategy
+       ├─ default strategy: paragraph-first → sentence-aware → fixed-size fallback
        └─ Generate wp_posts_chunks rows
 ```
 
@@ -344,7 +342,7 @@ Linked requirements:
 | C-01 | Real-time sync MUST not block WordPress operations; errors are logged but not raised. | Transient drift between WordPress and PostgreSQL; requires monitoring. |
 | C-02 | Content changing is detected via MD5 hash; collision is theoretically possible but practically low-risk. | Should formalize collision detection strategy. |
 | C-03 | Batch operations are resumable via offset pagination; however, pagination offset can shift if new posts inserted mid-batch. | Operators must be aware of potential record skips in concurrent batches. |
-| C-04 | Multisite deployments require per-site WordPress configuration isolation; PostgreSQL mirror table names remain canonical across sites. | Site-specific settings stay isolated while provider tables stay stable. |
+| C-04 | Deployments require per-connection WordPress configuration isolation; PostgreSQL mirror table names remain canonical (prefix `wp_`) across connections and sites. | Connection-specific settings stay isolated while provider tables stay stable. |
 
 ### 6.2 Risks
 

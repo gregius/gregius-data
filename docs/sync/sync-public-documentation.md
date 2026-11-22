@@ -48,7 +48,7 @@ A sync operation flows through a predictable pipeline regardless of whether it w
 
 1. **Trigger** — WordPress action or REST API call identifies content to sync.
 2. **Content Cleaner** — Strips HTML, calculates an MD5 content hash, and detects whether content changed since the last sync. Unchanged content is skipped.
-3. **Chunker** — Segments cleaned content into chunks per connection-specific strategy (fixed-size or semantic).
+3. **Chunker** — Segments cleaned content into chunks using the adaptive `default` strategy (paragraph-first, sentence-aware, fixed-size fallback).
 4. **Provider Dispatch** — Routes cleaned content and chunks to the configured provider (PDO or PostgREST), which writes to PostgreSQL mirror tables (`wp_posts`, `wp_posts_clean`, `wp_posts_chunks`).
 5. **Metadata Update** — Records sync state in `wp_gregius_data_sync_metadata` for fast validation without table scans.
 
@@ -100,23 +100,29 @@ Batch sync lets you synchronize large volumes of content on demand via REST API.
 - Large-scale content migrations or re-syncs
 - Periodic full synchronization for data assurance
 
-**REST endpoint:** `POST /wp-json/gregius-data/v1/sync/post-type/{type}`
+**REST endpoint:** `POST /wp-json/gregius-data/v1/sync/batch-sync-post-type/{type}`
 
 **Response format:**
 ```json
 {
-  "processed": 42,
-  "failed": 0,
-  "has_more": true,
-  "total": 1250
+  "success": true,
+  "message": "Processed 42 posts",
+  "batch": {
+    "success": true,
+    "processed": 42,
+    "skipped": 0,
+    "failed": 0,
+    "has_more": true,
+    "total": 1250
+  }
 }
 ```
 
 Continue calling with incremented `offset` until `has_more` is `false`. The operation is resumable — you can stop and restart without data loss.
 
 **Provider behavior:**
-- [PostgREST/Supabase](https://supabase.com/): Supports bulk upsert — up to 1,000 posts per request
-- [PostgreSQL PDO](https://www.postgresql.org/): Implements bulk provider methods; lower batch sizes (50–75) recommended for performance
+- [PostgREST/Supabase](https://supabase.com/): Supports bulk upsert via a single HTTP request (merge-duplicates); batch size is caller-controlled
+- [PostgreSQL PDO](https://www.postgresql.org/): Implements the same bulk provider methods; lower batch sizes (50–75) recommended for performance
 
 [SRS: SYNC-FR-03, SYNC-FR-05, SYNC-FR-09, SYNC-OR-05]
 
@@ -128,7 +134,7 @@ Before content reaches PostgreSQL, it goes through automatic preparation to make
 
 ### HTML Cleaning
 
-The content cleaner strips HTML tags, calculates an MD5 hash of the cleaned content, and compares it with the previously stored hash. If nothing changed, the sync skips the content entirely — avoiding redundant writes.
+The content cleaner strips HTML tags, calculates an MD5 hash of the original content (title + content + excerpt), and compares it with the previously stored hash. If nothing changed, the sync skips the content entirely — avoiding redundant writes.
 
 **Why this matters:** Clean content improves search relevance and vector embedding quality. The hash-based skip prevents unnecessary database work for unchanged content.
 
