@@ -28,8 +28,8 @@ The testing subsystem includes:
 - Shared test infrastructure (bootstrap, helpers, composer dependencies)
 - Test runner script (`bin/test`) with two execution modes
 - PHPUnit configuration for all tiers
-- wp-phpunit integration (SVN checkout, PHPUnit 11 compat patch)
-- Test data management (test database, container config generation)
+- wp-phpunit integration (install-wp-tests.sh bootstrap, PHPUnit 9.6)
+- Test data management (test database, wp-tests-config.php generation)
 
 Software identifier: gregius-data-testing
 
@@ -45,7 +45,7 @@ The testing subsystem provides regression prevention for the Gregius Data plugin
 
 - Execute unit tests for pure-logic classes (no WordPress required).
 - Execute integration tests with mocked WordPress functions (Brain Monkey).
-- Execute full WordPress integration tests in a Docker container with real WordPress + MySQL.
+- Execute full WordPress integration tests against a real WordPress + MySQL stack.
 - Provide a single-command runner (`./bin/test`) for all test tiers.
 - Exclude test artifacts from production plugin distributions.
 - Support CI/CD execution via GitHub Actions or similar platforms.
@@ -55,7 +55,7 @@ The testing subsystem provides regression prevention for the Gregius Data plugin
 | User Class | Technical Level | Primary Interaction Point |
 |---|---|---|
 | Plugin Contributor | Technical | `./bin/test`, IDE test runner |
-| CI/CD Integrator | Technical | `./bin/test --wp` in Docker context |
+| CI/CD Integrator | Technical | `./bin/test --wp` against a MySQL test database |
 | Code Reviewer | Technical | PHPUnit output, assertion results |
 
 ## 2. References
@@ -65,6 +65,7 @@ The testing subsystem provides regression prevention for the Gregius Data plugin
 - `tests/bootstrap.php`
 - `tests/helpers.php`
 - `bin/test`
+- `bin/install-wp-tests.sh`
 - `phpunit.xml.dist`
 - `phpunit-wp.xml.dist`
 
@@ -81,12 +82,12 @@ Requirement notation:
 |---|---|---|
 | TEST-FR-01 | The software MUST support unit-level test execution without WordPress loaded, covering the classes in the §4.1 coverage matrix. | Must |
 | TEST-FR-02 | The software MUST support integration-level test execution using Brain Monkey for WP function mocking, covering the classes in the §4.2 coverage matrix. | Must |
-| TEST-FR-03 | The software MUST support full WordPress integration test execution inside a Docker container with real WordPress and MySQL, covering the classes in the §4.3 coverage matrix. | Must |
+| TEST-FR-03 | The software MUST support full WordPress integration test execution against a real WordPress + MySQL stack, covering the classes in the §4.3 coverage matrix. | Must |
 | TEST-FR-04 | The software MUST provide a single-command test runner (`./bin/test`) that executes all available test tiers without manual configuration. | Must |
 | TEST-FR-05 | The software MUST support running individual test suites via PHPUnit CLI (`--testsuite unit`, `--testsuite integration`). | Must |
-| TEST-FR-06 | The software MUST support environment variable overrides for Docker container names (`TEST_WP_CONTAINER`, `TEST_DB_CONTAINER`). | Must |
-| TEST-FR-07 | The software MUST auto-create the test database (default `wp_tests`, overridable via `TEST_DB_NAME`) and grant privileges before WpIntegration execution. | Must |
-| TEST-FR-08 | The software MUST generate container-compatible test configuration (`wp-tests-config.php`) at runtime for WpIntegration tests. | Must |
+| TEST-FR-06 | The software MUST support environment variable configuration of the WpIntegration database (`TEST_DB_NAME`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, `TEST_DB_HOST`) and WordPress version (`WP_VERSION`). | Must |
+| TEST-FR-07 | The software MUST connect to a pre-existing test database (default `wp_tests`, overridable via `TEST_DB_NAME`); the runner does not create the database. | Must |
+| TEST-FR-08 | The software MUST generate the WordPress test configuration (`wp-tests-config.php`) at runtime via `bin/install-wp-tests.sh` for WpIntegration tests. | Must |
 
 ### 3.2 Data and Contract Requirements
 
@@ -96,8 +97,8 @@ Requirement notation:
 | TEST-DR-02 | Tier 3 tests MUST use real WordPress functions and database without Brain Monkey stubbing. | Must |
 | TEST-DR-03 | Tests for classes with internally-coupled constructors MUST use `ReflectionClass::newInstanceWithoutConstructor()` for instance creation. | Must |
 | TEST-DR-04 | WpIntegration tests MUST run from a separate PHPUnit configuration (`phpunit-wp.xml.dist`) to avoid loading `WP_UnitTestCase` when WordPress is not bootstrapped. | Must |
-| TEST-DR-05 | The wp-phpunit test framework MUST be installed via SVN into `tests/wp-phpunit/` and excluded from version control via `.gitignore`. | Must |
-| TEST-DR-06 | The `expectDeprecated()` method in wp-phpunit MUST be patched for PHPUnit 11 compatibility (`parseTestMethodAnnotations` removal). | Must |
+| TEST-DR-05 | The wp-phpunit test framework MUST be provisioned by `bin/install-wp-tests.sh` (downloading WordPress core into `WP_CORE_DIR`, default `/tmp/wordpress`, and the wordpress-develop test suite's `includes/` and `data/` into `WP_TESTS_DIR`, default `/tmp/wordpress-tests-lib`) and remain outside version control. | Must |
+| TEST-DR-06 | WpIntegration tests MUST run under PHPUnit 9.6 with `yoast/phpunit-polyfills` ^3.0 for `WP_UnitTestCase` compatibility. | Must |
 | TEST-DR-07 | All test files MUST follow the naming convention `Test_Gregius_Data_{ClassName}.php` in their respective tier directory. | Must |
 | TEST-DR-08 | Test files, PHPUnit configurations, vendor dependencies, and Composer metadata MUST be excluded from the production plugin zip. | Must |
 
@@ -105,8 +106,8 @@ Requirement notation:
 
 | ID | Requirement | Priority |
 |---|---|---|
-| TEST-OR-01 | The `./bin/test` command (without `--wp`) MUST execute Unit and Integration tests only, with zero Docker dependency. | Must |
-| TEST-OR-02 | The `./bin/test --wp` command MUST execute WpIntegration tests after verifying Docker containers are running and the test database exists. | Must |
+| TEST-OR-01 | The `./bin/test` command (without `--wp`) MUST execute Unit and Integration tests only, with no MySQL dependency. | Must |
+| TEST-OR-02 | The `./bin/test --wp` command MUST execute WpIntegration tests against a reachable MySQL test database, provisioning WordPress and the test suite via `bin/install-wp-tests.sh`. | Must |
 | TEST-OR-03 | WpIntegration tests MUST bootstrap WordPress via `tests_add_filter('muplugins_loaded')` and activate the plugin via `tests_add_filter('setup_theme')`. | Must |
 | TEST-OR-04 | The test bootstrap MUST skip loading `tests/helpers.php` (which defines a `WP_Error` stub) when running WpIntegration tests to avoid class redeclaration conflicts. | Must |
 | TEST-OR-05 | Tier 1-2 tests MUST call `Monkey\setUp()` in setUp and `Monkey\tearDown()` in tearDown for proper function stub isolation. | Must |
@@ -118,7 +119,7 @@ Requirement notation:
 |---|---|---|
 | TEST-QR-01 | Unit tests MUST complete in under 1 second. | Timing baseline |
 | TEST-QR-02 | Integration tests MUST complete in under 2 seconds. | Timing baseline |
-| TEST-QR-03 | WpIntegration tests MUST complete in under 30 seconds with warm Docker containers. | Timing baseline |
+| TEST-QR-03 | WpIntegration tests MUST complete in under 30 seconds with a warm test database. | Timing baseline |
 | TEST-QR-04 | All tests across the three tiers (see §4 coverage matrix) MUST produce zero failures on the `main` branch. | `./bin/test && ./bin/test --wp` |
 | TEST-QR-05 | Production plugin zip MUST be under 1 MB (excluding test and dev artifacts). | `node bin/plugin-zip.js` output |
 
@@ -130,56 +131,61 @@ Requirement notation:
 |---|---|---|
 | Gregius_Data_Activator | Test_Gregius_Data_Activator.php | 6 |
 | Gregius_Data_Chunker | Test_Gregius_Data_Chunker.php | 12 |
+| Gregius_Data_Connection_Health | Test_Gregius_Data_Connection_Health.php | 3 |
 | Gregius_Data_Content_Processor | Test_Gregius_Data_Content_Processor.php | 8 |
 | Gregius_Data_Document_Extractor | Test_Gregius_Data_Document_Extractor.php | 4 |
 | Gregius_Data_Error_Handler | Test_Gregius_Data_Error_Handler.php | 13 |
 | Gregius_Data_Format_Json_Output (trait) | Test_Gregius_Data_Format_Json_Output.php | 8 |
+| Gregius_Data_Manifest_Validator | Test_Gregius_Data_Manifest_Validator.php | 2 |
 | Gregius_Data_Model_Catalog | Test_Gregius_Data_Model_Catalog.php | 10 |
 | Gregius_Data_Model_Discovery | Test_Gregius_Data_Model_Discovery.php | 6 |
+| Gregius_Data_PostgREST_Provider / Gregius_Data_PostgreSQL_Provider (upsert contract) | Test_Gregius_Data_Provider_Upsert.php | 4 |
 | Gregius_Data_Prompt_Resolver | Test_Gregius_Data_Prompt_Resolver.php | 8 |
+| Gregius_Data_Sanitizer | Test_Gregius_Data_Sanitizer.php | 24 |
+| Gregius_Data_Schema_Version (schema stamp vs postgrest-schema.sql) | Test_Gregius_Data_Schema_Version.php | 3 |
 | Gregius_Data_Search_Schema | Test_Gregius_Data_Search_Schema.php | 4 |
 | Gregius_Data_Table_Prefix_Resolver | Test_Gregius_Data_Table_Prefix_Resolver.php | 8 |
 | Gregius_Data_Token_Counter | Test_Gregius_Data_Token_Counter.php | 6 |
-| **Total** | **12 files** | **93 tests** |
+| **Total** | **17 files** | **129 tests** |
 
 ### 4.2 Tier 2 — Integration Tests (tests/Integration/)
 
 | Source Class | Test File | Tests |
 |---|---|---|
 | Gregius_Data_Content_Cleaner | Test_Gregius_Data_Content_Cleaner.php | 10 |
+| Supabase count RPCs (postgrest-schema.sql) | Test_Gregius_Data_Count_RPC_Parity.php | 2 |
 | Gregius_Data_DB | Test_Gregius_Data_DB.php | 4 |
 | Gregius_Data_Gemini_Provider | Test_Gregius_Data_Gemini_Provider.php | 1 |
 | Gregius_Data_HashingTF_Embeddings | Test_Gregius_Data_HashingTF_Embeddings.php | 8 |
 | Gregius_Data_LLM_Registry | Test_Gregius_Data_LLM_Registry.php | 5 |
-| Gregius_Data_RAG_Service | Test_Gregius_Data_RAG_Service_QueryVector.php | 3 |
+| Gregius_Data_RAG_Service (generate_query_vector_literal) | Test_Gregius_Data_RAG_Service_QueryVector.php | 3 |
 | Gregius_Data_Settings_Manager | Test_Gregius_Data_Settings_Manager.php | 9 |
 | Gregius_Data_Vector_Generator | Test_Gregius_Data_Vector_Generator.php | 6 |
-| **Total** | **8 files** | **46 tests** |
+| **Total** | **9 files** | **48 tests** |
 
 ### 4.3 Tier 3 — WpIntegration Tests (tests/WpIntegration/)
 
 | Source Class | Test File | Tests |
 |---|---|---|
 | Gregius_Data_Abilities_Manager | Test_Gregius_Data_Abilities_Manager.php | 4 |
-| Gregius_Data_Connection_Health | Test_Gregius_Data_Connection_Health.php | 7 |
+| Gregius_Data_Connection_Health | Test_Gregius_Data_Connection_Health_Wp.php | 7 |
 | Gregius_Data_Logger | Test_Gregius_Data_Logger.php | 11 |
 | Gregius_Data (Main Plugin) | Test_Gregius_Data_Main_Plugin.php | 5 |
-| Gregius_Data_Activator | Test_Gregius_Data_Plugin_Activation.php | 5 |
+| Gregius_Data_Activator / Deactivator (plugin lifecycle) | Test_Gregius_Data_Plugin_Activation.php | 12 |
 | Gregius_Data_RAG_Service | Test_Gregius_Data_RAG_Service.php | 4 |
 | Gregius_Data_REST_Connections_Controller | Test_Gregius_Data_REST_Connections.php | 4 |
 | Gregius_Data_REST_Prompts_Controller | Test_Gregius_Data_REST_Prompts.php | 3 |
 | Gregius_Data_REST_Search_Controller | Test_Gregius_Data_REST_Search.php | 3 |
 | Gregius_Data_REST_Sync_Controller | Test_Gregius_Data_REST_Sync.php | 2 |
 | Gregius_Data_Sync_Service | Test_Gregius_Data_Sync_Service.php | 2 |
-| **Total** | **11 files** | **50 tests** |
+| **Total** | **11 files** | **57 tests** |
 
 ### 4.4 Exclusions
 
 | Class | Reason |
 |---|---|
 | Gregius_Data_Citation_Resolver | Not covered — no test file (class exists in `includes/rag/`) |
-| AI Provider classes (OpenAI, Anthropic, DeepSeek, Cohere, TypeSafe) | Not covered — no test files (Gemini is covered; see §4.2) |
-| Gregius_Data_PostgREST_Provider | Not covered — requires Supabase/PostgREST endpoint mocking |
+| AI Provider classes (OpenAI, Anthropic, DeepSeek, Cohere, Typesafe, Internal) | Not covered — no test files (Gemini is covered; see §4.2) |
 
 ## 5. Verification and Acceptance
 
@@ -187,5 +193,5 @@ Requirement notation:
 |---|---|---|
 | Functional requirements | Test execution across all tiers | `./bin/test && ./bin/test --wp` |
 | Data/contract requirements | File inspection + test pattern audit | Code review of tests/ directory |
-| Operations requirements | Mode execution verification | `./bin/test` (local), `./bin/test --wp` (Docker) |
+| Operations requirements | Mode execution verification | `./bin/test` (local), `./bin/test --wp` (MySQL) |
 | Quality requirements | Zip size + test timing | `node bin/plugin-zip.js`, PHPUnit timing output |

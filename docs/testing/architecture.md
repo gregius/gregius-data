@@ -33,7 +33,7 @@ This architecture describes how the Gregius Data plugin implements automated tes
 | Stakeholder | Concern | Priority |
 |---|---|---|
 | Plugin Contributors | Clear test writing patterns and low-friction local execution | High |
-| CI/CD Integrators | One-command test execution, container-agnostic design | High |
+| CI/CD Integrators | One-command test execution, environment-agnostic design | High |
 | Code Reviewers | High-confidence regression prevention, all tests green | High |
 | Plugin Release Manager | Tests excluded from production zip, README references | Medium |
 
@@ -52,8 +52,8 @@ This architecture describes how the Gregius Data plugin implements automated tes
           |                    |                    |
     Tier 1 (Unit)      Tier 2 (Integration)   Tier 3 (WpIntegration)
           |                    |                    |
-    PHPUnit alone       PHPUnit + Brain        WordPress Docker
-    No WordPress         Monkey + Mockery       Container (wordpress-wordpress)
+    PHPUnit alone       PHPUnit + Brain        PHPUnit + real
+    No WordPress         Monkey + Mockery       WordPress + MySQL
           |                    |                    |
    tests/Unit/         tests/Integration/    tests/WpIntegration/
 ```
@@ -62,25 +62,24 @@ This architecture describes how the Gregius Data plugin implements automated tes
 Tier 3 expanded:
     ./bin/test --wp
           |
-   +------+------+
-   |             |
-  Docker        Docker
-  wordpress-db    wordpress-wordpress
-   |             |
-  CREATE DB     wp-tests-config.php (generated)
-  GRANT PRIV     |
-                wp-phpunit bootstrap
-                     |
-                WordPress boots
-                     |
-                Gregius_Data_Activator::activate()
-                     |
-                PHPUnit runs WpIntegration suite
+   bin/install-wp-tests.sh (WordPress core → WP_CORE_DIR, wp-phpunit → WP_TESTS_DIR)
+          |
+   +-------------+------------------+
+   |                                |
+  MySQL test DB                  wp-tests-config.php (generated)
+  (must already exist)                |
+                                 wp-phpunit bootstrap
+                                      |
+                                 WordPress boots
+                                      |
+                                 Gregius_Data_Activator::activate()
+                                      |
+                                 PHPUnit runs WpIntegration suite
 ```
 
 ### 2.2 Context Rationale
 
-Tier 1 and Tier 2 run locally in PHP without WordPress. They provide fast feedback during development. Tier 3 requires Docker for a real WordPress + MySQL stack and validates activation, REST routes, database operations, and full plugin lifecycle.
+Tier 1 and Tier 2 run locally in PHP without WordPress. They provide fast feedback during development. Tier 3 requires a reachable MySQL database and provisions a real WordPress + wp-phpunit stack via `bin/install-wp-tests.sh`, validating activation, REST routes, database operations, and full plugin lifecycle.
 
 The `bin/test` script abstracts all three tiers behind two commands: `./bin/test` for tiers 1+2 and `./bin/test --wp` for tier 3. Test counts are tracked in the [SRS](srs.md) §4 coverage matrix.
 
@@ -96,27 +95,27 @@ phpunit.xml.dist loads:
         ├── Composer autoload
         ├── helpers.php (tier 1-2 only, WP_Error stub conflicts with real WP)
         ├── $wpdb global stub (tier 1-2 only)
-        └── IF WP_TESTS_RUN=1:
-              ├── Find wp-tests-config.php (auto-detect or container-generated)
-              ├── Load tests/wp-phpunit/includes/functions.php
+        └── IF WP_TESTS_RUN=1 (or WP_TESTS_CONFIG_FILE_PATH set):
+              ├── Find wp-tests-config.php (WP_TESTS_DIR, /var/www/html, or tests/)
+              ├── Load <wp-phpunit>/includes/functions.php
               ├── tests_add_filter('muplugins_loaded', load plugin)
               ├── tests_add_filter('setup_theme', activate plugin)
-              └── Load tests/wp-phpunit/includes/bootstrap.php (boots WordPress)
+              └── Load <wp-phpunit>/includes/bootstrap.php (boots WordPress)
 ```
 
 ### 3.2 `bin/test` Modes
 
-| Mode | Command | Tiers | Runtime | Docker |
+| Mode | Command | Tiers | Runtime | MySQL |
 |---|---|---|---|---|
 | Local | `./bin/test` | Unit + Integration | <1s | Not required |
 | Full stack | `./bin/test --wp` | WpIntegration | ~5s | Required |
 
 `--wp` mode:
-1. Creates the test database (default `wp_tests`) via `docker exec <TEST_DB_CONTAINER>`
-2. Writes container-compatible `wp-tests-config.php` via `docker exec <TEST_WP_CONTAINER> tee`
-3. Runs `vendor/bin/phpunit --configuration phpunit-wp.xml.dist` inside the container
+1. Requires a reachable MySQL test database (default name `wp_tests`; the runner does not create it)
+2. Runs `bin/install-wp-tests.sh` to download WordPress core into `WP_CORE_DIR` (default `/tmp/wordpress`) and the wp-phpunit test suite (`includes/` + `data/`) into `WP_TESTS_DIR` (default `/tmp/wordpress-tests-lib`), then generates `wp-tests-config.php` (ABSPATH pointed at `WP_CORE_DIR`)
+3. Runs `WP_TESTS_RUN=1 vendor/bin/phpunit --configuration phpunit-wp.xml.dist`
 
-Container names are configurable via `TEST_WP_CONTAINER` and `TEST_DB_CONTAINER` environment variables; database credentials (`TEST_DB_USER`, `TEST_DB_PASSWORD`, `TEST_DB_ROOT_PASSWORD`) are required and intentionally have no committed defaults. See the `./bin/test` header for the full list.
+Configuration is via environment variables: `TEST_DB_NAME` (default `wp_tests`), `TEST_DB_USER` and `TEST_DB_PASSWORD` (both required), `TEST_DB_HOST` (default `127.0.0.1`), and `WP_VERSION` (default `7.1.5`). See the `./bin/test` header for the full list.
 
 ---
 
@@ -127,17 +126,19 @@ Container names are configurable via `TEST_WP_CONTAINER` and `TEST_DB_CONTAINER`
 ```
 gregius-data/
 ├── bin/
-│   └── test                    # Test runner script
+│   ├── test                    # Test runner script
+│   └── install-wp-tests.sh     # WordPress + wp-phpunit provisioning (wp-cli script)
 ├── tests/
 │   ├── bootstrap.php           # Conditional bootstrap (all tiers)
 │   ├── helpers.php             # Shared stubs (tier 1-2 only)
-│   ├── wp-phpunit/             # SVN checkout (gitignored)
+│   ├── wp-mock-functions.php   # Shared WP function stub placeholder (unused)
+│   ├── wp-phpunit/             # Optional in-tree checkout (gitignored)
 │   ├── Unit/                   # Tier 1 (see srs.md §4.1)
 │   ├── Integration/            # Tier 2 (see srs.md §4.2)
 │   └── WpIntegration/          # Tier 3 (see srs.md §4.3)
 ├── phpunit.xml.dist            # Default: unit + integration suites
 ├── phpunit-wp.xml.dist         # WP tests: WpIntegration suite
-├── composer.json               # require-dev: phpunit, brain/monkey, mockery, polyfills
+├── composer.json               # require-dev: phpunit ^9.6, brain/monkey, mockery, polyfills
 └── vendor/                     # Composer dev dependencies (gitignored)
 ```
 
@@ -155,7 +156,7 @@ PHPUnit\Framework\TestCase
 
 ### 4.3 Test File Naming Convention
 
-All test files follow `Test_Gregius_Data_{ClassName}.php` in the appropriate tier directory. PHPUnit 11 uses `suffix=".php"` for test discovery since classes mirror filenames.
+All test files follow `Test_Gregius_Data_{ClassName}.php` in the appropriate tier directory. PHPUnit 9.6 discovers tests via `suffix=".php"` in the suite configuration, so class names mirror filenames.
 
 ---
 
@@ -167,32 +168,27 @@ All test files follow `Test_Gregius_Data_{ClassName}.php` in the appropriate tie
 # 1. Install PHP dependencies
 composer install --dev
 
-# 2. Install wp-phpunit test framework (required for Tier 3)
-svn co https://develop.svn.wordpress.org/trunk/tests/phpunit tests/wp-phpunit
+# 2. Provision wp-phpunit + WordPress (required for Tier 3)
+#    Handled automatically by `./bin/test --wp` via bin/install-wp-tests.sh;
+#    requires a reachable MySQL test database (see bin/test header).
 ```
 
 ### 5.2 Local Execution
 
 ```bash
-./bin/test           # Unit + Integration (no Docker)
-./bin/test --wp      # All tiers including WpIntegration (Docker required)
+./bin/test           # Unit + Integration (no MySQL)
+./bin/test --wp      # WpIntegration only (phpunit-wp.xml.dist; MySQL required)
 ```
 
 ### 5.3 CI/CD Integration
 
-```yaml
-- name: Start services
-  run: docker compose up -d --wait
-- name: Run full test suite
-  working-directory: public/wp-content/plugins/gregius-data
-  run: ./bin/test --wp
-```
+The CI workflow (`.github/workflows/ci.yml`) runs three jobs: `lint` (phpcs), `unit-integration` (`./bin/test`), and `wp-integration` (`./bin/test --wp` with a `mysql:8.0` service container). The `wp-integration` job sets `TEST_DB_NAME=wp_tests`, `TEST_DB_USER=root`, `TEST_DB_PASSWORD=root`, `TEST_DB_HOST=127.0.0.1`, and `WP_VERSION=7.1.5` against the MySQL service.
 
 ---
 
 ## 6. Deployment View (AV-05)
 
-Tests are excluded from the production plugin zip via `bin/plugin-zip.js` exclusions: `tests/`, `phpunit.xml`, `phpunit.xml.dist`, `phpunit-wp.xml.dist`, `.phpunit.result.cache`, `vendor/`, `composer.json`, `composer.lock`.
+Tests are excluded from the production plugin zip via `bin/plugin-zip.js` exclusions: `tests/`, `phpunit.xml`, `phpunit.xml.dist`, `phpunit-wp.xml.dist`, `phpcs.xml.dist`, `.phpunit.result.cache`, `vendor/`, `composer.json`, `composer.lock`.
 
 The production zip contains only runtime plugin files. Testing infrastructure lives in the git repository only.
 
@@ -217,13 +213,13 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 **Rationale:** Brain Monkey integrates with PHPUnit's lifecycle, handles function stubs cleanly across test isolation boundaries, and does not require WordPress loaded.
 
-### AD-03: PHPUnit 11 compat patch for wp-phpunit
+### AD-03: PHPUnit 9.6 with yoast/phpunit-polyfills
 
-**Context:** wp-phpunit's `expectDeprecated()` calls `PHPUnit\Util\Test::parseTestMethodAnnotations()` which was removed in PHPUnit 11.
+**Context:** The test suite pins PHPUnit 9.6 (`phpunit/phpunit: ^9.6`) while the `WP_UnitTestCase` base classes target an older PHPUnit API.
 
-**Decision:** Patch `tests/wp-phpunit/includes/abstract-testcase.php` to check `method_exists()` before calling the removed method, falling back to a no-op.
+**Decision:** Use `yoast/phpunit-polyfills` ^3.0 to provide the forward-compatibility shims that let the wp-phpunit test base classes run under PHPUnit 9.6.
 
-**Rationale:** WordPress trunk's wp-phpunit has not yet been updated for PHPUnit 11. The patch is minimal and documented.
+**Rationale:** Pin to a stable, widely-supported PHPUnit major rather than trunk, and let polyfills bridge the API gap instead of patching wp-phpunit.
 
 ### AD-04: LLM_Registry static cache reset between tests
 
@@ -237,13 +233,13 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 **Decision:** The wp-integration suite runs from a separate config file (`phpunit-wp.xml.dist`) with `WP_TESTS_RUN=1` set via `<env>`. The default `phpunit.xml.dist` only includes unit and integration suites.
 
-**Rationale:** wp-integration tests require WordPress bootstrapped, which requires Docker and MySQL. Including them in the default config would break local runs that don't have Docker available.
+**Rationale:** wp-integration tests require WordPress bootstrapped, which requires a reachable MySQL database. Including them in the default config would break local runs that don't have MySQL available.
 
-### AD-06: wp-phpunit in-tree via SVN, not Composer
+### AD-06: wp-phpunit provisioned by install-wp-tests.sh, not committed
 
-**Decision:** wp-phpunit is installed via `svn co` into `tests/wp-phpunit/` rather than as a Composer dependency.
+**Decision:** WordPress core and wp-phpunit are downloaded on demand by `bin/install-wp-tests.sh` — core into `WP_CORE_DIR` (default `/tmp/wordpress`) and the test suite (only `includes/` and `data/`) into `WP_TESTS_DIR` (default `/tmp/wordpress-tests-lib`) — rather than committed or fetched via Composer.
 
-**Rationale:** WordPress does not distribute wp-phpunit as a Composer package. SVN is the canonical distribution channel. The directory is gitignored; contributors install it as a setup step.
+**Rationale:** WordPress does not distribute wp-phpunit as a Composer package. The canonical `install-wp-tests.sh` script downloads and configures both WordPress and the test suite, keeping the repository free of generated test framework files.
 
 ---
 
@@ -252,8 +248,8 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 | View | Decision IDs |
 |---|---|
 | AV-02 (Functional) | AD-02, AD-05 |
-| AV-04 (Development) | AD-01, AD-04, AD-06 |
-| AV-05 (Deployment) | AD-03 |
+| AV-04 (Development) | AD-01, AD-03, AD-04, AD-06 |
+| AV-05 (Deployment) | — (exclusions in §6) |
 
 ---
 
@@ -261,11 +257,11 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 | ID | Constraint | Affected View |
 |---|---|---|
-| C-01 | MySQL must be accessible for Tier 3 (Docker container `wordpress-db` running) | AV-02 |
+| C-01 | A MySQL test database must be reachable for Tier 3 (name configurable via `TEST_DB_NAME`) | AV-02 |
 | C-02 | PHP `mysqli` extension required in the test runner environment | AV-02 |
-| C-03 | `svn` command-line tool required for wp-phpunit setup | AV-04 |
-| C-04 | Docker must be running for Tier 3 tests (`wordpress-wordpress`, `wordpress-db`) | AV-02 |
-| C-05 | PHPUnit 11 requires composer autoload and `yoast/phpunit-polyfills` ^3.0 | AV-04 |
+| C-03 | `curl` or `wget` (plus `tar` and `sed`) required by `bin/install-wp-tests.sh` to download WordPress and wp-phpunit | AV-04 |
+| C-04 | A MySQL server must be running for Tier 3 tests (`TEST_DB_HOST`, default `127.0.0.1`) | AV-02 |
+| C-05 | PHPUnit 9.6 requires composer autoload and `yoast/phpunit-polyfills` ^3.0 | AV-04 |
 
 ---
 
@@ -273,8 +269,8 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 
 | ID | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R-01 | wp-phpunit SVN checkout may become stale or incompatible with newer PHPUnit versions | Medium | Pin to trunk revision in documentation; update patch as needed |
-| R-02 | Docker containers not running blocks Tier 3 execution | Medium | `./bin/test` (without `--wp`) always works; --wp mode clearly documents Docker requirement |
+| R-01 | Downloaded wp-phpunit/WordPress may become incompatible with a newer PHPUnit major | Medium | Pin PHPUnit to 9.6 and the tested WordPress version via `WP_VERSION` (default 7.1.5) |
+| R-02 | MySQL not reachable blocks Tier 3 execution | Medium | `./bin/test` (without `--wp`) always works; --wp mode clearly documents the MySQL requirement |
 | R-03 | Static cache across test methods causes order-dependent failures (LLM_Registry pattern) | Low | Documented per-class static reset in setUp(); grep for `static` properties in new testable classes |
 | R-04 | Constructors creating internal instances prevents clean dependency injection | Low | New tests use `newInstanceWithoutConstructor()`; future refactor opportunity documented in AD-01 |
 
@@ -292,7 +288,7 @@ The production zip contains only runtime plugin files. Testing infrastructure li
 | AD-01 | TEST-DR-03 |
 | AD-02 | TEST-DR-01 |
 | AD-03 | TEST-DR-06 |
-| AD-04 | TEST-DR-02 |
+| AD-04 | TEST-OR-06 |
 | AD-05 | TEST-DR-04 |
 | AD-06 | TEST-DR-05 |
 
