@@ -103,16 +103,16 @@ Requirement notation:
 | PROMPT-FR-02 | The software MUST register prompt metadata fields for version, status, hash, notes, selected marker, and factory marker. | Must |
 | PROMPT-FR-03 | The software MUST register a `gregius_prompt_type` taxonomy with 'system', 'security', and 'evaluation' terms to classify prompts by purpose. | Must |
 | PROMPT-FR-04 | The software MUST resolve an effective prompt using type-scoped fallback order: explicit prompt (of requested type), then selected prompt (of requested type), then factory prompt (of requested type). | Must |
-| PROMPT-FR-05 | The software MUST reject prompt candidates that are missing, empty, wrong post type, marked draft status, or do not have the requested type assigned. | Must |
+| PROMPT-FR-05 | The software MUST reject prompt candidates that are missing, empty, wrong post type, marked draft status, or whose assigned type term does not match the requested type; a prompt with no type term MUST be treated as type 'system'. | Must |
 | PROMPT-FR-06 | The software MUST expand `{{date}}`, `{{time}}`, and `{{datetime}}` tokens in resolved prompt content at runtime. | Must |
-| PROMPT-FR-07 | The software MUST expose REST routes for prompt listing, retrieval, creation, update, deletion, and activation; routes MUST accept and validate `prompt_type` parameter. | Must |
+| PROMPT-FR-07 | The software MUST expose REST routes for prompt listing, creation, update, deletion, and activation; routes MUST accept and validate `prompt_type` parameter. | Must |
 | PROMPT-FR-08 | The software MUST enforce administrative permission checks on prompt REST operations. | Must |
 | PROMPT-FR-09 | Activation flows MUST seed exactly three factory prompts when not already seeded: 'System Default' (type='system', selected=true), 'Security Default' (type='security', selected=true), and 'Evaluation Default' (type='evaluation', selected=true). | Must |
 | PROMPT-FR-10 | Activation/version-check flows MUST migrate legacy prompts without type assignment to type='system' idempotently. | Must |
 | PROMPT-FR-11 | Activation/version-check flows MUST migrate legacy baked date/time values in factory prompts to placeholder tokens idempotently. | Must |
 | PROMPT-FR-12 | RAG generation MUST resolve system prompt content through the type-scoped prompt resolver with prompt_type='system' before model invocation. | Must |
 | PROMPT-FR-13 | Pre-retrieval, RAG generation MUST execute security gatekeeper LLM check using the active 'security' type prompt to classify user query as safe or unsafe. | Must |
-| PROMPT-FR-14 | If security gatekeeper classifies query as unsafe, RAG MUST return short-circuit response 'I can\'t help with that request' without proceeding to retrieval or answer generation. | Must |
+| PROMPT-FR-14 | If security gatekeeper classifies query as unsafe, RAG MUST return short-circuit response 'I can\'t help with that request.' without proceeding to retrieval or answer generation. | Must |
 | PROMPT-FR-15 | Security check results (status, reason, prompt, usage) MUST be stored in interaction metadata for audit and analysis. | Must |
 | PROMPT-FR-16 | REST prompt activation MUST deselect only prompts of the same type, allowing independent type selections to coexist. | Must |
 | PROMPT-FR-17 | CLI and ability-based answer flows MUST support optional prompt override semantics with type support and reject conflicting override inputs. | Must |
@@ -140,7 +140,7 @@ Requirement notation:
 | PROMPT-OR-03 | Prompt override handling SHOULD fail fast on ambiguous or conflicting inputs. | Should |
 | PROMPT-OR-04 | Prompt lifecycle operations MUST remain idempotent across repeated activation/version-check invocations. | Must |
 | PROMPT-OR-05 | Security gatekeeper LLM invocation MUST use dedicated security prompt (type='security'); MUST not use answer generation prompt. | Must |
-| PROMPT-OR-06 | Security gatekeeper response parsing MUST handle JSON parse failures gracefully; MUST default to 'unsafe' on parse error (fail-safe). | Must |
+| PROMPT-OR-06 | Security gatekeeper response parsing MUST handle JSON parse failures gracefully; parsing defaults to 'safe' (fail-open) unless the response contains a literal 'unsafe' indicator. | Must |
 | PROMPT-OR-07 | Prompt activation via REST MUST only deselect prompts of the same type, allowing system, security, and evaluation selections to coexist independently. | Must |
 
 ### 3.4 Quality Requirements
@@ -152,18 +152,44 @@ Requirement notation:
 | PROMPT-QR-03 | Prompt subsystem contracts SHOULD be traceable from SRS requirements to implementation anchors. | Should |
 | PROMPT-QR-04 | Prompt token expansion SHOULD use WordPress runtime date/time functions for locale-aware output. | Should |
 
-## 4. Traceability Seed Mapping
+## 4. Traceability
 
-| Requirement | Primary Implementation Anchor |
-|---|---|
-| PROMPT-FR-01, PROMPT-DR-01 | `includes/class-gregius-data-prompt.php` |
-| PROMPT-FR-02, PROMPT-DR-02 | `includes/class-gregius-data-prompt.php` |
-| PROMPT-FR-03, PROMPT-DR-03 | `includes/class-gregius-data-prompt.php` (taxonomy registration) |
-| PROMPT-FR-04, PROMPT-FR-05, PROMPT-DR-04 | `includes/class-gregius-data-prompt-resolver.php` (type-scoped resolution) |
-| PROMPT-FR-06, PROMPT-FR-07, PROMPT-FR-16, PROMPT-OR-01 | `includes/api/class-gregius-data-rest-prompts-controller.php` |
-| PROMPT-FR-09, PROMPT-FR-10, PROMPT-FR-11, PROMPT-OR-04 | `includes/class-gregius-data-activator.php` |
-| PROMPT-FR-12 | `includes/rag/class-gregius-data-rag-service.php` (system prompt resolution) |
-| PROMPT-FR-13, PROMPT-FR-14, PROMPT-FR-15, PROMPT-OR-05, PROMPT-OR-06 | `includes/rag/class-gregius-data-rag-service.php` (security gatekeeper check) |
-| PROMPT-DR-08, PROMPT-DR-09 | `includes/class-gregius-data-interaction.php` (security_check metadata storage) |
-| PROMPT-FR-17 | `includes/cli/class-gregius-data-cli-answer.php`, `includes/class-gregius-data-abilities-manager.php` |
-| PROMPT-DR-06, PROMPT-QR-02 | `includes/class-gregius-data-prompt-resolver.php` |
+| SRS Requirement ID | Source (file:line) | Notes |
+|---|---|---|
+| PROMPT-FR-01 | includes/class-gregius-data-prompt.php:27, :73-122 | `gregius_prompt` post type registration |
+| PROMPT-FR-02 | includes/class-gregius-data-prompt.php:168-218 | Meta field registration |
+| PROMPT-FR-03 | includes/class-gregius-data-prompt.php:129-161, includes/class-gregius-data-activator.php:99-139 | Taxonomy registration + term seeding |
+| PROMPT-FR-04 | includes/class-gregius-data-prompt-resolver.php:33-71 | Type-scoped fallback (explicit → selected → factory) |
+| PROMPT-FR-05 | includes/class-gregius-data-prompt-resolver.php:82-120, :172-184 | Candidate validation; termless → 'system' |
+| PROMPT-FR-06 | includes/class-gregius-data-prompt-resolver.php:193-201 | `{{date}}`/`{{time}}`/`{{datetime}}` expansion |
+| PROMPT-FR-07 | includes/api/class-gregius-data-rest-prompts-controller.php:39-87, :357-386 | Routes + `prompt_type` enum |
+| PROMPT-FR-08 | includes/api/class-gregius-data-rest-prompts-controller.php:95-105 | `manage_options` permission check |
+| PROMPT-FR-09 | includes/class-gregius-data-activator.php:146-183, :195-239 | Three factory prompt seeds |
+| PROMPT-FR-10 | includes/class-gregius-data-activator.php:246-279 | Legacy type migration |
+| PROMPT-FR-11 | includes/class-gregius-data-activator.php:287-333 | Placeholder migration |
+| PROMPT-FR-12 | includes/rag/class-gregius-data-rag-service.php:3264, :1898-1905 | System prompt resolution + filter |
+| PROMPT-FR-13 | includes/rag/class-gregius-data-rag-service.php:1269-1274, :3294-3357 | Pre-retrieval gatekeeper |
+| PROMPT-FR-14 | includes/rag/class-gregius-data-rag-service.php:1276-1298 | Unsafe short-circuit |
+| PROMPT-FR-15 | includes/rag/class-gregius-data-rag-service.php:1300-1301, :3346-3356, includes/class-gregius-data-interaction.php:351-423 | security_check metadata |
+| PROMPT-FR-16 | includes/api/class-gregius-data-rest-prompts-controller.php:317-350, :451-482 | Same-type activation deselect |
+| PROMPT-FR-17 | includes/cli/class-gregius-data-cli-answer.php:239-318, includes/class-gregius-data-abilities-manager.php:405-416 | Prompt override + conflict rejection |
+| PROMPT-DR-01 | includes/class-gregius-data-prompt.php:27 | `POST_TYPE` constant |
+| PROMPT-DR-02 | includes/class-gregius-data-prompt.php:41, :168-218 | `_gregius_prompt_*` prefix + keys |
+| PROMPT-DR-03 | includes/class-gregius-data-prompt.php:34, :129-161 | `TAXONOMY` constant + terms |
+| PROMPT-DR-04 | includes/class-gregius-data-prompt-resolver.php:110-119 | content + metadata result |
+| PROMPT-DR-05 | includes/class-gregius-data-prompt-resolver.php:210-213 | SHA-256 normalize/trim |
+| PROMPT-DR-06 | includes/class-gregius-data-prompt-resolver.php:49-65, :116 | `explicit`/`selected`/`factory` source |
+| PROMPT-DR-07 | includes/api/class-gregius-data-rest-prompts-controller.php:394-409 | Response payload fields |
+| PROMPT-DR-08 | includes/rag/class-gregius-data-rag-service.php:3346-3356 | security_check result fields |
+| PROMPT-DR-09 | includes/class-gregius-data-interaction.php:224, :404, :423 | interaction security_check object |
+| PROMPT-OR-01 | includes/api/class-gregius-data-rest-prompts-controller.php:95-105 | `manage_options` capability |
+| PROMPT-OR-02 | includes/class-gregius-data-prompt-resolver.php:67-70 | Structured `WP_Error` |
+| PROMPT-OR-03 | includes/cli/class-gregius-data-cli-answer.php:243-247, includes/class-gregius-data-abilities-manager.php:405-407 | Conflicting-input rejection |
+| PROMPT-OR-04 | includes/class-gregius-data-activator.php:100-102, :196-198, :247-249, :288-290 | Idempotency option guards |
+| PROMPT-OR-05 | includes/rag/class-gregius-data-rag-service.php:3295-3299, :3330-3331 | Dedicated 'security' prompt |
+| PROMPT-OR-06 | includes/rag/class-gregius-data-rag-service.php:3366-3392 | Graceful parse, fail-open |
+| PROMPT-OR-07 | includes/api/class-gregius-data-rest-prompts-controller.php:451-482 | Same-type deselect |
+| PROMPT-QR-01 | includes/class-gregius-data-prompt-resolver.php:33-71 | Deterministic resolution |
+| PROMPT-QR-02 | includes/class-gregius-data-prompt-resolver.php:210-213 | Stable hash |
+| PROMPT-QR-03 | docs/prompt/srs.md (§4) | Traceability mapping |
+| PROMPT-QR-04 | includes/class-gregius-data-prompt-resolver.php:193-201 | `wp_date` locale-aware expansion |

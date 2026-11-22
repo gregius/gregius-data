@@ -26,6 +26,8 @@ Scope:
 
 Prompt records are stored as WordPress posts of type `gregius_prompt`.
 
+Registration: `Gregius_Data_Prompt::init()` hooks `register_post_type()` onto the WordPress `init` action.
+
 Source:
 - `includes/class-gregius-data-prompt.php`
 
@@ -43,6 +45,8 @@ Core keys used by subsystem behavior:
 - `_gregius_prompt_selected`
 - `_gregius_prompt_is_factory`
 
+These keys are registered by `Gregius_Data_Prompt::register_meta_fields()` (hooked onto the `init` action). The activator also writes an auxiliary key `_gregius_prompt_factory_type` (a factory-type hint written at seed time and read by `resolve_factory_prompt_type()`); it is not part of the registered meta schema.
+
 Source:
 - `includes/class-gregius-data-prompt.php`
 - `includes/class-gregius-data-prompt-resolver.php`
@@ -52,7 +56,7 @@ Source:
 
 ### 2.3 Prompt type taxonomy
 
-Prompt types are classified using the `gregius_prompt_type` hierarchical taxonomy.
+Prompt types are classified using the `gregius_prompt_type` non-hierarchical taxonomy.
 
 Terms (fixed):
 - `system` — Prompts used for answer generation in RAG pipeline
@@ -85,7 +89,7 @@ Primary API:
 - `resolve_prompt( $prompt_id = 0, $prompt_type = 'system' )`
 
 Parameters:
-- `$prompt_id` (int, optional): Explicit prompt ID to attempt first. If provided, must be of requested type or resolution fails.
+- `$prompt_id` (int, optional): Explicit prompt ID to attempt first. A wrong-type or otherwise invalid explicit ID is skipped (falling through to selected, then factory); resolution only fails if all three candidates are unavailable.
 - `$prompt_type` (string): 'system', 'security', or 'evaluation'. Filters candidates by type term assignment.
 
 Return contract:
@@ -96,7 +100,7 @@ Return contract:
   - `metadata.hash`
   - `metadata.source` (`explicit` | `selected` | `factory`)
   - `metadata.prompt_type` ('system', 'security', or 'evaluation')
-- failure: `WP_Error( 'gregius_prompt_not_found', ... )` or type mismatch error
+- failure: `WP_Error( 'gregius_prompt_not_found', ... )`
 
 **Important**: Each type maintains independent selected/factory state. Resolving one type (system, security, or evaluation) never returns a prompt of another type.
 
@@ -110,10 +114,12 @@ Fallback order is deterministic within the requested type:
 3. Factory prompt (`_gregius_prompt_is_factory=1`, published, and of requested type)
 
 Resolver skips invalid candidates:
-- wrong post type (`gregius_prompt`)
+- wrong post type (not `gregius_prompt`)
 - empty post content
 - draft `_gregius_prompt_status`
-- **missing requested type term assignment**
+- type mismatch (the prompt's type term does not match the requested type)
+
+A prompt with no type term is treated as `system` type: it resolves for a `system` request, but does not match a `security` or `evaluation` request.
 
 [SRS: PROMPT-FR-04, PROMPT-FR-05, PROMPT-QR-01]
 
@@ -143,23 +149,29 @@ If hash metadata is missing, resolver computes and persists it.
 Source:
 - `includes/api/class-gregius-data-rest-prompts-controller.php`
 
-Routes are registered under `/wp-json/gregius-data/v1/prompts` with support for list/get/create/update/delete plus activation operations.
+Routes are registered under `/wp-json/gregius-data/v1/prompts` with support for list/create/update/delete plus activation operations.
+
+| Route | Methods | Controller callback |
+|---|---|---|
+| `/prompts` | GET, POST | `get_items()`, `create_item()` |
+| `/prompts/{id}` | PUT/PATCH/POST, DELETE | `update_item()`, `delete_item()` |
+| `/prompts/{id}/activate` | POST | `activate_item()` |
 
 Permission model:
-- Administrative capability checks are required for prompt management operations.
+- Administrative capability checks are required for prompt management operations (`admin_permissions_check()` requires the `manage_options` capability).
 
 ### 4.1 Type-aware parameters and operations
 
 Create/Update endpoints (`POST /prompts`, `PUT /prompts/<id>`):
 - Accept `prompt_type` parameter ('system', 'security', or 'evaluation')
-- Validate `prompt_type` to enum; reject invalid values
+- Declares `prompt_type` with an `enum` ('system', 'security', 'evaluation'); WordPress rejects out-of-enum values with `400` (`rest_not_in_enum`) before the callback. The internal `normalize_prompt_type()` fallback (invalid → 'system') only applies on non-REST/internal paths.
 - Store type via `wp_set_object_terms()` under `gregius_prompt_type` taxonomy
 - Return `prompt_type` in response payload
 
 Activation endpoint (`POST /prompts/<id>/activate`):
 - Retrieves current prompt type
 - Passes type to `deselect_other_prompts()` for type-scoped deactivation
-- Only deselects OTHER prompts of SAME type; leaves opposite type unaffected
+- Only deselects OTHER prompts of SAME type; leaves other types unaffected
 - Example: Activating a 'system' prompt will deactivate other 'system' prompts but leave 'security' and 'evaluation' selections unchanged
 
 Payload example:
@@ -183,6 +195,7 @@ Response example:
   "version": 1,
   "selected": true,
   "is_factory": false,
+  "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "modified": "2026-04-19T12:34:56Z",
   "content": "You are a helpful assistant...",
   "notes": "Internal notes"
@@ -204,8 +217,8 @@ The security gatekeeper is an optional pre-retrieval LLM-based query classifier 
 
 ### 5.1 API
 
-Primary method:
-- `run_security_gatekeeper_check( $query, $llm_model_id, $options = array() )`
+Internal method (private, invoked from `generate_answer()`):
+- `run_security_gatekeeper_check( $query, $llm_model_id, $options )`
 
 Parameters:
 - `$query` (string): User query to classify
@@ -217,8 +230,11 @@ Return:
   - `status` ('safe' or 'unsafe')
   - `reason` (string: explanation)
   - `prompt` (resolved security prompt metadata)
+  - `provider` (provider identifier)
+  - `model_used` (model identifier used)
   - `usage` (LLM token usage data)
-- failure: `WP_Error` on resolution or LLM failure; treated as unsafe (fail-safe)
+  - `raw_response` (raw provider response)
+- failure: `WP_Error` on resolution or LLM failure; returned to the caller and the request halts (no retrieval or generation)
 
 ### 5.2 Security check behavior
 
@@ -228,7 +244,7 @@ Gatekeeper workflow:
    - System message: resolved security prompt content
    - User message: user query
 3. Parses LLM response as JSON: `{"status":"safe|unsafe","reason":"..."}`
-4. On JSON parse failure, checks response for literal 'unsafe' substring (fallback)
+4. On JSON parse failure, defaults to 'safe' (fail-open); classifies as 'unsafe' only if the response contains a literal 'unsafe' substring
 5. Returns normalized result with status, reason, prompt metadata, and usage info
 
 ### 5.3 RAG integration
@@ -238,12 +254,16 @@ RAG service invokes gatekeeper pre-retrieval in `generate_answer()` flow:
 2. Before any tool execution or document retrieval
 
 If check returns unsafe status:
-- Build short-circuit response: 'I can\'t help with that request'
+- Build short-circuit response: 'I can\'t help with that request.'
 - Include full security_check metadata in interaction log
-- Fire `gregius_data_rag_error` action
+- Fire `gregius_data_rag_complete` and `gregius_data_rag_tool_executed` actions
 - Return early without executing retrieval or generation
 
-If check returns safe status or fails with error:
+If check returns a `WP_Error` (resolution or LLM failure):
+- Fire `gregius_data_rag_error` action
+- Return the error; retrieval and generation do not run
+
+If check returns safe status:
 - Proceed to normal retrieval and generation
 - Still log security_check metadata for audit
 
@@ -326,6 +346,13 @@ Lifecycle migration rewrites legacy baked date/time text in factory prompt conte
 
 Both routines are idempotent through option guards.
 
+### 7.5 Factory prompt type backfill
+
+`maybe_backfill_prompt_types()` (hooked on `init` at priority 11) repairs existing installs where factory prompts were seeded before the `gregius_prompt_type` taxonomy was registered, leaving them without a type term:
+- Guarded by the `gregius_prompt_type_backfill` option (one-time).
+- For each prompt with no type term, resolves its type via `_gregius_prompt_factory_type` (the factory-type hint), falling back to title/content inference in `resolve_factory_prompt_type()`.
+- Assigns the resolved type term via `wp_set_object_terms()`.
+
 ## 8. Integration with RAG, CLI, and Abilities
 
 ### 8.1 RAG service integration
@@ -383,7 +410,7 @@ Prompt subsystem behavior can be influenced by integration-facing hooks and filt
 
 Primary integration hooks:
 - `gregius_data_rag_system_prompt` — Filter system prompt before model invocation
-- `gregius_data_rag_error` — Action fired when security gatekeeper blocks query
+- `gregius_data_rag_error` — Action fired when the security gatekeeper or another RAG step returns a `WP_Error`
 
 Guidance:
 - Prefer prompt-content mutation through the documented filter in consumer context.
