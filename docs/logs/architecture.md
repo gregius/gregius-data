@@ -23,7 +23,7 @@ This architecture describes how Gregius Data centralizes operational logging wit
 
 **Explicitly Excluded:**
 - Feature-level business telemetry semantics per subsystem
-- External log shipping services and third-party observability backends
+- External log shipping services and third-party log-analysis backends
 - User-facing support runbooks
 
 ### 1.2 Stakeholders and Concerns
@@ -137,6 +137,7 @@ Consumer request with filters
 Purge request -> normalize days -> delete rows older than threshold
 Settings request -> read/update options (enabled, level, retention_days)
 Export request -> query filtered logs -> format CSV or JSON output
+```
 
 ### 4.4 Scheduled Retention Path
 
@@ -152,8 +153,7 @@ Cron event callback
   +--> emit gregius_data_before_purge_logs
   +--> purge rows from current site's {prefix}gregius_data_logs only
   +--> emit gregius_data_after_purge_logs
-  +--> write observability log context
-```
+  +--> write retention-completion log context
 ```
 
 **Mapping to Requirements:**
