@@ -40,7 +40,7 @@ The schema subsystem sits between connection/provider configuration and feature 
 - Create required schema structures for a selected connection.
 - Maintain per-connection schema version state.
 - Provide provider-aware schema status and readiness signals.
-- Upgrade legacy schema versions to current plugin version where supported.
+- Upgrade legacy schema versions to the required schema version where supported.
 - Install required PostgreSQL extensions on direct PostgreSQL connections.
 - Provide Supabase/PostgREST manual SQL handoff and verification workflow.
 - Expose admin-only schema management endpoints.
@@ -157,14 +157,37 @@ Acceptance baseline for migration phase:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement ID | Source (file:line) | Notes |
 |---|---|---|
-| SCH-FR-01 to SCH-FR-07 | includes/class-gregius-data-schema-manager.php | Core lifecycle and status behavior |
-| SCH-FR-04, SCH-FR-08, SCH-DR-05, SCH-DR-06 | includes/api/class-gregius-data-rest-schema-controller.php, includes/sql/postgrest-schema.sql | Manual PostgREST SQL and verification workflow |
-| SCH-FR-05, SCH-FR-06, SCH-DR-03, SCH-DR-04 | includes/class-gregius-data-schema-manager.php, includes/class-gregius-data-settings-manager.php | Version storage and legacy fallback migration |
-| SCH-DR-01 to SCH-DR-08 | includes/api/class-gregius-data-rest-schema-controller.php, includes/class-gregius-data-schema-manager.php | Route and payload contract obligations |
-| SCH-OR-01 to SCH-OR-06 | includes/api/class-gregius-data-rest-schema-controller.php, includes/class-gregius-data-schema-manager.php | Security, transactions, extension handling |
-| SCH-QR-01 to SCH-QR-05 | docs/schema/architecture.md, implementation references above | Parity, determinism, and compatibility expectations |
+| SCH-FR-01 | includes/class-gregius-data-schema-manager.php:186, :518, :606 | Create, upgrade, and status orchestration per connection |
+| SCH-FR-02 | includes/class-gregius-data-schema-manager.php:200-205, :621-626 | Provider-type routing for create and status |
+| SCH-FR-03 | includes/class-gregius-data-schema-manager.php:233-278 | Direct PostgreSQL table creation in dependency order |
+| SCH-FR-04 | includes/class-gregius-data-schema-manager.php:331, includes/api/class-gregius-data-rest-schema-controller.php:308 | PostgREST manual SQL flow and verify endpoint |
+| SCH-FR-05 | includes/class-gregius-data-schema-manager.php:78, :106 | Per-connection schema version read/persist |
+| SCH-FR-06 | includes/class-gregius-data-schema-manager.php:86-94 | Legacy `wp_options` fallback migration on read |
+| SCH-FR-07 | includes/class-gregius-data-schema-manager.php:386, :606 | Status payloads (existence, completeness, update) |
+| SCH-FR-08 | includes/api/class-gregius-data-rest-schema-controller.php:437 | SQL download endpoint for manual PostgREST setup |
+| SCH-FR-09 | includes/class-gregius-data-schema-manager.php:538 | Idempotent upgrade (already-current short-circuit) |
+| SCH-FR-10 | includes/api/class-gregius-data-rest-schema-controller.php:166-205, :214-252, :330, :459 | Structured error payloads |
+| SCH-DR-01 | includes/class-gregius-data-schema-manager.php:697-715 | `connected` / `connection_name` / `schema_version` / `plugin_version` |
+| SCH-DR-02 | includes/class-gregius-data-schema-manager.php:706, :709 | Compatibility aliases `version`, `vector_extension` |
+| SCH-DR-03 | includes/class-gregius-data-schema-manager.php:96, :173, :176 | Default `0.0.0` when no metadata |
+| SCH-DR-04 | includes/class-gregius-data-schema-manager.php:80, :108 | Category `schema`, key `version` |
+| SCH-DR-05 | includes/api/class-gregius-data-rest-schema-controller.php:351-417 | `ready` / `not_created` status values |
+| SCH-DR-06 | includes/api/class-gregius-data-rest-schema-controller.php:508-524 | SQL payload, filename, instructions |
+| SCH-DR-07 | includes/api/class-gregius-data-rest-schema-controller.php:74-80 | Optional `connection` default `default` |
+| SCH-DR-08 | includes/class-gregius-data-schema-manager.php:566-578 | `upgraded` + before/after version values |
+| SCH-OR-01 | includes/api/class-gregius-data-rest-schema-controller.php:541-543 | `manage_options` permission callback |
+| SCH-OR-02 | includes/class-gregius-data-schema-manager.php:233, :285 | Transactional create |
+| SCH-OR-03 | includes/class-gregius-data-schema-manager.php:579-583 | Rollback on migration error |
+| SCH-OR-04 | includes/class-gregius-data-schema-manager.php:792-804, :838-850 | Actionable extension error messages |
+| SCH-OR-05 | includes/class-gregius-data-schema-manager.php:225, :286 | Lifecycle logging with connection context |
+| SCH-OR-06 | includes/class-gregius-data-schema-manager.php:348-355 | No arbitrary SQL over PostgREST routes |
+| SCH-QR-01 | docs/schema/architecture.md (AD-01, AD-05), includes/class-gregius-data-schema-manager.php:386, :606 | Provider parity |
+| SCH-QR-02 | docs/schema/architecture.md (AD-04), includes/class-gregius-data-schema-manager.php:518 | Deterministic lifecycle |
+| SCH-QR-03 | docs/schema/architecture.md (AD-05), includes/api/class-gregius-data-rest-schema-controller.php:64-158 | Stable dashboard payload fields |
+| SCH-QR-04 | docs/schema/architecture.md (AD-02), includes/api/class-gregius-data-rest-schema-controller.php:508-524 | Explicit operator instructions |
+| SCH-QR-05 | includes/class-gregius-data-schema-manager.php:735-746 | Version-comparison upgrade detection |
 
 ## 6. Appendices
 

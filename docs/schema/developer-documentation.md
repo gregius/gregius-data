@@ -86,6 +86,132 @@ Source: [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-s
 Role:
 - Canonical SQL applied manually via Supabase/PostgREST SQL editor for schema setup.
 
+### 3.6 Schema Manager Method Reference
+
+Source: [../../includes/class-gregius-data-schema-manager.php](../../includes/class-gregius-data-schema-manager.php)
+
+Lifecycle orchestration (public):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `create_all_tables` | `create_all_tables( $connection_name = 'default' )` | Resolve provider type and create all schema structures for the connection. |
+| `upgrade_schema_to_latest` | `upgrade_schema_to_latest( $connection_name = 'default' )` | Compare the stored schema version to `GREGIUS_DATA_SCHEMA_VERSION` and run migrations if older. |
+| `get_schema_status` | `get_schema_status( $connection_name = 'default' )` | Return a provider-aware schema status payload (existence, completeness, version, extensions). |
+
+Version management (public):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `get_schema_version` | `get_schema_version( $connection_name )` | Read per-connection schema version from settings, migrating the legacy `wp_options` value on read. |
+| `set_schema_version` | `set_schema_version( $connection_name, $version )` | Persist per-connection schema version (and `updated_at`) in settings category `schema`. |
+
+PostgreSQL schema DDL (protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `create_schema_meta_table` | `create_schema_meta_table( $conn )` | Create `gregius_data_schema_meta`. |
+| `set_schema_version_in_db` | `set_schema_version_in_db( $conn, $version )` | Stamp schema version into `gregius_data_schema_meta`. |
+| `get_schema_version_from_db` | `get_schema_version_from_db( $conn )` | Read schema version stamp from `gregius_data_schema_meta`. |
+| `create_posts_table` | `create_posts_table( $conn )` | Create `wp_posts` mirror table and indexes. |
+| `create_posts_clean_table` | `create_posts_clean_table( $conn, $connection_name = 'default' )` | Create `wp_posts_clean` and its indexes. |
+| `create_postmeta_table` | `create_postmeta_table( $conn )` | Create `wp_postmeta` (JSONB `meta_value`). |
+| `create_terms_table` | `create_terms_table( $conn )` | Create `wp_terms`. |
+| `create_term_taxonomy_table` | `create_term_taxonomy_table( $conn )` | Create `wp_term_taxonomy`. |
+| `create_term_relationships_table` | `create_term_relationships_table( $conn )` | Create `wp_term_relationships`. |
+| `create_comments_table` | `create_comments_table( $conn )` | Create `wp_comments`. |
+| `create_commentmeta_table` | `create_commentmeta_table( $conn )` | Create `wp_commentmeta`. |
+| `create_users_table` | `create_users_table( $conn )` | Create `wp_users`. |
+| `create_usermeta_table` | `create_usermeta_table( $conn )` | Create `wp_usermeta`. |
+| `create_options_table` | `create_options_table( $conn )` | Create `wp_options`. |
+| `create_chunks_table` | `create_chunks_table( $conn )` | Create `wp_posts_chunks`. |
+| `create_openai_embedding_tables` | `create_openai_embedding_tables( $conn )` | Create the OpenAI/Gemini/Cohere embedding tables and the `connection_embedding_models` association table. |
+| `create_hashingtf_embedding_table` | `create_hashingtf_embedding_table( $conn )` | Create `wp_posts_hashingtf_murmur3_1024`. |
+| `create_connection_embedding_models_table` | `create_connection_embedding_models_table( $conn )` | Create `connection_embedding_models`. |
+
+Extensions (protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `install_pgvector_extension` | `install_pgvector_extension( $conn )` | Install and verify the `vector` extension; throws an actionable error on failure. |
+| `install_pg_trgm_extension` | `install_pg_trgm_extension( $conn )` | Install and verify the `pg_trgm` extension; throws an actionable error on failure. |
+
+Migrations (protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `migrate_postmeta_table` | `migrate_postmeta_table( $conn )` | Convert `wp_postmeta.meta_value` to JSONB and drop the legacy unique constraint. |
+| `migrate_posts_table_for_sync` | `migrate_posts_table_for_sync( $conn )` | Add `synced_at` / `modified_at` to `wp_posts` if missing. |
+
+Sync metadata (public + protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `create_sync_metadata_tables_for_all_sites` | `create_sync_metadata_tables_for_all_sites()` | Create the MySQL sync metadata table for each site (multisite-aware). |
+| `create_sync_metadata_mysql_table` | `create_sync_metadata_mysql_table()` | Create the aggregate MySQL `{prefix}gregius_data_sync_metadata` table. |
+| `create_sync_metadata_table` | `create_sync_metadata_table( $conn )` | Create both MySQL and PostgreSQL sync metadata tables. |
+| `create_sync_metadata_postgresql_table` | `create_sync_metadata_postgresql_table( $conn )` | Create `wp_gregius_data_sync_metadata_entities`. |
+
+Search (public + protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `rebuild_search_vector` | `rebuild_search_vector( $conn, $connection_name, $language )` | Recreate the search-vector trigger and backfill `search_vector_weighted`. |
+| `create_search_function` | `create_search_function( $conn, $connection_name = 'default' )` | Delegate full-text search function creation to `Gregius_Data_Search_Schema`. |
+
+Provider routing and status helpers (protected):
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `create_supabase_schema` | `create_supabase_schema( $connection_name )` | Create WordPress-side tables for PostgREST and return manual SQL instructions. |
+| `get_supabase_schema_status` | `get_supabase_schema_status( $connection_name )` | Query `gregius_data_schema_meta` over PostgREST for status. |
+| `get_schema_status_enum` | `get_schema_status_enum( $schema_exists, $schema_version )` | Map existence/version to `missing` / `current` / `update_available` / `schema_newer`. |
+| `create_schema` | `create_schema( $conn )` | No-op; tables live in the default `public` schema. |
+| `get_table_prefix` | `get_table_prefix()` | Resolve the canonical mirror table prefix (`wp_`). |
+
+### 3.7 Database Schema Reference
+
+Canonical PostgreSQL schema is defined by [../../includes/sql/postgrest-schema.sql](../../includes/sql/postgrest-schema.sql) (PostgREST/Supabase path) and generated by the schema manager (PDO path). Unless noted, columns are identical across both paths. Columns marked "PDO only" exist only in the schema-manager-generated (direct PostgreSQL) path; they are not present in the canonical PostgREST SQL file.
+
+Core mirror tables:
+
+| Table | Provider(s) | Columns |
+|---|---|---|
+| `gregius_data_schema_meta` | PDO, PostgREST | `key` (PK), `value`, `updated_at` |
+| `wp_gregius_data_sync_metadata_entities` | PDO, PostgREST | `id`, `connection_name`, `entity_type`, `entity_id`, `source_id`, `post_type`, `source_modified_at`, `synced_at`, `created_at`, `updated_at` |
+| `wp_posts` | PDO, PostgREST | `id` (PK), `post_author`, `post_date`, `post_date_gmt`, `post_content`, `post_title`, `post_excerpt`, `post_status`, `comment_status`, `ping_status`, `post_password`, `post_name`, `to_ping`, `pinged`, `post_modified`, `post_modified_gmt`, `post_content_filtered`, `post_parent`, `guid`, `menu_order`, `post_type`, `post_mime_type`, `comment_count`, `synced_at`, `modified_at` (PDO only) |
+| `wp_posts_clean` | PDO, PostgREST | `post_id` (PK, FK → `wp_posts.id`), `post_title_clean`, `post_content_clean`, `post_excerpt_clean`, `metadata_manifest` (JSONB), `cleaned_at`, `content_hash`, `cleaning_version`, `word_count`, `reading_time_minutes`, `search_vector_weighted` (tsvector), `visibility` |
+| `wp_postmeta` | PDO, PostgREST | `meta_id` (PK), `post_id` (FK → `wp_posts.id`), `meta_key`, `meta_value` (JSONB on PDO; TEXT + `synced_at` on PostgREST) |
+| `wp_terms` | PDO, PostgREST | `term_id` (PK), `name`, `slug`, `term_group`, `synced_at` (PostgREST only) |
+| `wp_term_taxonomy` | PDO, PostgREST | `term_taxonomy_id` (PK), `term_id` (FK → `wp_terms.term_id`), `taxonomy`, `description`, `parent`, `count`, `synced_at` (PostgREST only) |
+| `wp_term_relationships` | PDO, PostgREST | `object_id` (FK → `wp_posts.id`), `term_taxonomy_id` (FK → `wp_term_taxonomy.term_taxonomy_id`), `term_order`, `synced_at` (PostgREST only); PK `(object_id, term_taxonomy_id)` |
+| `wp_comments` | PDO only | `comment_ID` (PK), `comment_post_ID`, `comment_author`, `comment_author_email`, `comment_author_url`, `comment_author_IP`, `comment_date`, `comment_date_gmt`, `comment_content`, `comment_karma`, `comment_approved`, `comment_agent`, `comment_type`, `comment_parent`, `user_id` |
+| `wp_commentmeta` | PDO only | `meta_id` (PK), `comment_id` (FK → `wp_comments.comment_ID`), `meta_key`, `meta_value` |
+| `wp_users` | PDO only | `ID` (PK), `user_login`, `user_pass`, `user_nicename`, `user_email`, `user_url`, `user_registered`, `user_activation_key`, `user_status`, `display_name` |
+| `wp_usermeta` | PDO only | `umeta_id` (PK), `user_id` (FK → `wp_users.ID`), `meta_key`, `meta_value` |
+| `wp_options` | PDO only | `option_id` (PK), `option_name`, `option_value`, `autoload` |
+
+Chunk and embedding tables:
+
+| Table | Provider(s) | Columns |
+|---|---|---|
+| `wp_posts_chunks` | PDO, PostgREST | `chunk_id` (PK), `post_id` (FK → `wp_posts.id`), `chunk_index`, `chunk_text`, `chunk_hash`, `source_hash`, `token_count`, `created_at` |
+| `wp_posts_openai_text_embedding_3_small_1536` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` vector(1536), `content_hash`, `token_count`, `cost`, `status`, `generated_at`, `model_used`, `error_message` |
+| `wp_posts_openai_text_embedding_3_large_3072` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` halfvec(3072), `content_hash`, `token_count`, `cost`, `status`, `generated_at`, `model_used`, `error_message` |
+| `wp_posts_gemini_gemini_embedding_001_3072` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` halfvec(3072), `content_hash`, `token_count`, `cost`, `status`, `generated_at`, `model_used`, `error_message` |
+| `wp_posts_cohere_embed_v50_pro_2048` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` halfvec(2048), `content_hash`, `token_count`, `cost`, `status`, `generated_at`, `model_used`, `error_message` |
+| `wp_posts_cohere_embed_v50_fast_2048` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` halfvec(2048), `content_hash`, `token_count`, `cost`, `status`, `generated_at`, `model_used`, `error_message` |
+| `wp_posts_hashingtf_murmur3_1024` | PDO, PostgREST | `id`, `post_id`, `post_type`, `field_type`, `chunk_index`, `embedding` vector(1024), `content_hash`, `token_count`, `status`, `generated_at`, `tokenizer_version`, `error_message` |
+| `connection_embedding_models` | PDO only | `model_key` (PK), `added_at`, `is_active` |
+
+WordPress-side (MySQL) tables:
+
+| Table | Provider(s) | Columns |
+|---|---|---|
+| `wp_gregius_data_settings` | PDO, PostgREST | `id` (PK), `connection_name`, `category`, `setting_key`, `setting_value`, `data_type`, `is_encrypted`, `is_active`, `environment`, `provider`, `created_at`, `updated_at`; UNIQUE `(connection_name, category, setting_key)` |
+| `{prefix}gregius_data_sync_metadata` | PDO, PostgREST | `id`, `connection_name`, `entity_type`, `post_type`, `wp_count`, `pg_count`, `drift`, `last_sync_at`, `sync_status`, `enabled`, `created_at`, `updated_at` |
+
+The row-per-embedding tables share a common shape: `field_type` discriminates `title` / `excerpt` / `chunk`, with `chunk_index` NULL for title/excerpt and 0-N for chunks, and a `UNIQUE (post_id, field_type, chunk_index)` constraint plus a `CHECK` enforcing the NULL/`chunk_index` relationship.
+
 ## 4. REST Route Catalog (Schema)
 
 Base namespace: `/wp-json/gregius-data/v1`
@@ -123,7 +249,7 @@ Important prerequisite:
 - The schema create route can enable available extensions, but it cannot install missing OS-level/database-server packages on the PostgreSQL host.
 
 Upgrade flow highlights:
-- Compares stored schema version with plugin version.
+- Compares stored schema version with the required schema version (`GREGIUS_DATA_SCHEMA_VERSION`).
 - Runs migration methods inside transaction.
 - Ensures required extension availability.
 - Commits and updates version state.
@@ -167,6 +293,8 @@ Status response fields commonly consumed by clients:
 - `schema_version`
 - `version` (compatibility alias)
 - `plugin_version`
+- `required_schema_version`
+- `schema_status`
 - `requires_update`
 - `update_available`
 
@@ -251,7 +379,7 @@ Checklist:
 ### 9.5 Upgrade Does Not Run
 
 Checklist:
-- Compare `schema_version` against `plugin_version` in status payload.
+- Compare `schema_version` against `required_schema_version` in status payload.
 - Confirm route caller has `manage_options` capability.
 - Check logs for migration exceptions that triggered rollback.
 
