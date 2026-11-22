@@ -106,7 +106,7 @@ Requirement notation:
 | INT-DR-05 | The subsystem MUST include source context in recorded payloads so origin (`frontend`, `rest`, `wpcli`, or `mcp`) remains queryable. | Must |
 | INT-DR-06 | Post-record logging context SHOULD include enough metadata to inspect query, source, model, and retrieval/policy details for RAG interactions. | Should |
 | INT-DR-07 | REST access-denial responses MUST return authorization errors when users attempt to access records they do not own. | Must |
-| INT-DR-08 | For manifest-aware RAG turns, interaction payloads and log context MUST preserve manifest observability fields (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`). | Must |
+| INT-DR-08 | For manifest-aware RAG turns, interaction payloads and log context MUST preserve manifest metadata fields (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`). | Must |
 | INT-DR-09 | In multisite, explicit cross-site interaction governance context MUST be accepted only from super admins with valid target site IDs. | Must |
 | INT-DR-10 | In multisite admin editor flows, interaction routing MUST remain site-local by default and MUST NOT use implicit network-wide post-ID lookup across sites. | Must |
 
@@ -149,15 +149,21 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| INT-FR-01, INT-OR-01 | `includes/class-gregius-data-interaction.php` | Post type and init-time registration responsibilities |
-| INT-FR-02, INT-FR-05, INT-FR-06, INT-DR-03, INT-DR-04, INT-OR-02, INT-OR-03 | `includes/class-gregius-data-interaction.php` | RAG event listener, UUID validation, lock handling, append/create behavior |
-| INT-FR-03, INT-DR-02 | `includes/class-gregius-data-interaction.php`, `includes/search/class-gregius-data-search-integration.php` | Search completion emission and record creation path |
-| INT-FR-04, INT-DR-01, INT-DR-05, INT-QR-05 | `includes/class-gregius-data-interaction.php` | Meta-field registration and payload persistence |
-| INT-DR-08 | `includes/class-gregius-data-interaction.php`, `includes/rag/class-gregius-data-rag-service.php` | Manifest metadata persistence for interaction telemetry |
-| INT-FR-07 to INT-FR-10, INT-DR-07, INT-DR-09, INT-QR-02 | `includes/api/class-gregius-data-rest-interactions-controller.php` | Endpoint namespace/base and permission model |
-| INT-DR-10 | `includes/class-gregius-data-interaction.php` | Multisite interaction editor routing is explicit-only and site-local by default |
-| INT-FR-11 | `includes/class-gregius-data-interaction.php` | Hook extension points (`meta_fields`, `log_context`, `recorded`) |
-| INT-FR-12 | `includes/class-gregius-data-interaction.php` | `gregius_data_should_sync_post` filter behavior |
+| INT-FR-01, INT-OR-01 | `includes/class-gregius-data-interaction.php:70-79, 678-735` | Post type registration and init-time listener wiring |
+| INT-FR-02, INT-FR-05, INT-FR-06, INT-DR-03, INT-DR-04, INT-OR-02, INT-OR-03 | `includes/class-gregius-data-interaction.php:161-194, 869-886, 969-1017, 1303-1541` | RAG event listener, UUID validation, lock handling, append/create behavior |
+| INT-FR-03, INT-DR-02 | `includes/class-gregius-data-interaction.php:530-541, 905-942`; `includes/search/class-gregius-data-search-integration.php:400` | Search completion emission and one-record-per-event creation path |
+| INT-FR-04, INT-DR-01, INT-DR-05, INT-QR-05 | `includes/class-gregius-data-interaction.php:86-151, 931-936, 1693-1792` | Meta-field registration and payload persistence |
+| INT-DR-06 | `includes/class-gregius-data-interaction.php:258-296, 349-444` | RAG log-context payload (query, source, model, retrieval/policy details) |
+| INT-DR-08 | `includes/class-gregius-data-interaction.php:453-473, 1770-1785`; `includes/rag/class-gregius-data-rag-service.php:2820-2823` | Manifest metadata persistence for interaction telemetry |
+| INT-FR-07 to INT-FR-10, INT-DR-07, INT-DR-09, INT-QR-02 | `includes/api/class-gregius-data-rest-interactions-controller.php:41-71, 148-220, 231-254, 281-378` | Endpoint namespace/base and permission model |
+| INT-DR-10 | `includes/class-gregius-data-interaction.php:747-843` | Multisite interaction editor routing is explicit-only and site-local by default |
+| INT-FR-11 | `includes/class-gregius-data-interaction.php:130, 288, 311, 646, 669, 1195, 1254`; `includes/api/class-gregius-data-rest-interactions-controller.php:525` | Hook extension points (meta fields, log context, recorded, feedback) |
+| INT-FR-12 | `includes/class-gregius-data-interaction.php:74, 855-860`; `includes/hooks/class-gregius-data-lifecycle-hooks.php:386, 520` | `gregius_data_should_sync_post` filter behavior |
+| INT-OR-04 | `includes/class-gregius-data-interaction.php:240-296, 580-669` | Record-first, log-after flow; logging failure does not block persistence |
+| INT-OR-05 | `includes/class-gregius-data-interaction.php:77-78, 161, 530` | Listener-only compatibility with existing RAG/search emissions |
+| INT-QR-01 | `includes/class-gregius-data-interaction.php:1485-1495` | Additive turn append and totals accumulation |
+| INT-QR-03 | `includes/class-gregius-data-interaction.php:1609-1632` | Stable JSON meta persistence contract |
+| INT-QR-04 | `includes/class-gregius-data-interaction.php:870-886, 971-974` | Structured error on invalid conversation UUID |
 
 ## 6. Appendices
 

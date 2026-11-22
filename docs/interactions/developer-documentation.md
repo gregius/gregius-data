@@ -89,6 +89,13 @@ Important methods:
 - `record_search( array $args )`
 - `record_rag( $conversation_id, array $args )`
 - `validate_conversation_id( $conversation_id )`
+- `get_conversation_transcript( $conversation_id )`
+- `get_conversation_source( $conversation_id )`
+- `get_conversation_turns( $conversation_id )`
+- `record_turn_feedback( $conversation_id, $turn_index, array $feedback )`
+- `get_guest_session_hash( $create = false )`
+- `maybe_redirect_interaction_editor_to_correct_blog()`
+- `exclude_from_realtime_sync( $should_sync, $post_id )`
 
 ### 4.2 `Gregius_Data_REST_Interactions_Controller`
 
@@ -102,11 +109,20 @@ Responsibilities:
 - Allow admin full governance, including multisite network governance via explicit site context
 
 Overridden permission checks:
-- `get_items_permissions_check()`
-- `get_item_permissions_check()`
-- `create_item_permissions_check()`
-- `update_item_permissions_check()`
-- `delete_item_permissions_check()`
+- `get_items_permissions_check( $request )`
+- `get_item_permissions_check( $request )`
+- `create_item_permissions_check( $request )`
+- `update_item_permissions_check( $request )`
+- `delete_item_permissions_check( $request )`
+
+CRUD and routing methods:
+- `get_items( $request )`
+- `get_item( $request )`
+- `create_item( $request )`
+- `update_item( $request )`
+- `delete_item( $request )`
+- `register_routes()`
+- `submit_feedback( $request )`
 
 ## 5. Data Contracts
 
@@ -128,6 +144,8 @@ Overridden permission checks:
 | `_gregius_interaction_conversation_id` | string | RAG conversation UUID | Yes |
 | `_gregius_interaction_zero_results` | boolean | Whether a search returned no results | Yes |
 | `_gregius_interaction_data` | string | Canonical JSON payload with full interaction details | Yes |
+| `_gregius_interaction_feedback` | string (JSON) | Feedback records submitted via the REST feedback endpoint | No |
+| `_gregius_interaction_guest_session_hash` | string | HMAC-SHA256 hash of anonymous guest session (RAG continuity) | No |
 
 ### 5.3 JSON Payload Patterns
 
@@ -157,15 +175,10 @@ Overridden permission checks:
     "rerank": "rerank-v4.0-fast",
     "answer": "deepseek-reasoner"
   },
-  "manifest": {
-    "schema_version": "1.0",
-    "entity": {
-      "post_id": 377
-    }
+  "search": {
+    "post_types": ["post", "page"],
+    "metadata_filter": {}
   },
-  "manifest_hash": "6f2d7c2d3f6a",
-  "manifest_size_bytes": 248,
-  "manifest_version": "1.0",
   "turns": [
     {
       "timestamp": "2026-04-04T12:30:00+00:00",
@@ -175,11 +188,16 @@ Overridden permission checks:
       },
       "response": "Dementia care includes...",
       "sources": [101, 204],
-      "search": {
-        "post_types": ["post", "page"],
-        "metadata_filter": {}
+      "latency": { "total": 2100 },
+      "manifest": {
+        "manifest_version": "1.0.0",
+        "entity": {
+          "id": 377
+        }
       },
-      "latency": { "total": 2100 }
+      "manifest_hash": "7b9e0a3c5d1f8b2e4a6c9d0f2b5e7a1c3d8f0b6e2a9c5d1f7b3e0a6c2d8f4b9e",
+      "manifest_size_bytes": 248,
+      "manifest_version": "1.0.0"
     }
   ],
   "totals": {
@@ -190,9 +208,10 @@ Overridden permission checks:
 }
 ```
 
-Manifest observability notes:
+Manifest metadata notes:
 - `manifest` is persisted when request context includes canonical manifest data.
 - `manifest_hash`, `manifest_size_bytes`, and `manifest_version` provide lightweight diagnostics for replay and drift detection.
+- These manifest fields are stored per-turn in `_gregius_interaction_data`.
 
 ## 6. REST API Reference
 
@@ -254,6 +273,20 @@ Base namespace: `gregius-data/v1`
   - Non-admin users: owned record only
   - Default delete semantics are soft-delete unless `force=true` is provided by an authorized caller
 
+### 6.7 Submit feedback for interaction
+
+- Method: `POST`
+- Route: `/interactions/{id}/feedback`
+- Auth: required
+- Body parameters:
+  - `feedback_type` (required, string): `helpful`, `unhelpful`, `rating`, or `correction`
+  - `feedback_value` (required): boolean, integer, or string depending on type
+  - `context` (optional, object): additional feedback context
+- Behavior:
+  - Admins: any record
+  - Non-admin users: owned record only
+  - Rating values are clamped to `1`-`5`
+
 ## 7. Hooks and Extension Points
 
 ### 7.1 `gregius_interaction_meta_fields`
@@ -292,6 +325,33 @@ add_filter( 'gregius_interaction_meta_fields', function( $fields ) {
 - Type: Filter
 - Signature: `(bool $should_sync, int $post_id): bool`
 - Interaction behavior: returns `false` for `gregius_interaction` post type
+
+### 7.5 `gregius_interaction_feedback_schema`
+
+- Type: Filter
+- Signature: `(array $schema, string $conversation_id, int $turn_index): array`
+- Purpose: Allow-list the feedback keys accepted by `record_turn_feedback()`
+
+### 7.6 `gregius_interaction_turn_feedback_recorded`
+
+- Type: Action
+- Signature: `(int $post_id, int $turn_index, array $feedback): void`
+- Purpose: React after a per-turn feedback payload is persisted
+
+### 7.7 `gregius_interaction_feedback_received`
+
+- Type: Action
+- Signature: `(int $interaction_id, string $feedback_type, mixed $feedback_value, array $feedback_context): void`
+- Purpose: React when feedback is submitted through the REST feedback endpoint
+
+### 7.8 `gregius_data_rag_include_verbose_diagnostics` (integration boundary)
+
+- Type: Filter
+- Signature: `(bool $include, array $result, array $context): bool`
+- Purpose: Control whether verbose diagnostics (raw security/LLM responses, full manifest) are included in RAG interaction context payloads
+- Emit sites (third argument is path-dependent):
+  - `includes/class-gregius-data-interaction.php:355` — `apply_filters( 'gregius_data_rag_include_verbose_diagnostics', $is_debug, $result, $args )`
+  - `includes/rag/class-gregius-data-rag-service.php:2849` — `apply_filters( 'gregius_data_rag_include_verbose_diagnostics', $is_debug, $result, $metadata )`
 
 ## 8. Integration Recipes
 
@@ -367,10 +427,11 @@ $source = Gregius_Data_Interaction::get_conversation_source( $conversation_id );
 Coverage verified from code:
 - Event ingress hooks documented: 2 (`gregius_data_rag_complete`, `gregius_data_search_completed`)
 - Interaction extension hooks documented: 6 (`gregius_interaction_meta_fields`, `gregius_interaction_log_context`, `gregius_interaction_recorded`, `gregius_interaction_feedback_schema`, `gregius_interaction_turn_feedback_recorded`, `gregius_interaction_feedback_received`)
-- Integration filter documented: 1 (`gregius_data_should_sync_post`)
+- Integration filters documented: 2 (`gregius_data_should_sync_post`, `gregius_data_rag_include_verbose_diagnostics`)
 - Public conversation access methods: 4 (`get_conversation_transcript`, `get_conversation_turns`, `get_conversation_source`, `record_turn_feedback`)
-- Interaction meta fields documented: 6
-- REST endpoint family documented: list/get/create/update/delete (+ governance constraints)
+- Public guest session method: 1 (`get_guest_session_hash`)
+- Interaction meta fields documented: 8
+- REST endpoint family documented: list/get/create/update/delete/feedback (+ governance constraints)
 
 ## 10. Troubleshooting
 
