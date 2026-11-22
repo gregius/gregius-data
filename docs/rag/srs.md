@@ -41,7 +41,7 @@ The RAG subsystem is a plugin feature that enables conversational access to sync
 - Retrieve relevant evidence from synchronized WordPress content using lexical, semantic, or hybrid search behavior.
 - Support optional agentic tool routing and optional reranking without making either capability mandatory.
 - Apply governance rules before synthesis to determine whether to answer, partially answer, or abstain.
-- Generate answer payloads with source attribution and metadata for UI, API, and observability consumers.
+- Generate answer payloads with source attribution and metadata for UI, API, and diagnostics consumers.
 - Expose REST contracts for answer generation, user-triggered actions, and action discovery.
 
 #### 1.3.3 User Characteristics
@@ -141,8 +141,8 @@ Requirement notation:
 | RAG-DR-09 | The software MUST expose an externally consumable contract for action discovery that identifies the action name, purpose, and required input schema for user-triggerable actions. | Must |
 | RAG-DR-10 | The software MUST return structured error responses for missing input, unknown actions, unauthorized access, and other request failures. | Must |
 | RAG-DR-11 | RAG chat and action endpoints MUST return structured 429 responses when route-scoped rate limits are exceeded, including retry and window metadata for clients. | Must |
-| RAG-DR-12 | Metadata-filter transport MUST preserve empty-filter object semantics for JSONB containment (`{}`), and response metadata used by interaction tracking MUST expose the effective filter payload for observability. | Must |
-| RAG-DR-13 | Successful tool or response payload metadata MUST include manifest observability fields (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`) when manifest context is present. | Must |
+| RAG-DR-12 | Metadata-filter transport MUST preserve empty-filter object semantics for JSONB containment (`{}`), and response metadata used by interaction tracking MUST expose the effective filter payload for diagnostics. | Must |
+| RAG-DR-13 | Successful tool or response payload metadata MUST include manifest metadata fields (`manifest`, `manifest_hash`, `manifest_size_bytes`, `manifest_version`) when manifest context is present. | Must |
 | RAG-DR-14 | Guest interactions MUST carry a session-hash ownership credential, and journey reads MUST grant access only when the caller is an administrator, the interaction author, or a guest whose current session hash equals the stored hash (compared in constant time). | Must |
 | RAG-DR-15 | The software MUST support first-claim binding for legacy guest interactions that lack a stored session hash: the first guest to read such an interaction assumes ownership (its stored hash is set to the caller's hash), and subsequent reads enforce session-hash validation. | Must |
 
@@ -169,7 +169,7 @@ Requirement notation:
 | RAG-QR-03 | Single-path evidence acceptance MUST be authoritative; when no candidate passes acceptance, the subsystem MUST not silently fall back to unsupported synthesis. | Response review + metadata inspection |
 | RAG-QR-04 | Compare-mode fallback-to-top-candidates MUST remain disabled by default so compare acceptance remains deterministic unless explicitly overridden by operators. | Metadata inspection + controlled override test |
 | RAG-QR-05 | The subsystem MUST support capability-conditional governance so structural quality rules continue to apply even when optional rerank or agentic components are absent. | Configuration variation test |
-| RAG-QR-06 | The subsystem SHOULD provide retrieval-funnel observability sufficient to diagnose candidate counts, acceptance filtering, rerank execution, and final evidence selection. | Metadata inspection |
+| RAG-QR-06 | The subsystem SHOULD provide retrieval-funnel diagnostics sufficient to diagnose candidate counts, acceptance filtering, rerank execution, and final evidence selection. | Metadata inspection |
 | RAG-QR-07 | The subsystem SHOULD preserve stable policy and metadata semantics across supported interfaces so evaluation and release validation remain comparable. | Cross-interface contract inspection |
 | RAG-QR-08 | The subsystem MUST return explicit authorization failures when access policy denies endpoint usage. | Permission test |
 | RAG-QR-09 | The subsystem MUST avoid fatal failure when retrieval backends, chunk data, or rerank execution are unavailable and MUST use documented fallback behavior instead. | Failure-mode test |
@@ -190,18 +190,18 @@ Acceptance baseline for current implemented subsystem:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement IDs | Source (file:line) | Notes |
 |---|---|---|
-| RAG-FR-01 to RAG-FR-04 | docs/rag/architecture.md (Overview, Context View), includes/api/class-gregius-data-rest-rag-controller.php | Chat input contract and default retrieval scope |
-| RAG-FR-05 to RAG-FR-17 | docs/rag/architecture.md (Component View, Runtime View, ADRs), includes/rag/class-gregius-data-rag-service.php, includes/rag/class-gregius-data-coverage-gate.php | Retrieval, passage selection, governance, abstain, and source behavior |
-| RAG-FR-18 to RAG-FR-23 | docs/rag/architecture.md (Component responsibilities and extension boundaries), includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/rag/class-gregius-data-rag-service.php | External endpoints, metadata transport, and extension behavior |
-| RAG-FR-24, RAG-FR-25, RAG-FR-28, RAG-FR-29 | docs/rag/architecture.md (manifest contract and deterministic routing), includes/rag/class-gregius-data-manifest-validator.php, includes/rag/class-gregius-data-rag-service.php | Manifest normalization contract and deterministic tool execution behavior |
-| RAG-FR-30 to RAG-FR-33 | docs/rag/architecture.md (Journey continuity component and per-surface permission policy), includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/class-gregius-data-interaction.php | Guest journey endpoints, session-bound continuity, and permission seed semantics |
-| RAG-FR-22, RAG-DR-01 to RAG-DR-12 | docs/rag/architecture.md (Runtime flow and metadata architecture), includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Response schema, metadata, sanitation, observability, and errors |
-| RAG-DR-13 | docs/rag/architecture.md (response metadata contract), includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Manifest metadata observability and persistence |
-| RAG-DR-14, RAG-DR-15 | docs/rag/architecture.md (Security and journey ownership), includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/class-gregius-data-interaction.php | Guest session hash ownership, first-claim binding for legacy records |
-| RAG-OR-01 to RAG-OR-09 | docs/rag/architecture.md (Security and extension layer), includes/hooks/class-gregius-data-rag-security-hooks.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-rest-rag-journey-controller.php, includes/rag/class-gregius-data-rag-service.php, includes/class-gregius-data-interaction.php | Access control, stateless handling, route-scoped throttling, optional capability behavior, guest session hashing |
-| RAG-QR-01 to RAG-QR-10 | docs/rag/architecture.md | Non-functional behavior and release-quality expectations |
+| RAG-FR-01 to RAG-FR-04 | includes/api/class-gregius-data-rest-rag-controller.php:193-223, :448-608; includes/rag/class-gregius-data-rag-service.php:232-241 | Chat input contract and default retrieval scope |
+| RAG-FR-05 to RAG-FR-17 | includes/rag/class-gregius-data-rag-service.php:434, :1211; includes/rag/class-gregius-data-coverage-gate.php:77-165 | Retrieval, passage selection, governance, abstain, and source behavior |
+| RAG-FR-18 to RAG-FR-23 | includes/api/class-gregius-data-rest-rag-controller.php:78-127; includes/api/class-gregius-data-sse-handler.php:50-58; includes/rag/class-gregius-data-rag-service.php:2619 | External endpoints, metadata transport, and extension behavior |
+| RAG-FR-24, RAG-FR-25, RAG-FR-28, RAG-FR-29 | includes/rag/class-gregius-data-manifest-validator.php:98-109, :121-128; includes/rag/class-gregius-data-rag-service.php:1310-1328 | Manifest normalization contract and deterministic tool execution behavior |
+| RAG-FR-30 to RAG-FR-33 | includes/api/class-gregius-data-rest-rag-journey-controller.php:61-100, :137-170, :179-230, :239-254; includes/api/class-gregius-data-rest-rag-controller.php:136-158; includes/api/class-gregius-data-sse-handler.php:184-190; includes/class-gregius-data-interaction.php:1550 | Guest journey endpoints, session-bound continuity, and permission seed semantics |
+| RAG-FR-22, RAG-DR-01 to RAG-DR-12 | includes/api/class-gregius-data-rest-rag-controller.php:351-357, :882-975; includes/api/class-gregius-data-sse-handler.php:184-190; includes/rag/class-gregius-data-rag-service.php:2811-2829, :2841-2922; includes/class-gregius-data-interaction.php:355 | Response schema, metadata, sanitation, diagnostics, and errors |
+| RAG-DR-13 | includes/rag/class-gregius-data-rag-service.php:2811-2829; includes/class-gregius-data-interaction.php:161 | Manifest metadata and persistence |
+| RAG-DR-14, RAG-DR-15 | includes/api/class-gregius-data-rest-rag-journey-controller.php:421-451; includes/class-gregius-data-interaction.php:1550 | Guest session hash ownership, first-claim binding for legacy records |
+| RAG-OR-01 to RAG-OR-09 | includes/hooks/class-gregius-data-rag-security-hooks.php:82-131, :142-150, :158-166; includes/api/class-gregius-data-rest-rag-controller.php:882-975; includes/api/class-gregius-data-rest-rag-journey-controller.php:459-461; includes/rag/class-gregius-data-rag-service.php:4262-4324; includes/class-gregius-data-interaction.php:1550 | Access control, stateless handling, route-scoped throttling, optional capability behavior, guest session hashing |
+| RAG-QR-01 to RAG-QR-10 | docs/rag/architecture.md (AD-02, AD-03, AD-05); includes/rag/class-gregius-data-rag-service.php:124-135, :301-345, :803-845, :4195-4229, :4262-4324, :4394, :4482, :4510, :4662-4672, :4952, :7399; includes/rag/class-gregius-data-coverage-gate.php:77-165; includes/hooks/class-gregius-data-rag-security-hooks.php:104-121; includes/api/class-gregius-data-rest-rag-controller.php:150-156 | Non-functional behavior and release-quality expectations |
 
 ## 6. Appendices
 
