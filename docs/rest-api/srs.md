@@ -155,7 +155,7 @@ Requirement notation:
 | REST-OR-02 | The software MUST support endpoint-level permission variation where subsystem design requires different access behavior (for example, RAG filter-based policy and interaction ownership/direct-create governance policy). | Must |
 | REST-OR-03 | The software MUST enforce authentication for interaction endpoints and deny anonymous access, and in multisite MUST allow explicit cross-site interaction context only for super admins with valid site IDs. | Must |
 | REST-OR-04 | The software MUST support runtime tightening of RAG access level and required capability via extension hooks/settings. | Must |
-| REST-OR-05 | The software SHOULD provide endpoint-level observability through status and stats routes for operational domains (connections, search, logs, vectors, sync validation). | Should |
+| REST-OR-05 | The software SHOULD provide endpoint-level status and stats routes for operational domains (connections, search, logs, vectors, sync validation). | Should |
 | REST-OR-06 | The REST controller layer MUST NOT claim built-in cross-origin policy configuration unless response-header behavior is actually implemented in code paths handling REST responses. | Must |
 | REST-OR-07 | The REST controller layer MUST document route-scoped built-in throttling where implemented (currently RAG `POST /rag/chat` and `POST /rag/action`) and MUST NOT present it as global middleware for all endpoints. | Must |
 | REST-OR-08 | Destructive batch-delete endpoints MUST avoid offset drift by using backend-owned selection semantics and MUST terminate safely when zero rows are deleted while rows remain. | Must |
@@ -191,15 +191,58 @@ Acceptance baseline for migration phase:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement ID | Source (file:line) | Notes |
 |---|---|---|
-| REST-FR-01 to REST-FR-03 | includes/api/class-gregius-data-rest-api.php, includes/api/class-gregius-data-rest-*-controller.php | Namespace and endpoint-group coverage |
-| REST-FR-04 to REST-FR-08 | includes/api/class-gregius-data-rest-*-controller.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-rest-interactions-controller.php | Permission and contract behavior |
-| REST-FR-09 to REST-FR-19 | includes/api/class-gregius-data-rest-sync-controller.php, includes/api/class-gregius-data-rest-vector-queue-controller.php, includes/api/class-gregius-data-rest-search-controller.php, includes/api/class-gregius-data-rest-schema-controller.php, includes/api/class-gregius-data-rest-models-controller.php, includes/api/class-gregius-data-rest-prompts-controller.php, includes/api/class-gregius-data-rest-logs-controller.php, includes/api/class-gregius-data-rest-rag-controller.php | Domain-specific endpoint behavior |
-| REST-FR-18 | includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php | Manifest and deterministic-tool parity across transport surfaces |
-| REST-DR-01 to REST-DR-14 | includes/api/class-gregius-data-rest-connections-controller.php, includes/api/class-gregius-data-rest-settings-controller.php, includes/api/class-gregius-data-rest-rag-controller.php, includes/api/class-gregius-data-sse-handler.php, includes/api/class-gregius-data-rest-search-controller.php, includes/api/class-gregius-data-rest-sync-controller.php, includes/api/class-gregius-data-rest-logs-controller.php, includes/api/class-gregius-data-rest-vector-queue-controller.php | Request/response/error contracts |
-| REST-OR-01 to REST-OR-08 | includes/api/class-gregius-data-rest-*-controller.php, includes/hooks/class-gregius-data-rag-security-hooks.php, includes/api/class-gregius-data-sse-handler.php, docs/rest-api/architecture.md | Access and operational constraints |
-| REST-QR-01 to REST-QR-09 | docs/rest-api/architecture.md, controller implementations listed in References | Parity and quality alignment |
+| REST-FR-01 | includes/api/class-gregius-data-rest-api.php:26, :32; includes/api/class-gregius-data-rest-settings-controller.php:26 | `rest_api_init` binding + `gregius-data/v1` namespace |
+| REST-FR-02 | includes/api/class-gregius-data-rest-api.php:33-99 | All 17 domain controllers registered |
+| REST-FR-03 | includes/api/class-gregius-data-rest-settings-controller.php:65-283 | List/get/create/update/delete + bulk/database/category routes |
+| REST-FR-04 | includes/api/class-gregius-data-rest-settings-controller.php:73, :709-751 | `permission_callback` declared per route |
+| REST-FR-05 | includes/api/class-gregius-data-rest-settings-controller.php:709-751; includes/api/class-gregius-data-rest-connections-controller.php:725-755 | `manage_options` admin gates |
+| REST-FR-06 | includes/api/class-gregius-data-rest-rag-controller.php:136-159; includes/hooks/class-gregius-data-rag-security-hooks.php:66 | `gregius_data_rag_endpoint_permission` filter |
+| REST-FR-07 | includes/api/class-gregius-data-rest-interactions-controller.php:185-254 | Ownership read/update/delete + admin-only create |
+| REST-FR-08 | includes/api/class-gregius-data-rest-rag-controller.php:448-609 | Per-route arg sanitize/validate callbacks |
+| REST-FR-09 | includes/api/class-gregius-data-rest-sync-controller.php:73-731 | Status/config/taxonomy/post-type/orphan routes |
+| REST-FR-10 | includes/api/class-gregius-data-rest-vector-queue-controller.php:46-260 | Queue/generate/batch/status/delete/posts routes |
+| REST-FR-11 | includes/api/class-gregius-data-rest-search-controller.php:99-265 | Health/status/language/schema/trigram routes |
+| REST-FR-12 | includes/api/class-gregius-data-rest-schema-controller.php:64-158 | Status/create/upgrade/verify/sql routes |
+| REST-FR-13 | includes/api/class-gregius-data-rest-models-controller.php:71-221 | CRUD/providers/refresh/test/reset-usage |
+| REST-FR-14 | includes/api/class-gregius-data-rest-prompts-controller.php:39-87 | CRUD + activate |
+| REST-FR-15 | includes/api/class-gregius-data-rest-logs-controller.php:42-150 | List/stats/export/purge/settings |
+| REST-FR-16 | includes/api/class-gregius-data-rest-rag-controller.php:78-127 | Chat/action/actions |
+| REST-FR-17 | docs/rest-api/architecture.md:156-170 | AD-01 versioned namespace compatibility |
+| REST-FR-18 | includes/api/class-gregius-data-rest-rag-controller.php:594-607; includes/api/class-gregius-data-sse-handler.php:257-259, :328-329 | `manifest`/`forced_tool` REST+SSE parity |
+| REST-FR-19 | includes/api/class-gregius-data-rest-vector-queue-controller.php:182-222, :974-1200 | `POST /vectors/batch-delete` timeout-safe iterative delete |
+| REST-DR-01 | includes/api/class-gregius-data-rest-settings-controller.php:292-315 | Structured JSON success response |
+| REST-DR-02 | includes/api/class-gregius-data-rest-connections-controller.php:824-832; includes/api/class-gregius-data-rest-models-controller.php:263-268 | Masked credential fields |
+| REST-DR-03 | includes/api/class-gregius-data-rest-connections-controller.php:725-755 | `WP_Error` with explicit status codes |
+| REST-DR-04 | includes/api/class-gregius-data-rest-connections-controller.php:762-801; includes/api/class-gregius-data-rest-rag-controller.php:448-609 | Required/optional route args |
+| REST-DR-05 | includes/api/class-gregius-data-rest-rag-controller.php:448-609; includes/api/class-gregius-data-rest-sync-controller.php:862-868 | Typed sanitize/validate |
+| REST-DR-06 | includes/api/class-gregius-data-rest-rag-controller.php:351-357 | `success` wrapper + `data` payload |
+| REST-DR-07 | includes/api/class-gregius-data-rest-rag-controller.php:764-798 | Only user-triggerable actions listed |
+| REST-DR-08 | includes/api/class-gregius-data-rest-settings-controller.php:226-283; includes/api/class-gregius-data-rest-models-controller.php:186-220 | Key/category/id addressing |
+| REST-DR-09 | includes/api/class-gregius-data-rest-search-controller.php:273-297 | Health/status diagnostics payload |
+| REST-DR-10 | includes/api/class-gregius-data-rest-sync-controller.php:997-1066; includes/api/class-gregius-data-rest-vector-queue-controller.php:589-883 | Status + progress payloads |
+| REST-DR-11 | includes/api/class-gregius-data-rest-logs-controller.php:322-348 | Purge operates on logs table only |
+| REST-DR-12 | includes/api/class-gregius-data-rest-rag-controller.php:580-593 | `metadata_filter`/`metadata_manifest` optional fields |
+| REST-DR-13 | includes/api/class-gregius-data-rest-rag-controller.php:594-607 | `manifest`/`forced_tool` optional fields |
+| REST-DR-14 | includes/api/class-gregius-data-rest-vector-queue-controller.php:1171-1183 | Batch-delete progress fields |
+| REST-OR-01 | includes/api/class-gregius-data-rest-settings-controller.php:709-751 | `manage_options` on admin groups |
+| REST-OR-02 | includes/api/class-gregius-data-rest-rag-controller.php:136-159; includes/api/class-gregius-data-rest-interactions-controller.php:231-254 | RAG filter + interaction ownership variation |
+| REST-OR-03 | includes/api/class-gregius-data-rest-interactions-controller.php:41-71, :121-137 | Auth required + multisite `site_id` context |
+| REST-OR-04 | includes/hooks/class-gregius-data-rag-security-hooks.php:142-166 | `gregius_data_rag_access_level` / `gregius_data_rag_required_capability` |
+| REST-OR-05 | includes/api/class-gregius-data-rest-search-controller.php:100-111; includes/api/class-gregius-data-rest-logs-controller.php:57-68 | Status/stats routes |
+| REST-OR-06 | docs/rest-api/architecture.md:221-234 | AD-05 CORS constraint |
+| REST-OR-07 | includes/api/class-gregius-data-rest-rag-controller.php:169-170, :621-622, :882-975 | Route-scoped throttling (chat/action only) |
+| REST-OR-08 | includes/api/class-gregius-data-rest-vector-queue-controller.php:983-985, :1161-1167 | Backend-owned offset + safety stop |
+| REST-QR-01 | includes/api/class-gregius-data-rest-api.php:32-100 | Consistent namespace/registration |
+| REST-QR-02 | includes/api/class-gregius-data-rest-settings-controller.php:709-751; includes/api/class-gregius-data-rest-rag-controller.php:136-159 | Deterministic permission callbacks |
+| REST-QR-03 | includes/api/class-gregius-data-rest-rag-controller.php:448-609 | Arg sanitization |
+| REST-QR-04 | docs/rest-api/architecture.md:156-170 | AD-01 version stability |
+| REST-QR-05 | includes/api/class-gregius-data-rest-search-controller.php:100-111 | Health endpoints |
+| REST-QR-06 | includes/api/class-gregius-data-rest-connections-controller.php:725-755 | Actionable error data |
+| REST-QR-07 | docs/rest-api/architecture.md:221-234 | AD-05 parity review |
+| REST-QR-08 | docs/rest-api/developer-documentation.md:56-336 | Grouped route catalog |
+| REST-QR-09 | includes/api/class-gregius-data-rest-vector-queue-controller.php:1040-1157 | PDO vs PostgREST parity |
 
 ## 6. Appendices
 

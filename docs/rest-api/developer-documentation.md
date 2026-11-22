@@ -362,7 +362,7 @@ Source: [../../includes/api/class-gregius-data-rest-rag-controller.php](../../in
 
 Use these hooks to tune route-scoped fixed-window limits for RAG chat/action endpoints.
 
-For observability and telemetry, see the `gregius_data_rag_rate_limit_decision` action hook documented in [../../docs/hooks/developer-documentation.md](../../docs/hooks/developer-documentation.md#gregius_data_rag_rate_limit_decision). This action fires for all rate-limit decisions and is suitable for logging, metrics, and debugging.
+For rate-limit telemetry, see the `gregius_data_rag_rate_limit_decision` action hook documented in [../../docs/hooks/developer-documentation.md](../../docs/hooks/developer-documentation.md#gregius_data_rag_rate_limit_decision). This action fires for all rate-limit decisions and is suitable for logging, metrics, and debugging.
 
 ## 6. Usage Examples
 
