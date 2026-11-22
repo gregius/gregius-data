@@ -101,6 +101,7 @@ The subsystem is event-driven at ingress and REST-driven at egress. This separat
 - `gregius_interaction_turn_feedback_recorded`
 - `gregius_interaction_feedback_received`
 - `gregius_data_should_sync_post` integration boundary
+- `gregius_data_rag_include_verbose_diagnostics` integration boundary
 
 ### 3.2 Responsibilities Mapping
 
