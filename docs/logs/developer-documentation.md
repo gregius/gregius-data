@@ -84,15 +84,26 @@ Key methods:
 - `get_stats()`
 - `export_logs( $args = array(), $format = 'csv' )`
 - `purge_old_logs( $days = 30, $trigger = 'manual' )`
-- `create_logs_table()`
-- `create_logs_tables_for_all_sites()`
+- `get_table_name()`
+- `is_debug_mode()`
+- `is_logging_enabled()`
+- `get_log_level()`
 - `get_log_levels()`
 - `get_components()`
+- `create_logs_table()`
+- `create_logs_tables_for_all_sites()`
+- `drop_logs_table()`
+
+State accessors:
+- `is_debug_mode()` checks the `GREGIUS_DATA_DEBUG_MODE` constant, `WP_DEBUG`, or the `gregius_data_debug_mode` option.
+- `is_logging_enabled()` reads the `gregius_data_logging_enabled` option (default `true`).
+- `get_log_level()` reads the `gregius_data_log_level` option (default `info`).
 
 Scheduled retention runtime:
 - `Gregius_Data_Log_Retention::CRON_EVENT` = `gregius_data_daily_log_retention_purge`
+- `Gregius_Data_Log_Retention::init()` registers the cron event callback.
 - `Gregius_Data_Log_Retention::handle_scheduled_purge()` reads `gregius_data_log_retention_days` and calls `purge_old_logs( ..., 'cron' )`.
-- Activation/deactivation schedule and clear this event per site context in multisite.
+- `Gregius_Data_Log_Retention::schedule_for_current_site()` schedules the daily event; `clear_for_current_site()` clears it (per site context in multisite).
 
 Write-path guardrails:
 - no-op when logging disabled
@@ -187,7 +198,7 @@ Query/body param:
 Behavior notes:
 - Purge execution is constrained to the current site's `{prefix}gregius_data_logs` table.
 - `gregius_interaction` posts and interaction meta are not purge targets.
-- Logger emits retention extension hooks and observability context on each purge run.
+- Logger emits retention extension hooks and retention-completion context on each purge run.
 
 Returns:
 - `success: true`
@@ -238,7 +249,7 @@ The logger exposes these Tier 1 extension points:
 - `do_action( 'gregius_data_before_purge_logs', int $days, string $threshold, int $site_id )`
 - `do_action( 'gregius_data_after_purge_logs', int $days, int $deleted, int $site_id )`
 
-Observability context emitted on retention completion:
+Retention-completion context emitted on each purge run:
 - `site_id`
 - `table_name`
 - `retention_days_effective`
@@ -292,5 +303,5 @@ Documented and code-backed:
 - Settings options (`gregius_data_logging_enabled`, `gregius_data_log_level`, `gregius_data_log_retention_days`, `gregius_data_debug_mode`)
 - Sensitive context masking rules and usage-key allowlist
 - Scheduled retention runtime (`gregius_data_daily_log_retention_purge`) and multisite scheduling lifecycle
-- Retention hook contracts and observability payload fields
+- Retention hook contracts and retention-completion payload fields
 - Explicit immutability boundary for `gregius_interaction` under log retention operations

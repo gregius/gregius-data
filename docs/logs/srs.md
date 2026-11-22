@@ -146,15 +146,39 @@ Acceptance baseline:
 
 ## 5. Traceability
 
-| SRS Requirement IDs | Source References | Notes |
+| SRS Requirement ID | Source References (file:line) | Notes |
 |---|---|---|
-| LOG-FR-01, LOG-FR-02, LOG-FR-03, LOG-DR-01, LOG-DR-02, LOG-QR-04 | `includes/class-gregius-data-logger.php` | Table schema, levels/components, base log data model |
-| LOG-FR-04, LOG-FR-06, LOG-FR-07, LOG-FR-08, LOG-FR-09, LOG-DR-05..07, LOG-OR-04 | `includes/api/class-gregius-data-rest-logs-controller.php` | Route registration, params, responses, permissions |
-| LOG-FR-05, LOG-QR-05 | `includes/cli/class-gregius-data-cli-logs.php` | CLI list/export/purge/stats automation contracts |
-| LOG-DR-03, LOG-DR-04, LOG-DR-08, LOG-QR-03 | `includes/class-gregius-data-logger.php` | Sensitive-key masking, usage-key allowlist, retention hook contract |
-| LOG-OR-01, LOG-OR-02, LOG-OR-03, LOG-OR-06, LOG-OR-07 | `includes/class-gregius-data-logger.php` | Logging enablement, debug gating, level threshold, safe-fail behavior, retention boundary |
-| LOG-FR-10, LOG-OR-08 | `includes/class-gregius-data-log-retention.php`, `includes/class-gregius-data-activator.php`, `includes/class-gregius-data-deactivator.php`, `gregius-data.php` | Scheduled retention runtime and per-site lifecycle management |
-| LOG-OR-05 | `includes/class-gregius-data-logger.php`, `includes/class-gregius-data-activator.php` | Multisite table creation during activation |
+| LOG-FR-01 | `includes/class-gregius-data-logger.php:74` | Log table name `{$wpdb->prefix}gregius_data_logs` |
+| LOG-FR-02 | `includes/class-gregius-data-logger.php:44-50` | Log levels `debug`/`info`/`warning`/`error`/`critical` |
+| LOG-FR-03 | `includes/class-gregius-data-logger.php:57-66` | Component classification values |
+| LOG-FR-04 | `includes/api/class-gregius-data-rest-logs-controller.php:44-149` | Route registration (list/stats/export/purge/settings) |
+| LOG-FR-05 | `includes/cli/class-gregius-data-cli-logs.php:119-190,244-286,318-351,380-417` | CLI list/export/purge/stats commands |
+| LOG-FR-06 | `includes/class-gregius-data-logger.php:327-450` | Paginated/filtered retrieval |
+| LOG-FR-07 | `includes/class-gregius-data-logger.php:511-550` | CSV/JSON export |
+| LOG-FR-08 | `includes/class-gregius-data-logger.php:561-603` | Day-threshold deletion |
+| LOG-FR-09 | `includes/api/class-gregius-data-rest-logs-controller.php:356-414` | Runtime settings read/update |
+| LOG-FR-10 | `includes/class-gregius-data-log-retention.php:23,42-44,49-52`; `gregius-data.php:237-238` | Daily cron purge event + runtime wiring |
+| LOG-DR-01 | `includes/class-gregius-data-logger.php:182-189,614-627` | Record fields (data array + schema) |
+| LOG-DR-02 | `includes/class-gregius-data-logger.php:170-179` | Context JSON encode |
+| LOG-DR-03 | `includes/class-gregius-data-logger.php:271-296` | Sensitive-key masking |
+| LOG-DR-04 | `includes/class-gregius-data-logger.php:272-279` | Usage-key allowlist |
+| LOG-DR-05 | `includes/api/class-gregius-data-rest-logs-controller.php:236-248,262-274` | List/stats success envelopes |
+| LOG-DR-06 | `includes/api/class-gregius-data-rest-logs-controller.php:332-339` | Purge deleted count |
+| LOG-DR-07 | `includes/api/class-gregius-data-rest-logs-controller.php:357-369` | Settings incl. levels/components |
+| LOG-DR-08 | `includes/class-gregius-data-logger.php:567,571,584` | Retention hooks w/ `site_id` |
+| LOG-OR-01 | `includes/class-gregius-data-logger.php:141-144` | Skip writes when disabled |
+| LOG-OR-02 | `includes/class-gregius-data-logger.php:151-154` | Skip `debug` unless debug mode |
+| LOG-OR-03 | `includes/class-gregius-data-logger.php:156-161` | Skip below minimum level |
+| LOG-OR-04 | `includes/api/class-gregius-data-rest-logs-controller.php:422-465` | `manage_options` capability |
+| LOG-OR-05 | `includes/class-gregius-data-logger.php:651-671`; `includes/class-gregius-data-activator.php:32-35` | Multisite table creation |
+| LOG-OR-06 | `includes/class-gregius-data-logger.php:197-210` | Safe-fail on insert |
+| LOG-OR-07 | `includes/class-gregius-data-logger.php:574-579` | Purge constrained to logs table |
+| LOG-OR-08 | `includes/class-gregius-data-log-retention.php:57-61,66-68`; `includes/class-gregius-data-activator.php:1053-1071`; `includes/class-gregius-data-deactivator.php:50-68` | Per-site schedule/clear |
+| LOG-QR-01 | `includes/class-gregius-data-logger.php:344-346`; `includes/api/class-gregius-data-rest-logs-controller.php:165-171` | Bounded `per_page` |
+| LOG-QR-02 | `includes/class-gregius-data-logger.php:352-382`; `includes/cli/class-gregius-data-cli-logs.php:126-149,250-273` | Level/component allowlist validation |
+| LOG-QR-03 | `includes/class-gregius-data-logger.php:289-292` | Recursive masking |
+| LOG-QR-04 | `includes/class-gregius-data-logger.php:623-626` | Schema indexes |
+| LOG-QR-05 | `includes/cli/class-gregius-data-cli-logs.php:169-189,380-417` | Deterministic structured output |
 
 ## 6. Appendices
 
