@@ -82,13 +82,14 @@ Mapping:
    - `Gregius_Data_REST_API` binds `rest_api_init` and registers domain controllers.
 
 2. **Administrative Controllers**
-   - Settings, connections, connection health/models, schema, sync, sync validation, search, vectors, retry queue, models, prompts, logs.
+   - Settings, connections, connection health/models, schema, sync, sync validation, search, vectors, retry queue, models, prompts, logs, data retention.
    - Predominantly admin-gated using capability checks.
    - Logs controller delegates retention purge behavior to logger/runtime contracts, including site-scoped table boundaries.
    - Vector controller includes timeout-safe batch deletion semantics for large vector tables.
 
 3. **Runtime Interaction Controllers**
    - RAG controller with filter-driven endpoint permission policy.
+   - RAG journey controller for block-scoped journey continuity (one-time token issue/consume and conversation-history hydration) under the same filter-driven permission policy.
    - Interactions controller based on ownership-aware CPT access model with admin-governed direct create and explicit multisite site context for super admins.
 
 4. **Streaming Component**
@@ -101,7 +102,7 @@ Mapping:
 - **Ownership model:** interactions endpoints allow users to access their own records (read/update/delete), while direct create is admin-governed and non-admin creation is chat-lifecycle driven.
 
 Mapping:
-- AV-02 -> REST-FR-04 to REST-FR-16
+- AV-02 -> REST-FR-04 to REST-FR-19
 - AV-02 -> REST-OR-01 to REST-OR-04
 
 ---
@@ -139,14 +140,14 @@ Structured Success/Error Response
 ### 4.2 Variant Flows
 
 - **RAG flow:** route permission can be tightened via filter/security hooks and includes specialized response metadata contracts.
-- **RAG metadata flow:** optional `metadata_filter` and `metadata_manifest` request payload fields are sanitized at entry and propagated to runtime retrieval options.
+- **RAG metadata/manifest flow:** optional `metadata_filter`, `metadata_manifest`, `manifest`, and `forced_tool` request payload fields are sanitized at entry and propagated to runtime retrieval options, with parity across REST and SSE entry paths.
 - **Interactions flow:** permission logic depends on authentication, post ownership, direct-create restriction for non-admin users, and optional super-admin multisite site context.
 - **Streaming flow:** SSE requests can be gated by `gregius_data_rag_rate_limit` filter.
 - **Logs purge flow:** `DELETE /logs/purge` delegates to logger retention purge for current site context and returns deleted row counts.
 - **Vector batch delete flow:** `POST /vectors/batch-delete` performs iterative delete-safe progress operations and preserves provider parity across PDO and PostgREST/Supabase.
 
 Mapping:
-- AV-03 -> REST-FR-04, REST-FR-06, REST-FR-07, REST-DR-03, REST-OR-02, REST-OR-03
+- AV-03 -> REST-FR-04, REST-FR-06, REST-FR-07, REST-FR-18, REST-FR-19, REST-DR-03, REST-DR-12 to REST-DR-14, REST-OR-02, REST-OR-03, REST-OR-08
 
 ---
 
@@ -182,7 +183,7 @@ Consequences:
 - Documentation must maintain grouped route catalogs.
 
 Linked requirements:
-- AD-02 -> REST-FR-02, REST-FR-03, REST-FR-09 to REST-FR-16, REST-QR-08
+- AD-02 -> REST-FR-02, REST-FR-03, REST-FR-09 to REST-FR-19, REST-QR-08
 
 ### AD-03: Explicit Permission Callback per Route
 
@@ -275,13 +276,14 @@ Linked requirements:
 | Architecture Item | Requirement Coverage |
 |---|---|
 | AV-01 Context View | REST-FR-01 to REST-FR-03, REST-QR-01 |
-| AV-02 Component View | REST-FR-02 to REST-FR-16, REST-OR-01 to REST-OR-04 |
-| AV-03 Runtime View | REST-FR-04, REST-FR-06, REST-FR-07, REST-DR-03 |
+| AV-02 Component View | REST-FR-02 to REST-FR-19, REST-OR-01 to REST-OR-05, REST-QR-05 |
+| AV-03 Runtime View | REST-FR-04, REST-FR-06, REST-FR-07, REST-FR-18, REST-FR-19, REST-DR-03, REST-DR-12 to REST-DR-14, REST-OR-02, REST-OR-03, REST-OR-08, REST-QR-03, REST-QR-06 |
 | AD-01 Namespace Strategy | REST-FR-01, REST-FR-17, REST-QR-01, REST-QR-04 |
-| AD-02 Controller Decomposition | REST-FR-02, REST-FR-03, REST-FR-09 to REST-FR-16 |
-| AD-03 Permission Per Route | REST-FR-04, REST-FR-05, REST-FR-06, REST-FR-07, REST-OR-01 |
+| AD-02 Controller Decomposition | REST-FR-02, REST-FR-03, REST-FR-09 to REST-FR-19, REST-QR-08 |
+| AD-03 Permission Per Route | REST-FR-04, REST-FR-05, REST-FR-06, REST-FR-07, REST-OR-01, REST-QR-02 |
 | AD-04 Access Model Exceptions | REST-FR-06, REST-FR-07, REST-OR-02 to REST-OR-04 |
 | AD-05 CORS/Rate-Limit Constraint | REST-OR-06, REST-OR-07, REST-QR-07 |
+| AD-06 Batch Delete Pagination | REST-FR-19, REST-DR-14, REST-OR-08, REST-QR-09 |
 
 ---
 
