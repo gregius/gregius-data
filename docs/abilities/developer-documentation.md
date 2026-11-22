@@ -75,7 +75,7 @@ Lifecycle methods:
 - `register_abilities()`
 
 Execution callbacks:
-- `execute_rag_answer( $args )`
+- `execute_rag_answer( $args, $rag_service = null )`
 - `execute_list_connections( $args )`
 - `execute_list_models( $args )`
 
@@ -104,6 +104,7 @@ Description:
 - requires `connection_name`, `embedding_model`, and `answer_model`
 - optional relevance reranking via `rerank_model`
 - optional agentic orchestration via `agentic_model`
+- optional retrieval-sufficiency grading and corrective query rewrite via `evaluator_model`
 - use `list-connections` and `list-models` to discover valid values
 
 Execution summary:
@@ -170,7 +171,7 @@ Permission: `current_user_can( 'manage_options' )`
 
 Description:
 - returns registered AI models by type: `embeddings`, `llm`, `rerank`, `evaluator`
-- use this output to get valid `embedding_model`, `rerank_model`, `agentic_model`, and `answer_model` values for `answer`
+- use this output to get valid `embedding_model`, `rerank_model`, `agentic_model`, `evaluator_model`, and `answer_model` values for `answer`
 
 Execution summary:
 - reads models via `Gregius_Data_Model_Registry`
@@ -260,7 +261,7 @@ Basic contract note:
 ## 12. Parity Coverage Snapshot
 
 Documented and code-backed:
-- categories: `ai`, `gregius-data`
+- categories: `ai`
 - abilities: `answer`, `list-connections`, `list-models`
 - permission callbacks and capability boundaries
 - schema/meta registration contracts
