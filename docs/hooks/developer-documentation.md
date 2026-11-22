@@ -88,7 +88,7 @@ add_filter( 'gregius_data_vector_delete_batch_size', function( $batch_size, $mod
 - Type: Filter
 - Signature: `(array $skip_keys): array`
 - Default: WordPress/internal skip list
-- Emitted in: `includes/hooks/class-gregius-data-lifecycle-hooks.php`
+- Emitted in: `includes/class-gregius-data-sync-metadata-manager.php`, `includes/class-gregius-data.php`
 - Use case: customize excluded post meta keys.
 
 #### `gregius_data_metadata_manifest`
@@ -326,7 +326,7 @@ add_filter( 'gregius_data_vector_delete_batch_size', function( $batch_size, $mod
 - Type: Action
 - Signature: `(int $days, string $threshold, int $site_id): void`
 - Emitted in: `includes/class-gregius-data-logger.php`
-- Use case: pre-purge observability and site-scoped integrations.
+- Use case: pre-purge notification and site-scoped integrations.
 
 #### `gregius_data_after_purge_logs`
 - Type: Action
@@ -501,13 +501,6 @@ add_filter( 'gregius_data_rag_endpoint_permission', function( $allowed, $request
 - Emitted in: `includes/hooks/class-gregius-data-rag-security-hooks.php`
 - Use case: extend the routes a guest may access when a block opts in.
 
-#### `gregius_data_rag_entity_summary_meta_key`
-- Type: Filter
-- Signature: `(string $key, string $entity_type, string $entity_id): string`
-- Default: `'_gregius_data_manifest_summary'`
-- Emitted in: `includes/rag/class-gregius-data-rag-service.php`
-- Use case: override the post-meta key that caches an entity's summary.
-
 #### `gregius_data_rag_evaluation_framework_adapter`
 - Type: Filter
 - Signature: `(array $adapter_paths, string $output_dir, string $framework, array $records): array`
@@ -652,7 +645,7 @@ add_filter( 'gregius_data_rag_endpoint_permission', function( $allowed, $request
 - Emitted in: `includes/api/class-gregius-data-rest-sync-controller.php`
 - Use case: tune the base batch size for sync deletion. Per-table overrides: `gregius_data_sync_delete_batch_size_wp_posts_chunks`, `gregius_data_sync_delete_batch_size_wp_posts_clean`, `gregius_data_sync_delete_batch_size_wp_posts`.
 
-### 3.4 Observability and Telemetry
+### 3.4 Telemetry and Diagnostics
 
 #### `gregius_data_streaming_failure`
 - Type: Action
@@ -812,19 +805,19 @@ add_filter( 'gregius_data_rag_tools', function( $tools, $context ) {
 | Emitted hooks discovered in code | 115 | 112 static + 3 dynamic templates, from a multiline-aware scan of `do_action`/`apply_filters` across `includes/`, `blocks/`, and the plugin root |
 | Documented hooks in this reference | 115 | All emitted hooks covered across Tier 1/2/3 plus dynamic families |
 | Emitted hooks missing from docs | 0 | None |
-| Documented hooks with no emission site | 0 | Stale enterprise-increment hooks removed (see Last Audit) |
+| Documented hooks with no emission site | 0 | Stale orphan hooks removed (see Last Audit) |
 
-**Parity gate status: PASS** — every emitted `gregius_data_*` hook is documented with type, signature, default, and emission path; no documented hook lacks a live emission site.
+**Parity gate status: PASS** — every emitted hook is documented; Tier 1/2 hooks carry type, signature, default, and emission path (Tier 3 internal hooks are listed by name only), and no documented hook lacks a live emission site.
 
 ### Verification Commands
 
 The catalog is derived from a code scan (code is ground truth). Re-run parity with a multiline-aware scan:
 
 ```bash
-# Extract emitted hooks (static gregius_data_* first-arg of apply_filters/do_action)
+# Extract emitted hooks (static gregius_data_*/gregius_interaction_* first-arg of apply_filters/do_action)
 python3 - <<'PY'
 import os, re
-CALL = re.compile(r"\b(do_action|apply_filters|do_action_ref_array|apply_filters_ref_array)\s*\(\s*([\"'])(gregius_data_[a-zA-Z0-9_]+)\2", re.S)
+CALL = re.compile(r"\b(do_action|apply_filters|do_action_ref_array|apply_filters_ref_array)\s*\(\s*([\"'])((?:gregius_data_|gregius_interaction_)[a-zA-Z0-9_]+)\2", re.S)
 skip = {'node_modules', 'vendor', 'build', 'tests', '.git'}
 names = set()
 for root, dirs, files in os.walk('.'):
@@ -837,10 +830,10 @@ print('\n'.join(sorted(names)))
 PY
 ```
 
-Then confirm each emitted name appears in this reference (and vice-versa). Dynamic templates `gregius_data_rag_tool_{$tool_name}` / `{$forced_tool}` / `{$action_name}` are documented as the `gregius_data_rag_tool_{name}` family.
+Then confirm each emitted name appears in this reference (and vice-versa). The scan above misses the 3 per-table delete-batch names emitted via `$table_config['hook']` in `includes/api/class-gregius-data-rest-sync-controller.php` (`gregius_data_sync_delete_batch_size_wp_posts_chunks`, `gregius_data_sync_delete_batch_size_wp_posts_clean`, `gregius_data_sync_delete_batch_size_wp_posts`) and the 3 dynamic templates `gregius_data_rag_tool_{$tool_name}` / `{$forced_tool}` / `{$action_name}` (documented as the `gregius_data_rag_tool_{name}` family) — add these to reach the full 112 static + 3 dynamic = 115.
 
 ### Last Audit
 
-- **Date**: October 15, 2026
-- **Scope**: Full reconciliation against code (code-as-truth). Added 16 previously-uncataloged hooks (document ingestion, RAG access control, entity summary, evaluation adapter, precomputed response, response-generated, search observability, sync delete-batch family); corrected signature drift (`gregius_data_rag_source_min_relevance` default `0.0`; `gregius_data_chunking_strategies` 2-arg; rate-limit hooks also emitted from the SSE handler); deduplicated `gregius_data_rag_abstain_message`; fixed the dynamic-family example to a real tool; removed the un-implemented enterprise increment (Memory Anchoring / Confidence Scoring) from the SRS and architecture.
+- **Date**: November 21, 2026
+- **Scope**: Code-as-truth reconciliation. Removed the orphan filter gregius_data_rag_entity_summary_meta_key (documented with no emission site in code); aligned the public documentation HTML with the live `gregius_data_` hook namespace; normalized legacy terminology; confirmed every remaining documented hook resolves to a live `do_action`/`apply_filters` emission site.
 - **Result**: 112 static + 3 dynamic emitted hooks documented; parity PASS.

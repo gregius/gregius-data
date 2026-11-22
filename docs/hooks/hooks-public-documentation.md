@@ -29,7 +29,7 @@ Examples of Tier 1 areas:
 - Search tuning — relevance weights and rate limits
 - Interaction tracking — custom metadata and post-record callbacks
 - RAG lifecycle — retrieval filtering, LLM response post-processing, tool registration
-- Log governance — retention policy, pre- and post-purge observability
+- Log governance — retention policy, pre- and post-purge notifications
 - Vector operations — batch deletion tuning
 
 ### Tier 2 semi-public hooks
@@ -41,7 +41,7 @@ Tier 2 areas include:
 - RAG governance — retrieval policy, rerank policy, threshold profiles, abstain messaging, permission filtering
 - Provider surface — OpenAI, Anthropic, Gemini, DeepSeek request/response filtering
 - Operational controls — batch sizes for clean and orphan operations, CLI batch limits, rate limit tuning
-- Observability — streaming failure, token usage tracking and reset
+- Telemetry — streaming failure, token usage tracking and reset
 
 ### Tier 3 internal hooks
 
