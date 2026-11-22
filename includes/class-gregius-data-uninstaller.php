@@ -169,10 +169,7 @@ class Gregius_Data_Uninstaller {
 	private static function remove_blog_data() {
 		global $wpdb;
 
-		$option_likes = array(
-			'gregius_data_',
-			'gregius_data_',
-		);
+		$option_likes = array( 'gregius_data_' );
 
 		foreach ( $option_likes as $prefix ) {
 			$like = $wpdb->esc_like( $prefix ) . '%';
@@ -278,7 +275,7 @@ class Gregius_Data_Uninstaller {
 	private static function remove_network_data() {
 		global $wpdb;
 
-		foreach ( array( 'gregius_data_', 'gregius_data_' ) as $prefix ) {
+		foreach ( array( 'gregius_data_' ) as $prefix ) {
 			$like = $wpdb->esc_like( $prefix ) . '%';
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall-time network option cleanup.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s", $like ) );

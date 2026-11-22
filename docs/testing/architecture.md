@@ -131,7 +131,6 @@ gregius-data/
 ├── tests/
 │   ├── bootstrap.php           # Conditional bootstrap (all tiers)
 │   ├── helpers.php             # Shared stubs (tier 1-2 only)
-│   ├── wp-mock-functions.php   # Shared WP function stub placeholder (unused)
 │   ├── wp-phpunit/             # Optional in-tree checkout (gitignored)
 │   ├── Unit/                   # Tier 1 (see srs.md §4.1)
 │   ├── Integration/            # Tier 2 (see srs.md §4.2)
