@@ -194,7 +194,7 @@ This documentation is organized for **active development** and includes both int
 1. Read [rag/srs.md](rag/srs.md) — software requirements and current subsystem scope
 2. Read [rag/architecture.md](rag/architecture.md) — architecture views, runtime model, and ADRs
 3. Read [rag/developer-documentation.md](rag/developer-documentation.md) — service usage, REST contracts, hooks, and troubleshooting
-4. Read [rag/manifest-contract.md](rag/manifest-contract.md) — canonical manifest schema, deterministic tool override, and observability contract
+4. Read [rag/manifest-contract.md](rag/manifest-contract.md) — canonical manifest schema, deterministic tool override, and manifest metadata contract
 
 ### Understand Database Abstraction
 1. Read [providers/srs.md](providers/srs.md) — software requirements for the provider architecture
@@ -205,13 +205,15 @@ This documentation is organized for **active development** and includes both int
 
 ### Extend or Integrate Providers
 1. Start with [providers/developer-documentation.md](providers/developer-documentation.md)
-2. Use extension points documented for DB factory registration and AI provider filters
+2. Register AI providers via the provider filter; DB providers are built-in via the factory type map
 3. Validate requirements and constraints with [providers/srs.md](providers/srs.md)
 4. Confirm architecture alignment in [providers/architecture.md](providers/architecture.md)
 
 ---
 
 ## 📊 Documentation Status
+
+> Verified against commit `f08816d` (v1.0.3) — 2026-11-22.
 
 **Current (Actively Maintained):**
 - ✅ interface/srs.md
@@ -220,6 +222,7 @@ This documentation is organized for **active development** and includes both int
 - ✅ rag/srs.md
 - ✅ rag/architecture.md
 - ✅ rag/developer-documentation.md
+- ✅ rag/manifest-contract.md
 - ✅ rag-evaluation/srs.md
 - ✅ rag-evaluation/architecture.md
 - ✅ rag-evaluation/developer-documentation.md
@@ -232,10 +235,16 @@ This documentation is organized for **active development** and includes both int
 - ✅ schema/srs.md
 - ✅ schema/architecture.md
 - ✅ schema/developer-documentation.md
+- ✅ sync/srs.md
+- ✅ sync/architecture.md
+- ✅ sync/developer-documentation.md
 - ✅ security/security-audit-report.md
 - ✅ updates/srs.md
 - ✅ updates/architecture.md
 - ✅ updates/developer-documentation.md
+- ✅ lifecycle/srs.md
+- ✅ lifecycle/architecture.md
+- ✅ lifecycle/developer-documentation.md
 - ✅ providers/srs.md
 - ✅ providers/architecture.md
 - ✅ providers/developer-documentation.md
@@ -251,9 +260,15 @@ This documentation is organized for **active development** and includes both int
 - ✅ abilities/srs.md
 - ✅ abilities/architecture.md
 - ✅ abilities/developer-documentation.md
+- ✅ hooks/srs.md
+- ✅ hooks/architecture.md
+- ✅ hooks/developer-documentation.md
 - ✅ logs/srs.md
 - ✅ logs/architecture.md
 - ✅ logs/developer-documentation.md
+- ✅ retry-queue/srs.md
+- ✅ retry-queue/architecture.md
+- ✅ retry-queue/developer-documentation.md
 - ✅ wpcli/srs.md
 - ✅ wpcli/architecture.md
 - ✅ wpcli/developer-documentation.md
