@@ -77,7 +77,7 @@ Sync Operation (Gregius_Data_DB)
 ```
 
 Mapping:
-- AV-01 → RQ-FR-01 to RQ-FR-16
+- AV-01 → RQ-FR-01 to RQ-FR-12, RQ-FR-14 to RQ-FR-16
 - AV-01 → RQ-OR-01 to RQ-OR-06
 
 ---
@@ -116,7 +116,7 @@ Mapping:
 
 6. **Deactivation/Uninstall Handlers** (`Gregius_Data_Deactivator`, `uninstall.php`)
    - Deactivation: unschedules `gregius_data_process_retry_queue` WP-Cron event; preserves queue data
-   - Uninstall: deletes `gregius_data_retry_queue` and `gregius_data_dead_letter_queue` from wp_options
+   - Uninstall: clears retry-queue WP-Cron events unconditionally; deletes `gregius_data_retry_queue` and `gregius_data_dead_letter_queue` from wp_options only when `gregius_data_remove_data_on_uninstall` is set
 
 ### 3.2 Contract Boundaries
 
@@ -125,7 +125,7 @@ Mapping:
 - Sync metadata: Updated only on retry success (never on queue entry or on failure)
 
 Mapping:
-- AV-02 → RQ-FR-01 to RQ-FR-16
+- AV-02 → RQ-FR-01 to RQ-FR-12, RQ-FR-14 to RQ-FR-16
 - AV-02 → RQ-DR-01 to RQ-DR-07
 
 ---
@@ -138,8 +138,7 @@ Mapping:
 Gregius_Data_DB method (e.g., upsert_post_meta) fails
     │
     ├─ Extract error string from PDO errorInfo or Exception message
-    ├─ Instantiate Gregius_Data_Error_Handler
-    ├─ $handler->classify_error($error_string)
+    ├─ Gregius_Data_Error_Handler::classify_error($error_string)
     │   ├─ Returns: ['type' => 'transient', 'retry_safe' => true, 'message' => '...']
     │   └─ Returns: ['type' => 'permanent', 'retry_safe' => false, 'message' => '...']
     │
@@ -187,7 +186,6 @@ process_queue()
                   │
                   └─ FAIL:
                       ├─ Increment attempt_count
-                      ├─ Update last_error
                       │
                       └─ attempt_count >= MAX_RETRY_ATTEMPTS (3)?
                           ├─ YES → Add moved_to_dead_letter timestamp
@@ -219,7 +217,7 @@ POST /gregius-data/v1/sync/retry-queue/retry/{index}
 ```
 
 Mapping:
-- AV-03 → RQ-FR-02 to RQ-FR-16
+- AV-03 → RQ-FR-02 to RQ-FR-12, RQ-FR-14 to RQ-FR-16
 - AV-03 → RQ-OR-01, RQ-OR-02, RQ-OR-05, RQ-OR-06
 - AV-03 → RQ-QR-01 to RQ-QR-04
 
@@ -339,9 +337,9 @@ Linked requirements:
 
 | Architecture Item | SRS IDs Covered |
 |---|---|
-| AV-01 (Context View) | RQ-FR-01 to RQ-FR-16, RQ-OR-01 to RQ-OR-06 |
-| AV-02 (Component View) | RQ-FR-01 to RQ-FR-16, RQ-DR-01 to RQ-DR-07 |
-| AV-03 (Runtime View) | RQ-FR-02 to RQ-FR-16, RQ-OR-01, RQ-OR-02, RQ-OR-05, RQ-OR-06, RQ-QR-01 to RQ-QR-04 |
+| AV-01 (Context View) | RQ-FR-01 to RQ-FR-12, RQ-FR-14 to RQ-FR-16, RQ-OR-01 to RQ-OR-06 |
+| AV-02 (Component View) | RQ-FR-01 to RQ-FR-12, RQ-FR-14 to RQ-FR-16, RQ-DR-01 to RQ-DR-07 |
+| AV-03 (Runtime View) | RQ-FR-02 to RQ-FR-12, RQ-FR-14 to RQ-FR-16, RQ-OR-01, RQ-OR-02, RQ-OR-05, RQ-OR-06, RQ-QR-01 to RQ-QR-04 |
 | AD-01 | RQ-DR-03, RQ-DR-04, RQ-QR-02 |
 | AD-02 | RQ-FR-03, RQ-FR-04, RQ-QR-04 |
 | AD-03 | RQ-FR-01, RQ-FR-02, RQ-QR-01 |
