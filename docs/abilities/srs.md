@@ -82,6 +82,7 @@ Requirement notation:
 | ABIL-FR-01 | The software MUST register abilities categories on `wp_abilities_api_categories_init` when `wp_register_ability_category` is available. | Must |
 | ABIL-FR-02 | The software MUST register abilities on `wp_abilities_api_init` when `wp_register_ability` is available. | Must |
 | ABIL-FR-03 | The software MUST register category `ai` for AI/ML capability grouping. | Must |
+| ABIL-FR-04 | The software MUST register abilities using stable namespaced identifiers prefixed with `gregius-data/`. | Must |
 | ABIL-FR-05 | The software MUST register ability `gregius-data/answer` with execute callback, permission callback, and schema contracts. | Must |
 | ABIL-FR-06 | The software MUST register ability `gregius-data/list-connections` with execute callback, permission callback, and schema contracts. | Must |
 | ABIL-FR-07 | The software MUST register ability `gregius-data/list-models` with execute callback, permission callback, and schema contracts. | Must |
@@ -139,11 +140,15 @@ Acceptance baseline:
 
 | SRS Requirement IDs | Source References | Notes |
 |---|---|---|
-| ABIL-FR-01..03, ABIL-OR-01 | `includes/class-gregius-data-abilities-manager.php` | Registration hooks, category setup, API-availability guards |
-| ABIL-FR-05..07, ABIL-DR-01..03, ABIL-OR-02..03 | `includes/class-gregius-data-abilities-manager.php` | Ability definitions, permission callbacks, schema/meta contracts |
-| ABIL-FR-08, ABIL-DR-04, ABIL-DR-06 | `includes/class-gregius-data-abilities-manager.php`, `includes/rag/class-gregius-data-rag-service.php` | Answer callback flow, options normalization, validation errors |
-| ABIL-FR-09, ABIL-DR-08, ABIL-DR-09 | `includes/class-gregius-data-abilities-manager.php`, `includes/class-gregius-data-settings-manager.php`, `includes/class-gregius-data-connection-model-manager.php` | Connection listing normalization and optional embedding model context |
-| ABIL-FR-10, ABIL-DR-05, ABIL-QR-03 | `includes/class-gregius-data-abilities-manager.php`, `includes/class-gregius-data-model-registry.php` | Model listing/type filtering over global provider registry |
+| ABIL-FR-01..03, ABIL-OR-01 | `includes/class-gregius-data-abilities-manager.php:24-59` | Registration hooks, category setup, API-availability guards |
+| ABIL-FR-04..07, ABIL-DR-01..03, ABIL-OR-02..03 | `includes/class-gregius-data-abilities-manager.php:62-365` | Ability definitions, permission callbacks, schema/meta contracts |
+| ABIL-FR-08, ABIL-DR-04, ABIL-DR-06 | `includes/class-gregius-data-abilities-manager.php:375-443`, `includes/rag/class-gregius-data-rag-service.php:1211` | Answer callback flow, options normalization, validation errors |
+| ABIL-DR-07 | `includes/class-gregius-data-abilities-manager.php:72-128` | Answer input schema excludes prompt fields (selection kept internal) |
+| ABIL-FR-09, ABIL-DR-08, ABIL-DR-09 | `includes/class-gregius-data-abilities-manager.php:531-622`, `includes/class-gregius-data-settings-manager.php:678`, `includes/class-gregius-data-connection-model-manager.php:83` | Connection listing normalization and optional embedding model context |
+| ABIL-FR-10, ABIL-DR-05, ABIL-QR-03 | `includes/class-gregius-data-abilities-manager.php:630-667`, `includes/class-gregius-data-model-registry.php:213` | Model listing/type filtering over global provider registry |
+| ABIL-OR-04 | `includes/class-gregius-data-abilities-manager.php:24-59,62-365` | Stable category name and ability IDs |
+| ABIL-QR-01 | `includes/class-gregius-data-abilities-manager.php:24-59,62-365` | Deterministic registration across requests |
+| ABIL-QR-02 | `includes/class-gregius-data-abilities-manager.php:62-365` | Stable, backward-compatible contract definitions |
 
 ## 6. Appendices
 
