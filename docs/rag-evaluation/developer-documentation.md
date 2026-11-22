@@ -312,3 +312,130 @@ When extending evaluation functionality:
 2. Keep canonical-first artifact model intact.
 3. Preserve manifest schema backward compatibility or increment `schema_version`.
 4. Avoid introducing programmatic coupling to other plugin subsystems.
+
+## 12. Public API Reference
+
+This section records the evaluation subsystem's public symbols with their
+current signatures. Code is the source of truth; line numbers are provided for
+traceability.
+
+### 12.1 Evaluation orchestration service
+
+`includes/class-gregius-data-evaluation-service.php` — class
+`Gregius_Data_Evaluation_Service` (uses trait `Gregius_Data_Format_Json_Output`).
+
+| Method | Signature | Returns |
+|---|---|---|
+| `get_supported_frameworks` | `public function get_supported_frameworks()` | `array` — `array( 'ragas' )` |
+| `get_template_path` | `public function get_template_path()` | `string` — shipped template path |
+| `get_default_config_path` | `public function get_default_config_path()` | `string` |
+| `get_default_artifact_root` | `public function get_default_artifact_root()` | `string` |
+| `load_config` | `public function load_config( $config_path = '' )` | `array` — normalized config |
+| `assert_connection_exists` | `public function assert_connection_exists( $connection )` | `void` — throws `RuntimeException` |
+| `list_prompts` | `public function list_prompts( $config_path = '' )` | `array` |
+| `get_config_summary` | `public function get_config_summary( $config_path = '', $skip_connection_check = false )` | `array` |
+| `run` | `public function run( $assoc_args )` | `array` |
+
+### 12.2 WP-CLI evaluation command
+
+`includes/cli/class-gregius-data-cli-evaluation.php` — class
+`Gregius_Data_CLI_Evaluation`, registered as `wp gregius-data evaluation`
+(see `includes/cli/class-gregius-data-cli.php`).
+
+| Subcommand | Method | Signature |
+|---|---|---|
+| `run` | `run` | `public function run( $args, $assoc_args )` |
+| `list-prompts` | `list_prompts` | `public function list_prompts( $args, $assoc_args )` |
+| `validate-config` | `validate_config` | `public function validate_config( $args, $assoc_args )` |
+| `adapters` | `adapters` | `public function adapters( $args, $assoc_args )` |
+
+### 12.3 TypeSafe evaluator provider
+
+`includes/ai/providers/class-gregius-data-typesafe-provider.php` — class
+`Gregius_Data_Typesafe_Provider` implements
+`Gregius_Data_AI_Provider_Interface`. It is the only shipped provider exposing
+the `evaluator` capability. The unsupported capability methods
+`generate_text()`, `generate_embedding()`, and `rerank()` return `WP_Error`;
+the model-list methods `get_llm_models()`, `get_vision_models()`,
+`get_embedding_models()`, `get_rerank_models()`, and `get_evaluator_models()`
+return arrays (empty for typesafe except the evaluator catalog).
+
+| Symbol | Signature / value |
+|---|---|
+| `BASE_URL` | `const` = `https://api.typesafe.ai/v1` |
+| `DEFAULT_TIMEOUT` | `const` = `30` |
+| `DEFAULT_MODEL` | `const` = `jev-1.13.0` |
+| `MAX_STATE_CHARS` | `const` = `120000` |
+| `__construct` | `public function __construct( string $api_key = '' )` |
+| `get_id` | `public function get_id(): string` → `typesafe` |
+| `get_name` | `public function get_name(): string` → `TypeSafe` |
+| `get_capabilities` | `public function get_capabilities(): array` → `array( 'evaluator' )` |
+| `generate_text` | `public function generate_text( string $prompt, array $options = array() ): array|WP_Error` |
+| `get_llm_models` | `public function get_llm_models(): array` |
+| `get_vision_models` | `public function get_vision_models(): array` |
+| `generate_embedding` | `public function generate_embedding( string $text, array $options = array() ): array|WP_Error` |
+| `get_embedding_models` | `public function get_embedding_models(): array` |
+| `rerank` | `public function rerank( string $query, array $documents, array $options = array() ): array|WP_Error` |
+| `get_rerank_models` | `public function get_rerank_models(): array` |
+| `get_evaluator_models` | `public function get_evaluator_models(): array` |
+| `evaluate` | `public function evaluate( string $state, array $questions, array $options = array() ): array|WP_Error` |
+| `validate_api_key` | `public function validate_api_key( string $api_key ): bool|WP_Error` |
+
+`evaluate()` sends `POST /systemone` against `BASE_URL`. On success it returns
+`array{ answers, model, usage }`, where `answers` is a map of
+`question-id => answer object`; the caller interprets the answers (e.g.
+thresholds a Noul probability into a verdict).
+
+### 12.4 Typed-question primitive
+
+`evaluate()` accepts a `$questions` map of `question-id => question object`,
+each carrying a `type`, an `instructions` string, and an optional `criteria`
+map. The shipped integration emits only the **Noul** question type:
+
+```json
+{ "type": "noul", "instructions": "…", "criteria": { "true": "…", "false": "…" } }
+```
+
+A Noul answer carries its probability under the `noul` key (a float in
+`[0, 1]`). No other question type (`choice`, `score`) is emitted by shipped
+code.
+
+### 12.5 Retrieval-sufficiency evaluation (RAG service)
+
+`includes/rag/class-gregius-data-rag-service.php` — private methods that grade
+whether retrieved context is sufficient to answer a query, and run up to one
+corrective query reformulation. These run inside `generate_answer()` at answer
+time and are internal to the RAG pipeline, distinct from the dataset runner.
+
+| Method | Signature |
+|---|---|
+| `resolve_evaluator` | `private function resolve_evaluator( $options )` |
+| `resolve_evaluation_instructions` | `private function resolve_evaluation_instructions( $options )` |
+| `evaluate_retrieval_sufficiency` | `private function evaluate_retrieval_sufficiency( $query, $chunks, $evaluator, $options )` |
+| `call_evaluator_with_retry` | `private function call_evaluator_with_retry( $evaluator, $state, $questions )` |
+| `is_transient_evaluator_error` | `private function is_transient_evaluator_error( $error )` |
+| `build_evaluation_state` | `private function build_evaluation_state( $query, $chunk_texts )` |
+| `retrieve_single_path_with_evaluation` | `private function retrieve_single_path_with_evaluation( $query, $search_query, $tool_selection, $options, $progress_callback )` |
+| `select_corrective_action` | `private function select_corrective_action( $search_query, $retrieval_outcome, $options )` |
+
+`evaluate_retrieval_sufficiency()` sends one Noul "sufficient?" question and
+thresholds the returned probability (filter
+`gregius_data_rag_evaluator_threshold`, default `0.5`) into a verdict of
+`correct`, `insufficient`, or `error`. Evaluator failures fail open (verdict
+`error`) and never block answer generation.
+
+### 12.6 Evaluator filters
+
+| Filter | Default | Purpose |
+|---|---|---|
+| `gregius_data_rag_evaluator_threshold` | `0.5` | Noul probability above which retrieval is graded `correct`. |
+| `gregius_data_rag_evaluator_max_reformulations` | `1` | Maximum corrective query rewrites per request. |
+| `gregius_data_rag_evaluator_retry_attempts` | `1` | Retry count for transient evaluator failures. |
+| `gregius_data_rag_evaluation_framework_adapter` | — | Extends framework adapter dispatch (see section 8). |
+
+### 12.7 Evaluator model catalog
+
+`includes/class-gregius-data-model-catalog.php` —
+`Gregius_Data_Model_Catalog::evaluator_models( string $provider ): array`.
+The TypeSafe catalog ships two evaluator model IDs: `jev-1.13.0` (default,
+pinned) and `jev-latest` (current-stable alias).

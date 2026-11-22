@@ -152,3 +152,52 @@ Requirement notation:
 | Data and contract requirements | Schema and content inspection | Canonical JSONL + manifest review |
 | Operations requirements | Configuration and portability checks | Multi-environment run inspection |
 | Quality requirements | Artifact parse and schema validation | JSON parse tools + schema inspection |
+
+## 5. Traceability to Source
+
+Each requirement traces to its implementation. Paths are relative to the
+plugin root; line numbers refer to the current (1.0.3) source.
+
+Primary source files:
+- `includes/class-gregius-data-evaluation-service.php` (evaluation orchestration)
+- `includes/cli/class-gregius-data-cli-evaluation.php` (WP-CLI command family)
+
+| Requirement | Source file | Line(s) |
+|---|---|---|
+| RE-FR-01 | includes/class-gregius-data-evaluation-service.php | 155 |
+| RE-FR-02 | includes/class-gregius-data-evaluation-service.php | 702, 725 |
+| RE-FR-03 | includes/class-gregius-data-evaluation-service.php | 749 |
+| RE-FR-04 | includes/class-gregius-data-evaluation-service.php | 801 |
+| RE-FR-05 | includes/class-gregius-data-evaluation-service.php | 801, 823 |
+| RE-FR-06 | includes/class-gregius-data-evaluation-service.php | 458 |
+| RE-FR-07 | includes/class-gregius-data-evaluation-service.php | 499 |
+| RE-FR-08 | includes/class-gregius-data-evaluation-service.php | 779 |
+| RE-FR-09 | includes/class-gregius-data-evaluation-service.php | 566 |
+| RE-FR-10 | includes/class-gregius-data-evaluation-service.php | 305–307 |
+| RE-FR-11 | includes/cli/class-gregius-data-cli-evaluation.php | 68–81 |
+| RE-DR-01 | includes/class-gregius-data-evaluation-service.php | 757 |
+| RE-DR-02 | includes/class-gregius-data-evaluation-service.php | 627 |
+| RE-DR-03 | includes/class-gregius-data-evaluation-service.php | 628 |
+| RE-DR-04 | includes/class-gregius-data-evaluation-service.php | 631–635 |
+| RE-DR-05 | includes/class-gregius-data-evaluation-service.php | 631–635 |
+| RE-DR-06 | includes/class-gregius-data-evaluation-service.php | 631–635 |
+| RE-DR-07 | includes/class-gregius-data-evaluation-service.php | 462–466 |
+| RE-DR-08 | includes/class-gregius-data-evaluation-service.php | 509–522 |
+| RE-DR-09 | includes/class-gregius-data-evaluation-service.php | 582–611 |
+| RE-DR-10 | includes/class-gregius-data-evaluation-service.php | 569–572 |
+| RE-DR-11 | includes/class-gregius-data-evaluation-service.php | 625, 823 |
+| RE-OR-01 | includes/class-gregius-data-evaluation-service.php | 22 |
+| RE-OR-02 | includes/class-gregius-data-evaluation-service.php | 285 |
+| RE-OR-03 | includes/class-gregius-data-evaluation-service.php | 97 |
+| RE-OR-04 | includes/class-gregius-data-evaluation-service.php | 502–504 |
+| RE-OR-05 | includes/class-gregius-data-evaluation-service.php | 779 |
+| RE-OR-06 | includes/class-gregius-data-evaluation-service.php | 155 |
+| RE-OR-07 | includes/class-gregius-data-evaluation-service.php | 117–121 |
+| RE-OR-08 | includes/class-gregius-data-evaluation-service.php | 70, 540 |
+| RE-QR-01 | includes/class-gregius-data-evaluation-service.php | 462–466 |
+| RE-QR-02 | includes/class-gregius-data-evaluation-service.php | 509–522 |
+| RE-QR-03 | includes/class-gregius-data-evaluation-service.php | 613 |
+| RE-QR-04 | includes/class-gregius-data-evaluation-service.php | 749 |
+| RE-QR-05 | includes/class-gregius-data-evaluation-service.php | 458 |
+| RE-QR-06 | includes/class-gregius-data-evaluation-service.php | 540 |
+| RE-QR-07 | includes/class-gregius-data-evaluation-service.php | 667 |
